@@ -5,7 +5,7 @@
   "type": "module",
   "bin": { "tessera": "bin/tessera.mjs" },
   "scripts": {
-    "test": "node --test test/tessera.test.mjs test/eval.test.mjs",
+    "test": "node --test test/tessera.test.mjs test/eval.test.mjs test/eval-dificeis.test.mjs",
     "doctor": "node bin/tessera.mjs doctor"
   },
   "engines": { "node": ">=20" },

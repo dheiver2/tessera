@@ -66,8 +66,10 @@ ${code}
 `;
   try {
     writeFileSync(file, harness);
+    // Ambiente mínimo: o código do agente não herda variáveis (chaves) do processo.
+    // Fuso fixo para tarefas de data serem determinísticas (e a armadilha de UTC aparecer).
     const res = spawnSync(process.execPath, ['--permission', `--allow-fs-read=${file}`, file], {
-      encoding: 'utf8', timeout: timeoutMs, cwd: dir,
+      encoding: 'utf8', timeout: timeoutMs, cwd: dir, env: { TZ: 'America/Sao_Paulo' },
     });
     if (res.error?.code === 'ETIMEDOUT' || res.signal) return { pass: false, detail: 'tempo esgotado nos testes' };
     const m = (res.stdout ?? '').match(/__TESSERA__(\[.*\])/);
@@ -80,9 +82,16 @@ ${code}
   }
 }
 
+// Padrões proibidos (ex.: eval numa tarefa de parser) reprovam antes de rodar.
+export function checkCode(task, code, tests) {
+  const hit = (task.forbid ?? []).find((re) => new RegExp(re).test(code));
+  if (hit) return { pass: false, detail: `usa o proibido: ${hit}` };
+  return runCodeTests(code, tests);
+}
+
 export function grade(task, text) {
   if (!text || !text.trim()) return { pass: false, detail: 'sem resposta' };
-  if (task.kind === 'code') return runCodeTests(extractCode(text), task.tests);
+  if (task.kind === 'code') return checkCode(task, extractCode(text), task.tests);
   const t = normalize(text);
   if (task.kind === 'qa') {
     const missing = (task.expect ?? []).filter((re) => !new RegExp(re, 'i').test(t));
@@ -108,7 +117,7 @@ export function publicTests(tests) {
 export function verifierFor(task) {
   if (task.kind !== 'code' || !task.tests?.length) return null;
   const tests = publicTests(task.tests);
-  return (text) => runCodeTests(extractCode(text), tests);
+  return (text) => checkCode(task, extractCode(text), tests);
 }
 
 // ---------------------------------------------------------------------------

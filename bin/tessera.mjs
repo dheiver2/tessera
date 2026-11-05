@@ -34,6 +34,7 @@ Uso:
                                                  todos ao mesmo tempo; vence a resposta verificada ou a maioria; síntese só no impasse
   tessera tasks [--root DIR]                     histórico do barramento
   tessera eval [--limit N] [--kind code,qa,review] [--ids a,b] [--agents ...] [--modes solo,tessera] [--parallel] [--baseline arq.json]
+               [--tasks evals/tasks-dificeis.json]
                                                  mede cada agente sozinho contra o Tessera
 
   --target   alvos (padrão: framework.json)
@@ -151,7 +152,7 @@ try {
     else { console.log(`\nerro: ${res.error ?? res.final?.error ?? 'sem síntese'}`); process.exitCode = 1; }
   } else if (cmd === 'eval') {
     const cfg = CFG.fanout ?? {};
-    const tasks = loadTasks(join(SRC, 'evals', 'tasks.json'), {
+    const tasks = loadTasks(resolve(value('--tasks') ?? join(SRC, 'evals', 'tasks.json')), {
       kinds: value('--kind')?.split(','),
       ids: value('--ids')?.split(','),
       limit: value('--limit') ? Number(value('--limit')) : undefined,
@@ -187,7 +188,7 @@ try {
       results.unshift(...prev);
     }
     const summary = summarize(results);
-    const meta = { date, provider: PROVIDER?.name ?? null, models: PROVIDER ? JSON.stringify(PROVIDER.models) : null, agents, modes, parallel: flag('--parallel'), tasks: tasks.map((t) => t.id), baseline: baseline ?? null };
+    const meta = { date, provider: PROVIDER?.name ?? null, models: PROVIDER ? JSON.stringify(PROVIDER.models) : null, agents, modes, parallel: flag('--parallel'), tasks: tasks.map((t) => t.id), baseline: baseline ?? null, taskFile: value('--tasks') ?? 'evals/tasks.json' };
     const files = saveResults(join(SRC, 'evals', 'resultados'), { results, summary, meta });
     console.log('\n' + renderMarkdown(summary, meta));
     console.log(`resultados: ${files.md}`);
