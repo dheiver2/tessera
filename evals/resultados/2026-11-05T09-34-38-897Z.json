@@ -1,0 +1,708 @@
+{
+  "meta": {
+    "date": "2026-11-05T09:34:38.897Z",
+    "provider": "mangaba-router",
+    "models": "{\"claude\":\"mangaba-agente-rapido\",\"codex\":\"mangaba-agente-rapido\",\"openclaw\":\"router/mangaba-agente-rapido\",\"hermes\":\"mangaba-agente-rapido\"}",
+    "agents": [
+      "claude",
+      "codex",
+      "openclaw",
+      "hermes"
+    ],
+    "modes": [
+      "tessera"
+    ],
+    "parallel": false,
+    "tasks": [
+      "review-off-by-one",
+      "review-sql-injection",
+      "review-atribuicao",
+      "review-sem-await",
+      "review-media-vazia",
+      "review-default-mutavel"
+    ],
+    "baseline": "evals/resultados/2026-11-05T08-00-11-101Z.json"
+  },
+  "summary": {
+    "tasks": 6,
+    "modes": [
+      "claude",
+      "codex",
+      "openclaw",
+      "hermes",
+      "tessera"
+    ],
+    "byMode": {
+      "claude": {
+        "total": 6,
+        "passed": 6,
+        "accuracy": 1,
+        "answered": 6,
+        "p50Ms": 5698,
+        "p95Ms": 11711,
+        "byKind": {
+          "review": {
+            "total": 6,
+            "passed": 6
+          }
+        }
+      },
+      "codex": {
+        "total": 6,
+        "passed": 6,
+        "accuracy": 1,
+        "answered": 6,
+        "p50Ms": 9075,
+        "p95Ms": 17920,
+        "byKind": {
+          "review": {
+            "total": 6,
+            "passed": 6
+          }
+        }
+      },
+      "openclaw": {
+        "total": 6,
+        "passed": 6,
+        "accuracy": 1,
+        "answered": 6,
+        "p50Ms": 10540,
+        "p95Ms": 21170,
+        "byKind": {
+          "review": {
+            "total": 6,
+            "passed": 6
+          }
+        }
+      },
+      "hermes": {
+        "total": 6,
+        "passed": 5,
+        "accuracy": 0.8333333333333334,
+        "answered": 6,
+        "p50Ms": 23207,
+        "p95Ms": 118106,
+        "byKind": {
+          "review": {
+            "total": 6,
+            "passed": 5
+          }
+        }
+      },
+      "tessera": {
+        "total": 6,
+        "passed": 6,
+        "accuracy": 1,
+        "answered": 6,
+        "p50Ms": 37628,
+        "p95Ms": 48649,
+        "byKind": {
+          "review": {
+            "total": 6,
+            "passed": 6
+          }
+        }
+      }
+    },
+    "bestSolo": "claude",
+    "oracle": 6,
+    "oracleAccuracy": 1,
+    "comparison": {
+      "bestSolo": "claude",
+      "tesseraAccuracy": 1,
+      "bestSoloAccuracy": 1,
+      "deltaPoints": 0,
+      "latencyRatioP95": 4.154128597045513,
+      "wins": [],
+      "losses": [],
+      "beatsBestSolo": false,
+      "latencyWithinTarget": false
+    },
+    "decisions": {
+      "synthesis": {
+        "total": 6,
+        "passed": 6,
+        "p50Ms": 37628
+      }
+    },
+    "branchOracle": 6
+  },
+  "results": [
+    {
+      "taskId": "review-off-by-one",
+      "kind": "review",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 11711,
+      "output": "O bug é que o loop vai até `i <= arr.length`, causando acesso ao índice inválido `arr[arr.length]` (que é `undefined`). Corrija para `i < arr.length`.",
+      "pass": true,
+      "detail": "apontou: <="
+    },
+    {
+      "taskId": "review-off-by-one",
+      "kind": "review",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 8182,
+      "output": "O loop usa `i <= arr.length`, o que faz acessar `arr[arr.length]` ( fora do intervalo válido). Isso retorna `undefined`, e `undefined + 0` resulta em `NaN`, causando um resultado incorreto.",
+      "pass": true,
+      "detail": "apontou: <="
+    },
+    {
+      "taskId": "review-off-by-one",
+      "kind": "review",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 11976,
+      "output": "O bug é `i <= arr.length` — o loop continua até o índice fora dos limites, acessando `arr[arr.length]` (que é `undefined`). Em arrays não-vazios, isso pode causar `NaN` no resultado ou somar valores extras que não existem. A correção é trocar para `i < arr.length`.",
+      "pass": true,
+      "detail": "apontou: <="
+    },
+    {
+      "taskId": "review-off-by-one",
+      "kind": "review",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 23207,
+      "output": "O bug é que a condição do loop é `i <= arr.length` — quando `i` atinge `arr.length`, o acesso `arr[arr.length]` retorna `undefined`, e `arr[undefined]` é `NaN`, fazendo a soma retornar `NaN` em vez dos valores corretos. Corrija para `i < arr.length`.",
+      "pass": true,
+      "detail": "apontou: <="
+    },
+    {
+      "taskId": "review-sql-injection",
+      "kind": "review",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 6775,
+      "output": "Esta é uma vulnerabilidade de **SQL injection**. O valor de `req.query.name` é concatenado diretamente no query SQL sem sanitização ou parâmetros, permitindo que um atacante insira código SQL malicioso.",
+      "pass": true,
+      "detail": "apontou: injection"
+    },
+    {
+      "taskId": "review-sql-injection",
+      "kind": "review",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 7915,
+      "output": "Este código é vulnerável a **SQL Injection** (`SQL Injection`), pois `req.query.name` é concatenado diretamente na query sem sanitização ou uso de queries parametrizadas. Um atacante pode injetar código SQL malicioso, como `'; DROP TABLE users; --`, comprometendo o banco de dados.",
+      "pass": true,
+      "detail": "apontou: injection"
+    },
+    {
+      "taskId": "review-sql-injection",
+      "kind": "review",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 10540,
+      "output": "Vulnerabilidade de **SQL Injection**. A query concatena diretamente a entrada do usuário (`req.query.name`) sem sanitização ou uso de query binding, permitindo que um atacante insira comandos SQL maliciosos e acesse/modifique o banco de dados.",
+      "pass": true,
+      "detail": "apontou: injection"
+    },
+    {
+      "taskId": "review-sql-injection",
+      "kind": "review",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 18538,
+      "output": "Vulnerabilidade de injeção SQL (SQL Injection). O `req.query.name` é input do usuário concateado diretamente na query sem sanitização ou parâmetros, permitindo que um atacante injete código SQL malicioso, por exemplo: `' OR '1'='1`.",
+      "pass": true,
+      "detail": "apontou: inje[cç][ãa]o"
+    },
+    {
+      "taskId": "review-atribuicao",
+      "kind": "review",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 5400,
+      "output": "O bug é que `=` é um **operador de atribuição**, não de comparação. Ele atribui o valor `18` a `user.age` em vez de verificar se o valor é igual a 18.\n\nIsso faz com que o `if` seja **sempre verdadeiro**, pois qualquer valor diferente de `null`/`undefined`/`0` é truthy em JavaScript.",
+      "pass": true,
+      "detail": "apontou: atribui"
+    },
+    {
+      "taskId": "review-atribuicao",
+      "kind": "review",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 15187,
+      "output": "O bug é que o operador de comparação está incorreto: `=` é o **operador de atribuição**, não o de comparação. O código deveria usar `===` para verificar se `user.age` é igual a 18. No código fornecido, `user` não está definido, o que causaria um `ReferenceError` na execução.\n\n**Correta:**\n```js\nif (user.age === 18) {\n  console.log('tem 18 anos');\n}\n```",
+      "pass": true,
+      "detail": "apontou: atribui"
+    },
+    {
+      "taskId": "review-atribuicao",
+      "kind": "review",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 8955,
+      "output": "Bug: usa `=` (atribuição) no lugar de `===` (comparação). O `if` sempre será verdadeiro porque `user.age = 18` retorna `18` (sempre truthy), e não faz nenhuma verificação de valor.\n\nCorrija para: `if (user.age === 18)`",
+      "pass": true,
+      "detail": "apontou: atribui"
+    },
+    {
+      "taskId": "review-atribuicao",
+      "kind": "review",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 19886,
+      "output": "O bug é um **operador de atribuição `=`** no lugar de **operador de comparação `==` ou `===`**. O código atribui o valor `18` a `user.age` em vez de verificar se `user.age` é igual a 18. Isso faz com que a condição seja sempre `true` (pois qualquer valor não-null é truthy), e `user.age` será alterado para `18` mesmo que não o fosse antes.",
+      "pass": true,
+      "detail": "apontou: atribui"
+    },
+    {
+      "taskId": "review-sem-await",
+      "kind": "review",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 8629,
+      "output": "O problema é que `fetch()` não é `await`ed, logo `res` será uma **Promise** e não o objeto de resposta. Você deve chamar `await fetch(url)` para obter o resultado correto.",
+      "pass": true,
+      "detail": "apontou: \\bawait\\b"
+    },
+    {
+      "taskId": "review-sem-await",
+      "kind": "review",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 9075,
+      "output": "O bug é que `fetch(url)` retorna uma **Promise**, não a resposta diretamente. Você precisa usar `await` antes de chamar `.json()`:\n\n```js\nasync function carregar(url) {\n  const res = await fetch(url);\n  return res.json();\n}\n```",
+      "pass": true,
+      "detail": "apontou: \\bawait\\b"
+    },
+    {
+      "taskId": "review-sem-await",
+      "kind": "review",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 10688,
+      "output": "O bug é que `fetch(url)` retorna uma **Promise**, não o objeto de resposta. O código deve `await` o `fetch` antes de chamar `.json()`:\n\n```js\nasync function carregar(url) {\n  const res = await fetch(url);\n  return res.json();\n}\n```",
+      "pass": true,
+      "detail": "apontou: \\bawait\\b"
+    },
+    {
+      "taskId": "review-sem-await",
+      "kind": "review",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 45864,
+      "output": "O bug é que `fetch(url)` retorna uma **Promise**, não o response direto. Você está chamando `.json()` na Promise, não no objeto de resposta. Corrigir: `const res = await fetch(url);`.",
+      "pass": true,
+      "detail": "apontou: \\bawait\\b"
+    },
+    {
+      "taskId": "review-media-vazia",
+      "kind": "review",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 5581,
+      "output": "O bug é a divisão por zero quando o array está vazio. O código não verifica se `arr.length === 0`, o que causaria erro.",
+      "pass": true,
+      "detail": "apontou: vazi"
+    },
+    {
+      "taskId": "review-media-vazia",
+      "kind": "review",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 17920,
+      "output": "O bug é que `reduce` está sem valor inicial (initial value), o que causa um erro `TypeError` quando o array está vazio. Para corrigir, adicione `0` como terceiro argumento no `reduce`:\n\n```js\nreturn arr.reduce((a, b) => a + b, 0) / arr.length;\n```\n\nOu trate o array vazio antes de dividir.",
+      "pass": true,
+      "detail": "apontou: vazi"
+    },
+    {
+      "taskId": "review-media-vazia",
+      "kind": "review",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 21170,
+      "output": "O bug é `reduce` sem valor inicial — para arrays vazios ele lança erro (`Reduce of empty array`), e não há proteção para `arr.length === 0` (divisão por zero).",
+      "pass": true,
+      "detail": "apontou: vazi"
+    },
+    {
+      "taskId": "review-media-vazia",
+      "kind": "review",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 118106,
+      "output": "O(n²). No pior caso, o quicksort sempre escolhe o pivô de forma desigual (primo mínimo ou máximo), gerando divisões de tamanho 0 e n-1 a cada iteração.",
+      "pass": false,
+      "detail": "não apontou o bug"
+    },
+    {
+      "taskId": "review-default-mutavel",
+      "kind": "review",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 5698,
+      "output": "O bug é que o default `lista=[]` é compartilhado entre todas as chamadas, fazendo com que itens acumulem em vez de iniciar cada vez do zero. Corrija passando `lista=None` como default.",
+      "pass": true,
+      "detail": "apontou: \\bNone\\b"
+    },
+    {
+      "taskId": "review-default-mutavel",
+      "kind": "review",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 14397,
+      "output": "O bug é que a **lista padrão `[]` é mutada em vez de criar uma nova lista a cada chamada**. Toda vez que a função é invocada sem argumento, o mesmo objeto `[]` é reutilizado e itens são acumulados:\n\n- `adicionar(1)` → `[1]`\n- `adicionar(2)` → `[1, 2]` (antes esperado: `[2]`)\n- `adicionar(3)` → `[1, 2, 3]` (antes esperado: `[3]`)\n\n**Solução:** usar `None` como valor padrão e criar uma nova lista no corpo da função:\n\n```python\ndef adicionar(item, lista=None):\n    if lista is None:\n        lista = []\n    lista.append(item)\n    return lista\n```",
+      "pass": true,
+      "detail": "apontou: \\bNone\\b"
+    },
+    {
+      "taskId": "review-default-mutavel",
+      "kind": "review",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 10376,
+      "output": "O bug é que `lista=[]` é um argumento mutável como padrão. A mesma lista é reutilizada em cada chamada, fazendo com que itens acumulem entre chamadas:\n\n```python\nadicionar(1) # [1]\nadicionar(2) # [1, 2] ← esperado [2]\n```\n\nA solução é usar `None` como default e criar a lista no corpo:\n\n```python\ndef adicionar(item, lista=None):\n    if lista is None:\n        lista = []\n    lista.append(item)\n    return lista\n```",
+      "pass": true,
+      "detail": "apontou: mut[aá]v"
+    },
+    {
+      "taskId": "review-default-mutavel",
+      "kind": "review",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 23468,
+      "output": "O bug é que a lista padrão `[]` é avaliada uma única vez no momento da definição da função, não a cada chamada. Todos os chamados sem argumento compartilham o mesmo objeto list, fazendo com que itens se acumulem entre chamadas.\n\nA correção é trocar `lista=[]` por `lista=None` e criar uma nova lista dentro do corpo:\n\n```python\ndef adicionar(item, lista=None):\n    if lista is None:\n        lista = []\n    lista.append(item)\n    return lista\n```\n\nAgora cada chamada sem argumento recebe uma lista nova, e o comportamento correto é: `adicionar(1)` → `[1]`, `adicionar(2)` → `[2]`.",
+      "pass": true,
+      "detail": "apontou: \\bNone\\b"
+    },
+    {
+      "taskId": "review-off-by-one",
+      "kind": "review",
+      "mode": "tessera",
+      "status": "done",
+      "error": "",
+      "durationMs": 32497,
+      "branchesMs": 21930,
+      "output": "O loop usa `i <= arr.length`, o que causa off-by-one: ao chegar em `i === arr.length`, `arr[i]` retorna `undefined` e `s += undefined` gera `NaN`. A condição correta é `i < arr.length`.",
+      "synthesized": true,
+      "selectedBy": "synthesis",
+      "branches": [
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 8792,
+          "dismissed": false,
+          "output": "O loop usa `i <= arr.length`, o que causa acesso a `arr[arr.length]` (indice inválido). Isso retorna `NaN` porque `undefined + number = NaN`. O correto é `i < arr.length`.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "done",
+          "durationMs": 14772,
+          "dismissed": false,
+          "output": "O loop usa `i <= arr.length`, o que causa **off-by-one**: acessa `arr[arr.length]` ( índice inválido, igual a `undefined`), resultando em `NaN` ao somar com `undefined`. O correto é `i < arr.length`.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 11415,
+          "dismissed": false,
+          "output": "O loop usa `i <= arr.length`, o que percorre `arr[arr.length]` ( índice fora do intervalo, resultando em `undefined` ). Isso faz `s += undefined` → `NaN`. Corrigir para `i < arr.length`.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "hermes",
+          "status": "done",
+          "durationMs": 21919,
+          "dismissed": false,
+          "output": "O bug é que `i <= arr.length` permite que o índice fique fora dos limites: quando `i === arr.length`, `arr[i]` retorna `undefined`, e `s += undefined` resulta em `NaN`. A condição correta é `i < arr.length`.",
+          "verify": null,
+          "pass": true
+        }
+      ],
+      "pass": true,
+      "detail": "apontou: <="
+    },
+    {
+      "taskId": "review-sql-injection",
+      "kind": "review",
+      "mode": "tessera",
+      "status": "done",
+      "error": "",
+      "durationMs": 38708,
+      "branchesMs": 26888,
+      "output": "Vulnerabilidade: SQL Injection. A entrada do usuário é concatenada diretamente na query SQL sem parâmetros preparados, permitindo injeção de comandos maliciosos. A correção é usar queries parametrizadas em vez de concatenação de strings.",
+      "synthesized": true,
+      "selectedBy": "synthesis",
+      "branches": [
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 5862,
+          "dismissed": false,
+          "output": "Este código é vulnerável a **SQL injection**: a entrada do usuário `req.query.name` é concatenada diretamente na consulta SQL sem sanitização ou parâmetros preparados. Um invasor pode injetar comandos SQL maliciosos, comprometendo o banco de dados.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "done",
+          "durationMs": 10153,
+          "dismissed": false,
+          "output": "**Vulnerabilidade: SQL Injection**\n\nO código concatena `req.query.name` diretamente na query SQL sem sanitização ou uso de queries parametrizadas, permitindo que um atacante insira código SQL malicioso (ex.: `' OR '1'='1'`) para burlar a autenticação e acessar todos os usuários.\n\n**Correção:** Use queries parametrizadas em vez de concatenação de strings.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 12589,
+          "dismissed": false,
+          "output": "Vulnerabilidade: **SQL Injection**. A entrada do usuário (`req.query.name`) é concatenada diretamente na query SQL sem sanitização, permitindo que um atacante injete comandos SQL maliciosos, como `OR '1'='1`, para acessar dados não autorizados.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 26880,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "detail": "apontou: inje[cç][ãa]o"
+    },
+    {
+      "taskId": "review-atribuicao",
+      "kind": "review",
+      "mode": "tessera",
+      "status": "done",
+      "error": "",
+      "durationMs": 48649,
+      "branchesMs": 40311,
+      "output": "O bug é que `=` é **atribuição**, não **comparação**. O código atribui `18` a `user.age` dentro do `if`, em vez de verificar se o valor é igual a `18`. Deve-se usar `===` para comparação estrita.",
+      "synthesized": true,
+      "selectedBy": "synthesis",
+      "branches": [
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 8569,
+          "dismissed": false,
+          "output": "O bug é que `=` é um **operador de atribuição**, não de comparação. O código fará uma atribuição em vez de uma verificação, atribuindo `18` a `user.age` e avaliando `18` como verdadeiro, ignorando o valor real do atributo.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "done",
+          "durationMs": 35722,
+          "dismissed": false,
+          "output": "O bug é que `=` é um **operador de atribuição**, não de comparação. O código atribui o valor `18` a `user.age` dentro do `if`, em vez de *verificar* se `user.age` é igual a `18`.\n\n```js\nif (user.age = 18) // errado — atribui 18 a user.age\n```\n\nDeve ser `==` ou `===`:\n\n```js\nif (user.age === 18) // correto — comparação\n```",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 31583,
+          "dismissed": false,
+          "output": "O bug é que `=` é **assignment** (atribuição), não **comparison** (comparação). Deve-se usar `===` (strict equality):\n\n```js\nif (user.age === 18) {\n```\n\nCom `=`, o valor 18 é atribuído a `user.age` e o `if` sempre será verdadeiro (18 é truthy), o que pode causar comportamento inesperado.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 40303,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "detail": "apontou: atribui"
+    },
+    {
+      "taskId": "review-sem-await",
+      "kind": "review",
+      "mode": "tessera",
+      "status": "done",
+      "error": "",
+      "durationMs": 44914,
+      "branchesMs": 33909,
+      "output": "O bug é que `fetch(url)` retorna uma **Promise**, e `const res = fetch(url)` armazena essa Promise em vez da resposta. Aí `res.json()` falha ao tentar chamar `.json()` em um objeto Promise, não na resposta real. A correção simples é adicionar `await` antes de `fetch(url)`, pois a função já é `async` — assim `res` recebe o objeto Response real e `res.json()` extrai o JSON corretamente.",
+      "synthesized": true,
+      "selectedBy": "synthesis",
+      "branches": [
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 9713,
+          "dismissed": false,
+          "output": "O bug é que `fetch()` retorna uma **Promise**, então `const res = fetch(url)` cria uma Promise, e invocar `.json()` sobre uma Promise (em vez de sobre o resultado da Promise) vai causar um erro.\n\nPrecisa usar `await fetch(url).then(r => r.json())` ou `await (await fetch(url)).json()` para resolver.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "done",
+          "durationMs": 27395,
+          "dismissed": false,
+          "output": "O bug é que `fetch(url)` precisa de `await`. Sem ele, `res` recebe uma *Promise* em vez da resposta, e `res.json()` é chamado sobre uma Promise (que é `undefined`), falhando ao tentar extrair o JSON.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 24839,
+          "dismissed": false,
+          "output": "O bug é que `fetch(url)` não está **await** — retorna uma Promise, então `const res` recebe um objeto Promise e `res.json()` falha ao tentar chamar `.json()` em uma Promise.\n\nCorreção: adicionar `await` antes de `fetch(url)`:\n\n```js\nconst res = await fetch(url);\n```",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "hermes",
+          "status": "done",
+          "durationMs": 33900,
+          "dismissed": false,
+          "output": "O bug é que `fetch(url)` retorna uma Promise, não a resposta direta. Você está chamando `.json()` em uma Promise (`res.json()`), que é `undefined.json()` — não funciona. Corrija com `const res = await fetch(url);` ou use `.then(res => res.json())`.",
+          "verify": null,
+          "pass": true
+        }
+      ],
+      "pass": true,
+      "detail": "apontou: \\bawait\\b"
+    },
+    {
+      "taskId": "review-media-vazia",
+      "kind": "review",
+      "mode": "tessera",
+      "status": "done",
+      "error": "",
+      "durationMs": 37628,
+      "branchesMs": 27665,
+      "output": "O bug é que o `reduce` não possui valor inicial. Quando o array está vazio, o primeiro elemento do array passa a ser o valor do acumulador, resultando em `undefined + b` gerando `NaN`, e a divisão por `arr.length` (0) retorna `NaN`. O fix é adicionar `, 0` como segundo argumento do `reduce`.",
+      "synthesized": true,
+      "selectedBy": "synthesis",
+      "branches": [
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 26514,
+          "dismissed": false,
+          "output": "O bug é a divisão por zero quando o array está vazio (`arr.length === 0`). O código não verifica se há elementos antes de calcular a média, o que causaria `Infinity` ou `NaN`.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "done",
+          "durationMs": 27660,
+          "dismissed": false,
+          "output": "O bug é que o `reduce` não tem um valor inicial (`initial`), logo se o array estiver vazio, ele vai lançar um `TypeError`. O fix é adicionar `, 0` como segundo argumento:\n\n```js\narr.reduce((a, b) => a + b, 0) / arr.length;\n```",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 13865,
+          "dismissed": false,
+          "output": "O bug é que `reduce` não tem valor inicial. No primeiro passagem, `a` começa como `undefined`, então `undefined + b` resulta em `NaN`. Basta adicionar o acumulador como terceiro argumento, ou passar `0` como inicial.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "hermes",
+          "status": "done",
+          "durationMs": 23373,
+          "dismissed": false,
+          "output": "O bug é que o callback do `reduce` está faltando o parâmetro do acumulador. A função `(a, b) => a + b` usa `a` como se fosse o acumulador, mas o `reduce` passa o acumulador como primeiro argumento e o valor atual como segundo. Sem o acumulador, o resultado do `reduce` vira `undefined`, e `undefined / arr.length` retorna `NaN`.\n\nCorreto seria: `(acumulador, valor) => acumulador + valor`.",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "detail": "apontou: vazi"
+    },
+    {
+      "taskId": "review-default-mutavel",
+      "kind": "review",
+      "mode": "tessera",
+      "status": "done",
+      "error": "",
+      "durationMs": 26791,
+      "branchesMs": 20170,
+      "output": "O bug é que a lista padrão `[]` é avaliada apenas uma vez na definição da função, e todas as chamadas sem argumento compartilham essa mesma lista mutável. Cada invocação modifica o mesmo objeto, causando acúmulo de dados entre chamadas.\n\n**Correção:** troque `lista=[]` por `lista=None` e crie um novo list no corpo da função.",
+      "synthesized": true,
+      "selectedBy": "synthesis",
+      "branches": [
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 5518,
+          "dismissed": false,
+          "output": "O bug é que o default `[]` é compartilhado entre todas as chamadas — ao invés de criar uma nova lista a cada chamada, ele reutiliza a mesma lista mutável, causando acúmulo de itens entre chamadas.\n\n**Correção:**\n```python\ndef adicionar(item, lista=None):\n    if lista is None:\n        lista = []\n    lista.append(item)\n    return lista\n```",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "done",
+          "durationMs": 7976,
+          "dismissed": false,
+          "output": "O bug é que o argumento padrão `[]` (lista mutável) compartilha a mesma referência entre todas as chamadas. Cada invocação sem argumento modifica a mesma lista, causando dados residuais entre chamadas.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 11717,
+          "dismissed": false,
+          "output": "O bug é que a listas padrão `[]` é compartilhada entre chamadas. Cada chamada reutiliza a mesma lista mutável, acumulando itens antigos.\n\nCorreção: troque `lista=[]` por `lista=None` e crie um novo list no corpo.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "hermes",
+          "status": "done",
+          "durationMs": 20161,
+          "dismissed": false,
+          "output": "O bug é que o argumento padrão `lista=[]` é avaliado **uma vez** na definição da função, não a cada chamada. Todos os chamados compartilham o mesmo objeto lista, então cada chamada adiciona ao mesmo list, em vez de criar um novo. O resultado é que o estado do list é persistente entre chamadas — o que pode causar comportamentos inesperados e bugs em produção.",
+          "verify": null,
+          "pass": true
+        }
+      ],
+      "pass": true,
+      "detail": "apontou: mut[aá]v"
+    }
+  ]
+}

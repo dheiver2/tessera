@@ -341,6 +341,21 @@ test('quórum: com 2 respostas, o ramo lento é cancelado após a tolerância', 
   }
 });
 
+test('síntese que falha não deixa o usuário sem resposta: volta um ramo pronto', async () => {
+  const root = fresh();
+  process.env.TESSERA_CODEX_CMD = JSON.stringify(['node', '-e', 'console.log("resposta A longa")', '--']);
+  process.env.TESSERA_OPENCLAW_CMD = JSON.stringify(['node', '-e', 'console.log("resposta B diferente")', '--']);
+  process.env.TESSERA_CLAUDE_CMD = 'node -e process.exit(3) #';
+  try {
+    const res = await fanout({ root, prompt: 'p', agents: ['codex', 'openclaw'], synthesizer: 'claude', maxWaitAfterFirstMs: 0 });
+    assert.equal(res.final.status, 'done');
+    assert.equal(res.final.selectedBy, 'fallback');
+    assert.ok(res.final.synthesisError);
+  } finally {
+    for (const a of ['CODEX', 'OPENCLAW', 'CLAUDE']) delete process.env[`TESSERA_${a}_CMD`];
+  }
+});
+
 test('uma só resposta válida: devolve direto, sem gastar uma síntese', async () => {
   const fake = resolve('test', 'fake-agent.mjs');
   const root = fresh();

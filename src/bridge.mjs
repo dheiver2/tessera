@@ -411,6 +411,14 @@ export async function fanout({
     prompt: `Pergunta original:\n${prompt}\n\nRespostas de diferentes agentes (cada um com um foco):\n\n${merged}\n\n${instructions}`,
   });
   final.selectedBy = verify ? 'repair' : 'synthesis';
+  if (final.status !== 'done' || !final.output) {
+    // Síntese falhou (prazo, roteador fora): uma resposta pronta é melhor do que nenhuma.
+    return {
+      branches,
+      final: pick(ok[0], 'fallback', { synthesisError: final.error ?? final.status }),
+      branchesMs, totalMs: Date.now() - started,
+    };
+  }
   if (verify && final.status === 'done' && final.output) {
     final.verify = await Promise.resolve(verify(final.output, synthesizer)).catch((e) => ({ pass: false, detail: e.message }));
   }

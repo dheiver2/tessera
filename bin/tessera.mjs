@@ -143,6 +143,7 @@ try {
         single: `só ${res.final.agent} respondeu, sem síntese`,
         repair: `correção por ${synth}${res.final.verify ? `; verificação ${res.final.verify.pass ? 'passou' : 'falhou'}` : ''}`,
         synthesis: `síntese por ${synth}`,
+        fallback: `síntese falhou; resposta de ${res.final.agent}`,
       }[res.final.selectedBy] ?? `síntese por ${synth}`;
       console.log(`\n=== resposta final (${who}, ${res.totalMs}ms no total) ===\n` + res.final.output);
       if (res.final.verify && !res.final.verify.pass) process.exitCode = 2;

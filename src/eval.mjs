@@ -276,7 +276,7 @@ export function renderMarkdown(summary, meta = {}) {
     lines.push('', `**Critério de sucesso:** acerto maior que o melhor agente: ${c.beatsBestSolo ? 'sim' : 'não'}. Latência dentro da meta: ${c.latencyWithinTarget == null ? '—' : c.latencyWithinTarget ? 'sim' : 'não'}.`);
   }
   if (summary.decisions) {
-    const label = { verify: 'verificação (testes públicos)', vote: 'maioria', single: 'resposta única', synthesis: 'síntese', repair: 'correção pela síntese', none: 'sem resposta' };
+    const label = { verify: 'verificação (testes públicos)', vote: 'maioria', single: 'resposta única', synthesis: 'síntese', repair: 'correção pela síntese', fallback: 'ramo pronto (síntese falhou)', none: 'sem resposta' };
     lines.push('', '## Como o Tessera decidiu', '', '| Caminho | Tarefas | Acerto | p50 |', '|---|---|---|---|');
     for (const [k, d] of Object.entries(summary.decisions)) {
       lines.push(`| ${label[k] ?? k} | ${d.total} | ${d.passed}/${d.total} | ${sec(d.p50Ms)} |`);

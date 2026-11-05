@@ -26,7 +26,8 @@ Nem tudo está validado com agentes reais. Esta tabela separa o que foi comprova
 | Codex (`mangaba-agente-rapido`) | **Funciona** | Resposta certa em 9 a 32 s |
 | OpenClaw (`mangaba-agente-rapido`) | **Funciona** | Resposta certa em 9 a 36 s, com sessão própria |
 | Hermes (`mangaba-agente-rapido`) | **Funciona, mas é lento** | Cerca de 45 s sozinho; no fanout costuma ser cancelado pela espera máxima |
-| Tessera melhor que cada agente | **Ainda não** | Eval de 34 tarefas: Tessera empata com o OpenClaw sozinho (97,1%) e é 14× mais lento no p95. Ver [Resultado do eval](#resultado-do-eval-05nov2026) |
+| Seleção por verificação e maioria (Fase 1) | **Funciona** | Código: 14/14 com p50 de 12,6 s, sem síntese. Perguntas: 14/14 |
+| Tessera melhor que cada agente | **Ainda não** | Na rodada da Fase 1 o OpenClaw sozinho fez 34/34: neste conjunto não há como superá-lo. Ver [Resultado do eval](#resultado-do-eval-05nov2026) |
 
 **Último fanout real** (pergunta: complexidade da busca binária, em até 3 linhas):
 
@@ -231,6 +232,42 @@ Oráculo: 34/34. Em toda tarefa, pelo menos um agente sozinho acertou.
 
 Conclusões aplicadas ao plano: seleção por verificação (Fase 1) antes de qualquer outra coisa, e devolver a resposta direto quando os ramos concordam. Ver [docs/PLANO.md](docs/PLANO.md).
 
+#### Fase 1: seleção por verificação (05/nov/2026)
+
+O fanout agora decide nesta ordem:
+
+1. **Verificação.** Com `--verify "cmd"` (no eval, os testes públicos da tarefa), cada resposta é verificada assim que chega. A primeira que passa volta **como está**, e os outros ramos são dispensados.
+2. **Maioria.** Sem verificador, quando duas respostas normalizadas coincidem, essa volta direto.
+3. **Síntese**, só no impasse. Com verificador, ela recebe as falhas para corrigir e é verificada de novo. Se a síntese falhar, volta um ramo pronto em vez de nada.
+
+Os papéis por agente ficaram desligados por padrão (`--roles` liga). Num teste, eles fizeram o Claude acrescentar texto à resposta e o OpenClaw responder "São Paulo" para a capital da Austrália, o que impedia a maioria.
+
+No eval, o Tessera vê só a primeira metade dos testes de cada tarefa. A nota usa todos, para a verificação não virar cola.
+
+Rodada completa nas mesmas condições (solo e Tessera, 93 min):
+
+| Modo | Acerto | p50 | p95 | Código | Perguntas | Revisão |
+|---|---|---|---|---|---|---|
+| claude | 33/34 (97,1%) | 6,9 s | 113,5 s | 14/14 | 13/14 | 6/6 |
+| codex | 31/34 (91,2%) | 8,4 s | 47,0 s | 11/14 | 14/14 | 6/6 |
+| **openclaw** | **34/34 (100%)** | 9,4 s | **13,2 s** | 14/14 | 14/14 | 6/6 |
+| hermes | 29/34 (85,3%) | 23,9 s | 121,9 s | 13/14 | 11/14 | 5/6 |
+| tessera | 33/34 (97,1%) | 23,0 s | 137,2 s | **14/14** | **14/14** | 5/6 |
+
+| Como o Tessera decidiu | Tarefas | Acerto | p50 |
+|---|---|---|---|
+| verificação | 14 | 14/14 | 12,6 s |
+| maioria | 9 | 9/9 | 11,6 s |
+| resposta única | 3 | 3/3 | 35,9 s |
+| síntese | 8 | 7/8 | 45,0 s |
+
+**Fase 0 → Fase 1, no Tessera:** código 13/14 → 14/14; p50 55,0 s → 23,0 s; p95 149 s → 137 s.
+
+- **A única derrota** (`review-default-mutavel`) foi a síntese estourando o prazo com três respostas boas na mão. Isso virou a regra 3 acima (volta um ramo pronto). Na nova rodada das 6 revisões, o Tessera acertou 6/6, mas a síntese não falhou dessa vez: o fallback foi validado só em teste.
+- **A síntese continua sendo o caminho lento.** Revisões têm texto livre, a maioria nunca se forma, e as 6 passam pela síntese (27 a 49 s). Em todas as 6, os quatro agentes apontaram o bug.
+- **O critério não é alcançável neste conjunto.** O OpenClaw fez 34/34. Para medir se o Tessera supera o melhor agente, o conjunto precisa de tarefas mais difíceis, em que nenhum agente sozinho acerte tudo.
+- **A latência ainda não cumpre a meta** (p95 até 1,5× o melhor agente). A cauda vem da síntese e de ramos lentos do roteador.
+
 ---
 
 ## Configuração avançada
@@ -305,8 +342,8 @@ As tarefas executadas ficam registradas em `.tessera/bus/tasks/*.json`, com stat
 
 ## Próximos passos
 
-1. **Fase 1:** escolher o ramo que passa na verificação (testes, maioria) em vez de reescrever com a síntese.
-2. Pular a síntese quando os ramos concordam.
+1. Tarefas mais difíceis no eval (código com casos de borda, bugs sutis), para o melhor agente sozinho não fazer 100%.
+2. Concordância em texto livre sem síntese (Fase 2): quando os ramos apontam a mesma coisa, devolver um deles.
 3. Disjuntor para agentes que estouram o prazo (Hermes) e repetir o eval com 3 sementes.
 4. Adicionar CI para rodar os testes a cada commit.
 

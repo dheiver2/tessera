@@ -66,6 +66,17 @@ Troca "um modelo escolhe" por "o resultado se prova".
 
 **Pronto quando:** em tarefas de código, o acerto do Tessera supera o do melhor agente sozinho na Fase 0.
 
+**Situação: implementada em 05/nov/2026, sem worktrees ainda.** O fanout verifica cada resposta ao chegar (`--verify "cmd"`, resposta pelo stdin), devolve a primeira aprovada sem reescrever, usa maioria quando não há verificador, chama a síntese só no impasse e, se ela falhar, devolve um ramo pronto.
+
+- Código: Tessera 13/14 (Fase 0) → **14/14**, acima do melhor agente da Fase 0 (OpenClaw, 13/14). Na mesma rodada, porém, o OpenClaw também fez 14/14.
+- Tessera p50: 55,0 s → 23,0 s. Caminho por verificação: p50 12,6 s; por maioria: 11,6 s.
+- Única derrota: síntese estourou o prazo (`review-default-mutavel`), o que motivou o fallback.
+- Papéis desligados por padrão: mudavam o formato e a resposta em perguntas objetivas.
+- O eval usa só testes públicos (metade) na verificação e todos na nota.
+- Resultado bruto: `evals/resultados/2026-11-05T08-00-11-101Z.json` (rodada completa) e `2026-11-05T09-34-38-897Z.json` (revisões de novo).
+
+**Falta:** git worktrees para agentes que editam arquivos; e um conjunto mais difícil, porque o melhor agente sozinho já faz 100% no atual.
+
 ## Fase 2: crítica cruzada só quando há divergência
 
 - Quando as respostas concordam, devolver direto, sem rodada extra.
