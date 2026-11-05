@@ -26,7 +26,7 @@ Nem tudo está validado com agentes reais. Esta tabela separa o que foi comprova
 | Codex (`mangaba-agente-rapido`) | **Funciona** | Resposta certa em 9 a 32 s |
 | OpenClaw (`mangaba-agente-rapido`) | **Funciona** | Resposta certa em 9 a 36 s, com sessão própria |
 | Hermes (`mangaba-agente-rapido`) | **Funciona, mas é lento** | Cerca de 45 s sozinho; no fanout costuma ser cancelado pela espera máxima |
-| Tessera melhor que cada agente | **Não medido** | Uma amostra boa não prova nada. Ver [docs/PLANO.md](docs/PLANO.md), Fase 0 |
+| Tessera melhor que cada agente | **Ainda não** | Eval de 34 tarefas: Tessera empata com o OpenClaw sozinho (97,1%) e é 14× mais lento no p95. Ver [Resultado do eval](#resultado-do-eval-05nov2026) |
 
 **Último fanout real** (pergunta: complexidade da busca binária, em até 3 linhas):
 
@@ -191,6 +191,46 @@ node bin/tessera.mjs pipeline pipelines/revisar-e-resumir.json
 
 O pipeline **para no primeiro passo que falha**, e informa qual passo quebrou.
 
+### 5. Medir: cada agente sozinho contra o Tessera (`eval`)
+
+O `eval` roda as mesmas tarefas em cada agente sozinho e no Tessera (fanout + síntese), corrige sem usar modelo e compara.
+
+```bash
+node bin/tessera.mjs eval                          # 34 tarefas, 5 modos, uma execução por vez
+node bin/tessera.mjs eval --limit 5 --kind code    # amostra rápida
+node bin/tessera.mjs eval --ids qa-fifo,code-kadane --modes openclaw,tessera
+```
+
+- **Tarefas** em [evals/tasks.json](evals/tasks.json): 14 de código (função `solve` checada por testes), 14 perguntas objetivas (regex de aceite e de rejeição) e 6 revisões com bug conhecido.
+- **Código roda em sandbox**: `node --permission`, só leitura do próprio arquivo, sem rede, sem processos filhos, com limite de tempo.
+- **Execução sequencial por padrão**, para a latência de um modo não inflar a do outro. `--parallel` existe para amostras rápidas.
+- **Saída** em `evals/resultados/<data>.json` e `.md`: acerto por modo e por tipo, p50/p95, oráculo (algum agente acertou?) e Tessera contra o melhor agente sozinho, com as tarefas ganhas e perdidas.
+
+#### Resultado do eval (05/nov/2026)
+
+Todos com `mangaba-agente-rapido` pelo Mangaba Router. Síntese pelo Claude. Uma rodada (sem repetição), 93 min.
+
+| Modo | Acerto | p50 | p95 | Código | Perguntas | Revisão |
+|---|---|---|---|---|---|---|
+| claude | 31/34 (91,2%) | 7,1 s | 105,6 s | 11/14 | 14/14 | 6/6 |
+| codex | 31/34 (91,2%) | 8,2 s | 107,4 s | 11/14 | 14/14 | 6/6 |
+| **openclaw** | **33/34 (97,1%)** | **6,4 s** | **10,7 s** | 13/14 | 14/14 | 6/6 |
+| hermes | 29/34 (85,3%) | 31,7 s | 122,0 s | 12/14 | 13/14 | 4/6 |
+| tessera | 33/34 (97,1%) | 55,0 s | 149,4 s | 13/14 | 14/14 | 6/6 |
+
+Oráculo: 34/34. Em toda tarefa, pelo menos um agente sozinho acertou.
+
+**O que isso mostra**
+
+- **Acerto: empate com o melhor agente.** O Tessera ganhou em `code-anagrama` (o OpenClaw errou um teste) e perdeu em `code-parenteses`.
+- **A síntese introduziu o erro.** Em `code-parenteses`, o OpenClaw sozinho acertou, e a síntese do Claude devolveu um objeto sem vírgulas (`SyntaxError`). Um modelo reescrevendo a resposta é um seletor fraco. (O eval ainda não guarda nem corrige o texto de cada ramo; isso entra na Fase 1.)
+- **A síntese custa metade da latência.** Fase dos ramos: p50 29 s. Síntese: p50 32 s, p95 124 s.
+- **A cauda vem do roteador.** Claude e Codex respondem em 7 a 8 s no p50, mas às vezes passam de 100 s ou estouram 120 s sem resposta. O OpenClaw quase nunca.
+- **Hermes é o mais fraco**: 4 tarefas sem resposta dentro do prazo e o p50 mais alto.
+- **Há espaço**: o oráculo (100%) está 2,9 pontos acima do Tessera. Escolher o ramo que passa na verificação, em vez de reescrever, é o caminho para chegar perto disso.
+
+Conclusões aplicadas ao plano: seleção por verificação (Fase 1) antes de qualquer outra coisa, e devolver a resposta direto quando os ramos concordam. Ver [docs/PLANO.md](docs/PLANO.md).
+
 ---
 
 ## Configuração avançada
@@ -265,11 +305,10 @@ As tarefas executadas ficam registradas em `.tessera/bus/tasks/*.json`, com stat
 
 ## Próximos passos
 
-1. Renovar o login do Claude e validar o fanout com os quatro agentes.
-2. Gerar uma chave válida no roteador Mangaba e apontar os agentes para ele.
-3. Instalar e validar o Hermes.
-4. Medir, com as mesmas tarefas, a qualidade e o tempo de cada agente. Só depois disso ajustar o roteamento por evidência.
-5. Adicionar CI para rodar os testes a cada commit.
+1. **Fase 1:** escolher o ramo que passa na verificação (testes, maioria) em vez de reescrever com a síntese.
+2. Pular a síntese quando os ramos concordam.
+3. Disjuntor para agentes que estouram o prazo (Hermes) e repetir o eval com 3 sementes.
+4. Adicionar CI para rodar os testes a cada commit.
 
 ---
 

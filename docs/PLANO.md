@@ -32,6 +32,28 @@ Sem essas duas condições, o fanout só soma latência e custo. Por isso a prim
 
 **Pronto quando:** existe uma linha de base com pelo menos 30 tarefas e números para os quatro agentes sozinhos.
 
+**Situação: concluída em 05/nov/2026.** 34 tarefas, uma rodada, todos com `mangaba-agente-rapido`.
+
+| Modo | Acerto | p50 | p95 |
+|---|---|---|---|
+| claude | 91,2% | 7,1 s | 105,6 s |
+| codex | 91,2% | 8,2 s | 107,4 s |
+| openclaw | **97,1%** | **6,4 s** | **10,7 s** |
+| hermes | 85,3% | 31,7 s | 122,0 s |
+| tessera | 97,1% | 55,0 s | 149,4 s |
+
+- Oráculo: 100%. Tessera: empate com o OpenClaw no acerto e 14× a latência p95. **Critério de sucesso não atingido.**
+- Na única derrota (`code-parenteses`), a síntese reescreveu uma solução certa e introduziu erro de sintaxe. Isso confirma que a síntese por modelo é o elo fraco.
+- Síntese = metade do tempo do Tessera (p50 32 s de 55 s).
+- Resultado bruto: `evals/resultados/2026-11-05T03-26-14-955Z.json`.
+
+**Consequências para as próximas fases**
+- Fase 1 vira prioridade única: selecionar o ramo verificado, sem reescrever.
+- Fase 2: quando os ramos concordam, devolver direto (sem síntese) já corta a maior parte da latência.
+- Fase 3: os dados já sugerem o OpenClaw como agente padrão para tarefas simples (melhor acerto e menor cauda). Confirmar com mais sementes antes de mudar o roteamento.
+- Fase 4: o Hermes estourou o prazo em 4 de 34 tarefas sozinho; candidato direto ao disjuntor.
+- Limitação: uma rodada só; diferenças de 1 tarefa (2,9 pontos) estão dentro do ruído.
+
 ## Fase 1: seleção por verificação (maior ganho esperado)
 
 Troca "um modelo escolhe" por "o resultado se prova".
@@ -94,4 +116,5 @@ Troca "um modelo escolhe" por "o resultado se prova".
 - **mangaba-titan:** reiniciou várias vezes durante os testes (HTTP 503). Modelos que dependem dele, como o `mangaba-coder`, ficam indisponíveis nesse período.
 - **mangaba-coder no Codex:** devolveu mensagem final vazia. Trocado por `mangaba-agente-rapido`; a causa não foi investigada.
 - **mangaba-flash:** rápido, mas seguiu mal as instruções e escreveu preâmbulos na síntese. Hoje não é usado no fanout.
-- **Uma amostra só:** o fanout real foi medido com uma pergunta. Nenhuma conclusão sobre qualidade vale antes da Fase 0.
+- **Uma rodada só:** o eval da Fase 0 rodou uma vez. Repetir com 3 sementes antes de decisões de roteamento.
+- **Cauda do roteador:** Claude e Codex às vezes passam de 100 s ou não respondem em 120 s, apesar do p50 de 7 a 8 s.
