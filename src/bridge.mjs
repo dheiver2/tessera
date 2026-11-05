@@ -35,14 +35,17 @@ export function buildCommand(agent, prompt, { provider = null, agentId, timeoutM
     case 'claude': {
       // Prompt por stdin: --tools é variádico e engoliria o argumento.
       // --tools "" encolhe o payload (o prefill é o gargalo em CPU).
-      const args = ['-p'];
+      // Com provedor: --bare isola a execução dos hooks, plugins e memória do usuário.
+      // Sem isso, contexto injetado por plugins (ex.: SessionStart) contamina a resposta.
+      // --bare só autentica por ANTHROPIC_API_KEY, por isso a chave vai nela.
+      const args = provider && provider.claudeBare !== false ? ['--bare', '-p'] : ['-p'];
       if (provider?.claudeNoTools !== false) args.push('--tools', '');
       if (provider) {
         const root = provider.anthropicBaseUrl ?? provider.baseUrl.replace(/\/v1$/, '');
         Object.assign(env, {
           ANTHROPIC_BASE_URL: root,
+          ANTHROPIC_API_KEY: provider.key,
           ANTHROPIC_AUTH_TOKEN: provider.key,
-          ANTHROPIC_API_KEY: '',
           API_TIMEOUT_MS: String(Math.max(timeoutMs, 60_000)),
         });
         if (model) {
@@ -122,7 +125,7 @@ function finish(task, res, bin, timeoutMs) {
     task.error = `${res.error.code ?? res.error.message}: não foi possível executar "${bin}"`;
   } else if (res.cancelled) {
     task.status = 'cancelled';
-    task.error = 'cancelado: quórum atingido';
+    task.error = 'cancelado: quórum atingido ou espera máxima após a primeira resposta';
     task.output = (res.stdout ?? '').trim();
   } else if (res.timedOut) {
     task.status = 'failed';
@@ -130,13 +133,54 @@ function finish(task, res, bin, timeoutMs) {
     task.output = (res.stdout ?? '').trim();
   } else if (res.status !== 0) {
     task.status = 'failed';
-    task.error = (res.stderr || `saída ${res.status}`).trim().slice(-2000);
+    task.error = extractError(res.stderr, res.stdout, res.status);
     task.output = (res.stdout ?? '').trim();
   } else {
-    task.status = 'done';
-    task.output = (res.stdout ?? '').trim();
+    const out = cleanOutput(task.agent, res.stdout ?? '');
+    const bad = NO_ANSWER.find((re) => re.test(out));
+    if (!out) {
+      task.status = 'failed';
+      task.error = 'resposta vazia';
+    } else if (bad) {
+      task.status = 'failed';
+      task.error = `agente sem resposta: ${out.slice(0, 200)}`;
+      task.output = out;
+    } else {
+      task.status = 'done';
+      task.output = out;
+    }
   }
   task.finishedAt = new Date().toISOString();
+}
+
+// Mensagens com que os CLIs dizem "não consegui", mas saindo com código 0.
+export const NO_ANSWER = [
+  /agent couldn'?t generate a response/i,
+  /^error:/i,
+];
+
+// Os CLIs misturam logs de diagnóstico com a resposta na saída padrão.
+// Remove linhas de log ("[subsistema] ...") e, no Codex, fica só com a mensagem final.
+export function cleanOutput(agent, text) {
+  let out = text.replace(/\r/g, '');
+  if (agent === 'codex') {
+    const m = out.match(/\ntokens used\n[\d.,]+\n([\s\S]*)$/);
+    if (m) out = m[1];
+  }
+  return out
+    .split('\n')
+    .filter((l) => !/^\[[A-Za-z0-9_./-]+\]\s/.test(l))
+    .join('\n')
+    .trim();
+}
+
+// O stderr dos CLIs mistura logs e erros; a última linha nem sempre é a causa.
+// Prioriza linhas com "error"/"erro"; senão, a última linha não vazia.
+export function extractError(stderr = '', stdout = '', status) {
+  const lines = `${stderr}\n${stdout}`.split('\n').map((l) => l.trim()).filter(Boolean);
+  const errs = lines.filter((l) => /\b(error|erro|failed|unexpected status|exception)\b/i.test(l) && l.length < 600);
+  const pick = errs.length ? errs.slice(-2).join(' | ') : lines.at(-1);
+  return (pick ?? `saída ${status}`).slice(0, 600);
 }
 
 // ---------------------------------------------------------------------------
@@ -242,17 +286,20 @@ export function capOutput(text, maxChars) {
 // - Todos começam juntos. Cada ramo tem prazo próprio (deadlineMs).
 // - Quando `quorum` ramos terminam bem, os demais têm `graceMs` para chegar e depois são cancelados.
 // - Cada resposta é cortada em maxCharsPerBranch antes da síntese (menos prefill).
+// - Depois da primeira resposta boa, os demais têm no máximo maxWaitAfterFirstMs.
 // Pior caso: deadlineMs + synthTimeoutMs. Caso típico: tempo do quórum + graceMs + síntese.
 export async function fanout({
   root, prompt, agents, synthesizer, agentId, provider = null,
   deadlineMs = 120_000, synthTimeoutMs = 180_000,
   quorum = 0, graceMs = 15_000, roles = DEFAULT_ROLES, maxCharsPerBranch = 6000,
+  maxWaitAfterFirstMs = 30_000,
 }) {
   const started = Date.now();
   const controller = new AbortController();
   const need = quorum > 0 ? Math.min(quorum, agents.length) : agents.length;
   let okCount = 0;
   let graceTimer = null;
+  let firstTimer = null;
 
   const branches = await Promise.all(agents.map(async (agent) => {
     const t = await delegateAsync({
@@ -261,6 +308,11 @@ export async function fanout({
     });
     if (t.status === 'done') {
       okCount += 1;
+      // Primeira resposta boa: os demais têm no máximo maxWaitAfterFirstMs,
+      // mesmo que o quórum nunca seja atingido (agente travado não segura o resultado).
+      if (okCount === 1 && maxWaitAfterFirstMs > 0 && agents.length > 1) {
+        firstTimer = setTimeout(() => controller.abort(), maxWaitAfterFirstMs);
+      }
       if (okCount >= need && need < agents.length && !graceTimer) {
         graceTimer = setTimeout(() => controller.abort(), graceMs);
       }
@@ -268,6 +320,7 @@ export async function fanout({
     return t;
   }));
   clearTimeout(graceTimer);
+  clearTimeout(firstTimer);
 
   const ok = branches.filter((t) => t.status === 'done' && t.output);
   const branchesMs = Date.now() - started;
@@ -282,7 +335,10 @@ export async function fanout({
   const final = await delegateAsync({
     root, agent: synthesizer, agentId, provider, timeoutMs: synthTimeoutMs, name: 'sintese',
     prompt: `Pergunta original:\n${prompt}\n\nRespostas de diferentes agentes (cada um com um foco):\n\n${merged}\n\n` +
-      'Produza UMA resposta final, aproveitando o melhor de cada uma. Aponte divergências relevantes e diga qual afirmação você escolheu e por quê.',
+      'Produza UMA resposta final, aproveitando o melhor de cada uma.\n' +
+      '- Responda direto, sem preâmbulo e sem falar de si mesmo.\n' +
+      '- Respeite o formato e o tamanho pedidos na pergunta original.\n' +
+      '- Se as respostas divergirem em algo relevante, diga em uma linha qual você escolheu e por quê. Se concordarem, não comente.',
   });
   return { branches, final, branchesMs, totalMs: Date.now() - started };
 }

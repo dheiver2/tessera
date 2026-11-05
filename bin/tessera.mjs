@@ -27,7 +27,7 @@ Uso:
   tessera pipeline <arquivo.json> [--root DIR]   encadeia agentes ({{previous}} = saída do passo anterior)
   tessera do --kind <codigo|revisao|resumo|automacao> --prompt "..." [--root DIR]   escolhe o agente mais forte (framework.json > routing)
   tessera fanout --prompt "..." [--agents ...] [--synth claude] [--deadline 120] [--synth-timeout 180]
-                 [--quorum 2] [--grace 15] [--no-provider] [--root DIR]
+                 [--quorum 2] [--grace 15] [--max-wait 30] [--no-provider] [--root DIR]
                                                  todos ao mesmo tempo; um sintetiza a melhor resposta
   tessera tasks [--root DIR]                     histórico do barramento
 
@@ -119,12 +119,16 @@ try {
       quorum: Number(value('--quorum') ?? cfg.quorum ?? 0),
       graceMs: Number(value('--grace') ?? cfg.graceSeconds ?? 15) * 1000,
       maxCharsPerBranch: Number(cfg.maxCharsPerBranch ?? 6000),
+      maxWaitAfterFirstMs: Number(value('--max-wait') ?? cfg.maxWaitAfterFirstSeconds ?? 30) * 1000,
       roles: cfg.roles,
       provider: PROVIDER,
     });
     for (const t of res.branches) console.log(`[${t.status}] ${t.agent} ${t.durationMs ?? '?'}ms (${t.id})${t.status !== 'done' ? `  — ${t.error.split('\n')[0]}` : ''}`);
     console.log(`ramos: ${res.branchesMs}ms  provedor: ${PROVIDER ? PROVIDER.name : 'próprio de cada agente'}`);
-    if (res.final?.status === 'done') console.log(`\n=== resposta final (${synth}, ${res.totalMs}ms no total) ===\n` + res.final.output);
+    if (res.final?.status === 'done') {
+      const who = res.final.synthesized === false ? `só ${res.final.agent} respondeu, sem síntese` : `síntese por ${synth}`;
+      console.log(`\n=== resposta final (${who}, ${res.totalMs}ms no total) ===\n` + res.final.output);
+    }
     else { console.log(`\nerro: ${res.error ?? res.final?.error ?? 'sem síntese'}`); process.exitCode = 1; }
   } else if (cmd === 'tasks') {
     for (const t of listTasks(resolve(value('--root') ?? process.cwd()))) {

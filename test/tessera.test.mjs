@@ -204,7 +204,7 @@ test('fanout: ramo lento estoura o prazo e a síntese segue com as respostas a t
   process.env.TESSERA_HERMES_CMD = 'node -e setTimeout(()=>{},60000) #';
   try {
     const t0 = Date.now();
-    const res = await fanout({ root, prompt: 'p', agents: ['codex', 'hermes'], synthesizer: 'claude', deadlineMs: 1500 });
+    const res = await fanout({ root, prompt: 'p', agents: ['codex', 'hermes'], synthesizer: 'claude', deadlineMs: 1500, maxWaitAfterFirstMs: 0 });
     const elapsed = Date.now() - t0;
     const slow = res.branches.find((t) => t.agent === 'hermes');
     assert.equal(slow.status, 'failed');
@@ -219,7 +219,7 @@ test('fanout: ramo lento estoura o prazo e a síntese segue com as respostas a t
   }
 });
 
-import { buildCommand, loadProvider, capOutput, withRole } from '../src/bridge.mjs';
+import { buildCommand, loadProvider, capOutput, withRole, extractError, cleanOutput } from '../src/bridge.mjs';
 
 const PROV = {
   name: 'mangaba-router', baseUrl: 'https://router.test/v1', keyEnv: 'TESSERA_TEST_KEY', key: 'k-123',
@@ -227,9 +227,10 @@ const PROV = {
   models: { claude: 'm-claude', codex: 'm-codex', openclaw: 'router/m-oc', hermes: 'm-hermes' },
 };
 
-test('claude via provedor: prompt por stdin, sem ferramentas, base Anthropic sem /v1', () => {
+test('claude via provedor: --bare, prompt por stdin, sem ferramentas, base Anthropic sem /v1', () => {
   const c = buildCommand('claude', 'oi', { provider: PROV });
-  assert.deepEqual(c.args, ['-p', '--tools', '']);
+  assert.deepEqual(c.args, ['--bare', '-p', '--tools', '']);
+  assert.equal(c.env.ANTHROPIC_API_KEY, 'k-123');
   assert.equal(c.input, 'oi');
   assert.equal(c.env.ANTHROPIC_BASE_URL, 'https://router.test');
   assert.equal(c.env.ANTHROPIC_AUTH_TOKEN, 'k-123');
@@ -329,5 +330,51 @@ test('override em JSON aceita argumento com espaço', async () => {
     assert.equal(res.branches[0].output, 'FAKE: com espaço\n\n[Seu foco nesta tarefa] Foque na solução concreta: código, comandos e passos executáveis.');
   } finally {
     delete process.env.TESSERA_CODEX_CMD;
+  }
+});
+
+test('extractError prioriza a linha de erro, não o último log', () => {
+  const stderr = 'ERROR: unexpected status 503 Service Unavailable: titan reiniciando\n{"data":[{"id":"m1"},{"id":"m2"}]}';
+  assert.match(extractError(stderr, '', 1), /503 Service Unavailable/);
+  assert.equal(extractError('', '', 7), 'saída 7');
+  assert.equal(extractError('só uma linha', '', 1), 'só uma linha');
+});
+
+test('cleanOutput remove logs dos CLIs e isola a mensagem final do Codex', () => {
+  const oc = '[agents/tool-policy] removed 5 tools\n[provider-transport-fetch] [model-fetch] start\nA resposta é O(log n).';
+  assert.equal(cleanOutput('openclaw', oc), 'A resposta é O(log n).');
+  const cx = 'codex\nrascunho\ntokens used\n11.862\nResposta final.';
+  assert.equal(cleanOutput('codex', cx), 'Resposta final.');
+  assert.equal(cleanOutput('claude', 'texto normal [com colchetes] no meio'), 'texto normal [com colchetes] no meio');
+  assert.equal(cleanOutput('claude', '[Seu foco] linha legítima'), '[Seu foco] linha legítima');
+});
+
+test('saída 0 com "Agent couldn\'t generate a response" conta como falha', async () => {
+  const root = fresh();
+  process.env.TESSERA_OPENCLAW_CMD = JSON.stringify(['node', '-e', "console.log('[x/y] log'); console.log(\"⚠️ Agent couldn't generate a response. Please try again.\")", '--']);
+  try {
+    const res = await fanout({ root, prompt: 'p', agents: ['openclaw'], synthesizer: null });
+    assert.equal(res.branches[0].status, 'failed');
+    assert.match(res.branches[0].error, /sem resposta/);
+  } finally {
+    delete process.env.TESSERA_OPENCLAW_CMD;
+  }
+});
+
+test('espera máxima após a primeira resposta corta agente travado mesmo sem quórum', async () => {
+  const fake = resolve('test', 'fake-agent.mjs');
+  const root = fresh();
+  process.env.TESSERA_CODEX_CMD = `node ${fake}`;
+  process.env.TESSERA_HERMES_CMD = 'node -e setTimeout(()=>{},60000) #';
+  try {
+    const t0 = Date.now();
+    const res = await fanout({ root, prompt: 'p', agents: ['codex', 'hermes'], synthesizer: 'claude', quorum: 2, deadlineMs: 60_000, maxWaitAfterFirstMs: 400 });
+    const elapsed = Date.now() - t0;
+    assert.equal(res.branches.find((t) => t.agent === 'hermes').status, 'cancelled');
+    assert.equal(res.final.agent, 'codex');
+    assert.ok(elapsed < 6000, `espera máxima não cortou: ${elapsed}ms`);
+  } finally {
+    delete process.env.TESSERA_CODEX_CMD;
+    delete process.env.TESSERA_HERMES_CMD;
   }
 });

@@ -18,16 +18,43 @@ Nem tudo está validado com agentes reais. Esta tabela separa o que foi comprova
 
 | Parte | Situação | Evidência |
 |---|---|---|
-| Sincronização (`sync`, `doctor`) | Funciona | 20 testes, incluindo idempotência e preservação de conteúdo |
+| Sincronização (`sync`, `doctor`) | Funciona | Testes de idempotência, preservação de conteúdo e conflitos |
 | Barramento, `do`, `pipeline` | Funciona com agente falso | Testes com `test/fake-agent.mjs` |
-| `fanout` e prazos por ramo | Funciona com agente falso | Teste de ramo travado cortado no prazo |
-| Codex headless | **Funciona** | `codex exec --skip-git-repo-check` respondeu `OK` |
-| Claude Code headless | **Bloqueado**: sessão OAuth expirada | `claude -p` retornou "OAuth session expired" |
-| OpenClaw headless | **Responde, mas não termina** no tempo testado | Modelo respondeu em ~0,3 s; execução passou de 90 s |
-| Hermes | **Não validado**: não instalado no PATH | `hermes` não encontrado |
-| Mangaba Router como provedor | **Bloqueado**: chaves recusadas (401) | Testadas no lançador e no OpenClaw |
+| `fanout`, quórum, prazos, cancelamento | Funciona | 34 testes; fanout real com os quatro agentes |
+| Mangaba Router como provedor | **Funciona** | Os quatro agentes rodaram por ele, sem login próprio |
+| Claude Code (`--bare`, sem login) | **Funciona** | Resposta certa em 6 a 13 s |
+| Codex (`mangaba-agente-rapido`) | **Funciona** | Resposta certa em 9 a 32 s |
+| OpenClaw (`mangaba-agente-rapido`) | **Funciona** | Resposta certa em 9 a 36 s, com sessão própria |
+| Hermes (`mangaba-agente-rapido`) | **Funciona, mas é lento** | Cerca de 45 s sozinho; no fanout costuma ser cancelado pela espera máxima |
+| Tessera melhor que cada agente | **Não medido** | Uma amostra boa não prova nada. Ver [docs/PLANO.md](docs/PLANO.md), Fase 0 |
 
-Para o fanout real rodar com os quatro, faltam: novo login do Claude, chave válida do roteador (ou outro provedor) e uma instalação validada do Hermes.
+**Último fanout real** (pergunta: complexidade da busca binária, em até 3 linhas):
+
+```
+[done]      claude    13060ms
+[done]      codex     31630ms
+[done]      openclaw  35902ms
+[cancelled] hermes    44779ms  — quórum atingido ou espera máxima após a primeira resposta
+=== resposta final (síntese por claude, 60273ms no total) ===
+```
+
+A síntese juntou a explicação correta (O(log n)) com os riscos levantados pelo foco do Claude (dados ordenados, erros de borda nos índices).
+
+**O que as medições mudaram no código**
+
+| Problema encontrado | Correção |
+|---|---|
+| Plugins e hooks do usuário contaminavam a resposta do Claude | `--bare` no Claude quando há provedor |
+| `--tools` engolia o prompt do Claude | prompt enviado por stdin |
+| Duas execuções na mesma sessão do OpenClaw travavam por 10 min | `--session-id` novo por chamada |
+| Logs do OpenClaw entravam como resposta | limpeza de linhas `[subsistema] ...` |
+| OpenClaw dizia "couldn't generate a response" com código 0 | tratado como falha |
+| Codex com `mangaba-coder` devolvia mensagem vazia | modelo trocado para `mangaba-agente-rapido` |
+| Hermes travava com `mangaba-flash` | modelo trocado; bloco de raciocínio desligado no `config.yaml` |
+| Síntese com preâmbulo e fora do formato | prompt da síntese mais estrito; modelo trocado |
+| Um agente travado segurava o fanout até o fim do prazo | espera máxima de 30 s após a primeira resposta boa |
+
+Tempo total do fanout ao longo das correções: 122 s → 93 s → 69 s → 40 a 60 s.
 
 ---
 
@@ -170,24 +197,25 @@ O pipeline **para no primeiro passo que falha**, e informa qual passo quebrou.
 
 ### Trocar o comando de um agente
 
-Cada agente tem um comando headless padrão. Para mudar, defina a variável de ambiente `TESSERA_<AGENTE>_CMD`. O prompt é anexado como último argumento:
+Cada agente tem um comando headless padrão. Para mudar, defina `TESSERA_<AGENTE>_CMD`. O prompt é anexado como último argumento. Para argumentos com espaço ou aspas, use JSON:
 
 ```bash
 export TESSERA_CODEX_CMD="codex exec --skip-git-repo-check --full-auto"
+export TESSERA_CLAUDE_CMD='["claude", "-p", "--tools", ""]'
 ```
 
-Padrões atuais:
+Comandos padrão (sem provedor / com provedor):
 
-| Agente | Comando |
-|---|---|
-| claude | `claude -p <prompt>` |
-| codex | `codex exec --skip-git-repo-check <prompt>` |
-| openclaw | `openclaw agent --local [--agent <id>] --message <prompt>` |
-| hermes | `hermes chat -q <prompt>` (não validado) |
+| Agente | Sem provedor | Com provedor |
+|---|---|---|
+| claude | `claude -p --tools ""` (prompt por stdin) | `claude --bare -p --tools ""` (prompt por stdin) |
+| codex | `codex exec --skip-git-repo-check <prompt>` | idem + `-c model_provider=tessera ...` e `-m <modelo>` |
+| openclaw | `openclaw agent --local --agent main --session-id <novo> --thinking off --message <prompt>` | idem + `--model <modelo>` |
+| hermes | `hermes chat -Q -q <prompt>` | idem + `--provider mangaba-router -m <modelo>` |
 
 ### Latência do Claude
 
-A nota de uso indica que, com as ferramentas padrão do Claude Code, o prompt inicial é grande e a tarefa pode passar de 5 minutos em CPU. Desativar as ferramentas reduziu o tempo de cerca de 6 minutos para 54 s numa tarefa trivial. Hoje o override por variável não aceita aspas, então `--tools ""` não pode ser passado por ela. Essa opção ainda precisa de um campo próprio na configuração. Enquanto isso, use o Claude sem ferramentas só pelo CLI, fora do fanout, para tarefas de texto. Quando o agente precisar ler arquivos ou rodar comandos, mantenha as ferramentas ativas.
+Com as ferramentas padrão, o prompt inicial do Claude Code é grande e, em CPU, a leitura dele domina o tempo. Por isso o Tessera chama o Claude com `--tools ""`: ele responde, mas não lê arquivos nem roda comandos. Para tarefas em que o Claude precisa das ferramentas, troque o comando com `TESSERA_CLAUDE_CMD`.
 
 ### Agentes com id (OpenClaw)
 
@@ -199,7 +227,7 @@ Com `provider` em `framework.json`, os quatro agentes usam o mesmo roteador, sem
 
 | Agente | Como é apontado ao roteador |
 |---|---|
-| Claude Code | variáveis `ANTHROPIC_BASE_URL` e `ANTHROPIC_AUTH_TOKEN` só no processo; prompt por stdin; `--tools ""` |
+| Claude Code | `--bare` (sem hooks, plugins nem memória do usuário); `ANTHROPIC_BASE_URL` e `ANTHROPIC_API_KEY` só no processo; prompt por stdin; `--tools ""` |
 | Codex | `-c model_provider=tessera` e `-c model_providers.tessera.*` na linha de comando |
 | OpenClaw | `--model router/<modelo>` e uma `--session-id` nova por chamada |
 | Hermes | `--provider mangaba-router`, que lê a chave de `MANGABA_ROUTER_KEY` |

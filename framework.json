@@ -25,7 +25,8 @@
     "synthTimeoutSeconds": 180,
     "quorum": 2,
     "graceSeconds": 15,
-    "maxCharsPerBranch": 6000
+    "maxCharsPerBranch": 6000,
+    "maxWaitAfterFirstSeconds": 30
   },
   "provider": {
     "name": "mangaba-router",
@@ -35,10 +36,10 @@
     "hermesProvider": "mangaba-router",
     "contextTokens": 65536,
     "models": {
-      "claude": "mangaba-flash",
-      "codex": "mangaba-coder",
-      "openclaw": "router/mangaba-coder",
-      "hermes": "mangaba-flash"
+      "claude": "mangaba-agente-rapido",
+      "codex": "mangaba-agente-rapido",
+      "openclaw": "router/mangaba-agente-rapido",
+      "hermes": "mangaba-agente-rapido"
     }
   }
 }

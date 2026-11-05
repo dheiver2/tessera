@@ -62,7 +62,7 @@ Troca "um modelo escolhe" por "o resultado se prova".
 
 ## Fase 4: confiabilidade e latência
 
-- **Health check com disjuntor:** um agente que falha ou estoura o prazo N vezes seguidas é tirado do fanout por um período e testado de novo depois. Isso resolve automaticamente casos como o Hermes travando hoje.
+- **Health check com disjuntor:** um agente que falha ou estoura o prazo N vezes seguidas é tirado do fanout por um período e testado de novo depois. Isso cobre casos como o Hermes, que hoje leva cerca de 45 s e costuma ser cancelado.
 - **Quórum adaptativo:** ajustar o quórum e a tolerância de espera pelo tempo histórico de cada agente.
 - **Cache:** reaproveitar a resposta quando a mesma tarefa, com o mesmo contexto, já foi respondida.
 - **Modelos por papel:** modelo rápido para síntese e triagem, modelo forte só onde a verificação mostra ganho.
@@ -90,6 +90,8 @@ Troca "um modelo escolhe" por "o resultado se prova".
 
 ## Bloqueios conhecidos hoje
 
-- **Hermes:** a chamada auxiliar funciona pelo roteador, mas a chamada principal fica parada sem resposta, mesmo sem ferramentas e sem raciocínio. A Fase 4 o isola automaticamente enquanto a causa não é resolvida.
-- **mangaba-titan:** estava reiniciando durante os testes (HTTP 503). Os modelos que dependem dele, como o `mangaba-coder`, ficam indisponíveis nesse período.
-- **mangaba-flash:** é rápido (cerca de 1 s), mas seguiu mal as instruções no Codex e no OpenClaw. Serve para síntese e triagem; para código, o eval vai dizer qual modelo usar.
+- **Hermes:** funciona com `mangaba-agente-rapido`, mas leva cerca de 45 s sozinho. No fanout, costuma ser cancelado pela espera máxima de 30 s após a primeira resposta. Com `mangaba-flash` ele travava.
+- **mangaba-titan:** reiniciou várias vezes durante os testes (HTTP 503). Modelos que dependem dele, como o `mangaba-coder`, ficam indisponíveis nesse período.
+- **mangaba-coder no Codex:** devolveu mensagem final vazia. Trocado por `mangaba-agente-rapido`; a causa não foi investigada.
+- **mangaba-flash:** rápido, mas seguiu mal as instruções e escreveu preâmbulos na síntese. Hoje não é usado no fanout.
+- **Uma amostra só:** o fanout real foi medido com uma pergunta. Nenhuma conclusão sobre qualidade vale antes da Fase 0.
