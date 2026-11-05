@@ -1,186 +1,256 @@
-# Tessera
+<div align="center">
 
-**Uma fonte, vários agentes, um resultado.**
+# 🧩 Tessera
 
-O Tessera faz três coisas com Claude Code, Codex, OpenClaw e Hermes:
+### Uma fonte, vários agentes, um resultado.
 
-1. **Sincroniza** a configuração (regras, persona, skills, MCP) para o formato nativo de cada um, a partir de uma única fonte.
-2. **Dispara em paralelo** a mesma tarefa para vários agentes (`fanout`) e pede a um deles a síntese da melhor resposta.
-3. **Encadeia** agentes em sequência (`pipeline`), passando a saída de um passo como entrada do seguinte.
+Orquestra **Claude Code**, **Codex**, **OpenClaw** e **Hermes** como se fossem um só:<br>
+mesma configuração, a mesma tarefa em paralelo e a resposta que **se prova** em vez da que soa melhor.
 
-Não substitui os agentes: usa os CLIs que já estão instalados.
+<br>
+
+![Node](https://img.shields.io/badge/node-%E2%89%A520-339933?logo=nodedotjs&logoColor=white)
+![Dependências](https://img.shields.io/badge/depend%C3%AAncias-zero-brightgreen)
+![Testes](https://img.shields.io/badge/testes-60%20passando-success)
+![Licença](https://img.shields.io/badge/licen%C3%A7a-MIT-blue)
+![Status](https://img.shields.io/badge/status-experimental-orange)
+
+[Início rápido](#-início-rápido) •
+[Como decide](#-como-o-tessera-decide) •
+[Comandos](#-comandos) •
+[Resultados](#-resultados-medidos) •
+[Configuração](#%EF%B8%8F-configuração) •
+[Diagnóstico](#-diagnóstico) •
+[Roadmap](#%EF%B8%8F-roadmap)
+
+</div>
 
 ---
 
-## Estado atual (leia primeiro)
+## 📌 Em uma frase
 
-Nem tudo está validado com agentes reais. Esta tabela separa o que foi comprovado do que não foi.
+O Tessera **não substitui** os agentes: ele chama os CLIs que já estão instalados, dispara a mesma tarefa em todos e devolve a primeira resposta que **passa nos testes**. Quando não há teste, devolve a resposta em que a maioria concorda. Só pede a um modelo para sintetizar quando não há outro jeito de decidir.
+
+<table>
+<tr>
+<td width="25%" align="center">🔄<br><b>sync</b><br><sub>uma configuração para os quatro agentes</sub></td>
+<td width="25%" align="center">⚡<br><b>fanout</b><br><sub>todos em paralelo, vence quem se prova</sub></td>
+<td width="25%" align="center">🔗<br><b>pipeline</b><br><sub>a saída de um alimenta o próximo</sub></td>
+<td width="25%" align="center">📊<br><b>eval</b><br><sub>cada agente sozinho contra o Tessera</sub></td>
+</tr>
+</table>
+
+---
+
+## 🚦 Estado atual
+
+> [!IMPORTANT]
+> **No conjunto difícil, o Tessera empata com o melhor agente sozinho (25/33) e lidera em código (9/14 contra 7/14).** A rodada teve um bug de prazo, já corrigido. Uma segunda rodada está em andamento para separar o efeito do bug do desempenho do método.
 
 | Parte | Situação | Evidência |
-|---|---|---|
-| Sincronização (`sync`, `doctor`) | Funciona | Testes de idempotência, preservação de conteúdo e conflitos |
-| Barramento, `do`, `pipeline` | Funciona com agente falso | Testes com `test/fake-agent.mjs` |
-| `fanout`, quórum, prazos, cancelamento | Funciona | 34 testes; fanout real com os quatro agentes |
-| Mangaba Router como provedor | **Funciona** | Os quatro agentes rodaram por ele, sem login próprio |
-| Claude Code (`--bare`, sem login) | **Funciona** | Resposta certa em 6 a 13 s |
-| Codex (`mangaba-agente-rapido`) | **Funciona** | Resposta certa em 9 a 32 s |
-| OpenClaw (`mangaba-agente-rapido`) | **Funciona** | Resposta certa em 9 a 36 s, com sessão própria |
-| Hermes (`mangaba-agente-rapido`) | **Funciona, mas é lento** | Cerca de 45 s sozinho; no fanout costuma ser cancelado pela espera máxima |
-| Seleção por verificação e maioria (Fase 1) | **Funciona** | Código: 14/14 com p50 de 12,6 s, sem síntese. Perguntas: 14/14 |
-| Tessera melhor que cada agente | **Empate** | No conjunto difícil: Tessera 25/33 e Codex 25/33. Em código, Tessera 9/14 e o melhor agente 7/14. A rodada teve um bug de prazo, já corrigido. Ver [Conjunto difícil](#conjunto-difícil-rodada-1-05nov2026) |
-
-**Último fanout real** (pergunta: complexidade da busca binária, em até 3 linhas):
-
-```
-[done]      claude    13060ms
-[done]      codex     31630ms
-[done]      openclaw  35902ms
-[cancelled] hermes    44779ms  — quórum atingido ou espera máxima após a primeira resposta
-=== resposta final (síntese por claude, 60273ms no total) ===
-```
-
-A síntese juntou a explicação correta (O(log n)) com os riscos levantados pelo foco do Claude (dados ordenados, erros de borda nos índices).
-
-**O que as medições mudaram no código**
-
-| Problema encontrado | Correção |
-|---|---|
-| Plugins e hooks do usuário contaminavam a resposta do Claude | `--bare` no Claude quando há provedor |
-| `--tools` engolia o prompt do Claude | prompt enviado por stdin |
-| Duas execuções na mesma sessão do OpenClaw travavam por 10 min | `--session-id` novo por chamada |
-| Logs do OpenClaw entravam como resposta | limpeza de linhas `[subsistema] ...` |
-| OpenClaw dizia "couldn't generate a response" com código 0 | tratado como falha |
-| Codex com `mangaba-coder` devolvia mensagem vazia | modelo trocado para `mangaba-agente-rapido` |
-| Hermes travava com `mangaba-flash` | modelo trocado; bloco de raciocínio desligado no `config.yaml` |
-| Síntese com preâmbulo e fora do formato | prompt da síntese mais estrito; modelo trocado |
-| Um agente travado segurava o fanout até o fim do prazo | espera máxima de 30 s após a primeira resposta boa |
-
-Tempo total do fanout ao longo das correções: 122 s → 93 s → 69 s → 40 a 60 s.
+|:---|:---:|:---|
+| Sincronização (`sync`, `doctor`) | ✅ | Testes de idempotência, preservação de conteúdo e conflitos |
+| `pipeline`, `do`, barramento | ✅ | Testes com agente falso (`test/fake-agent.mjs`) |
+| `fanout`: verificação, maioria, síntese, fallback | ✅ | Testes unitários + rodadas reais com os quatro agentes |
+| Prazo por ramo (mata o grupo de processos) | ✅ | Teste de regressão: um neto que dorme 30 s já não segura o fanout |
+| Mangaba Router como provedor único | ✅ | Os quatro agentes rodam por ele, sem login próprio |
+| Claude Code · Codex · OpenClaw | ✅ | `mangaba-agente-rapido`, respostas em 6 a 36 s |
+| Hermes | ⚠️ | Funciona, mas é o mais lento e o que mais estoura o prazo |
+| **Tessera melhor que cada agente** | 🟨 **Empate** | 25/33 = Codex. Ver [resultados](#-resultados-medidos) |
+| Latência p95 ≤ 1,5× o melhor agente | ❌ | Ainda 2,5× no conjunto difícil |
 
 ---
 
-## Instalação
+## 🚀 Início rápido
 
-Requisitos: Node.js 20 ou superior. Sem dependências externas.
+> **Requisitos:** Node.js 20 ou superior. Nenhuma dependência para instalar.
 
 ```bash
 git clone https://github.com/dheiver2/tessera.git
 cd tessera
-npm test                       # 20 testes
-node bin/tessera.mjs doctor    # valida a fonte e mostra quais CLIs estão no PATH
+npm test
 ```
 
-Para deixar o comando `tessera` disponível no terminal: `npm link`.
+```bash
+node bin/tessera.mjs doctor
+```
+
+```bash
+node bin/tessera.mjs fanout --prompt "Qual a complexidade da busca binária? Responda em 1 linha."
+```
+
+<details>
+<summary><b>Deixar o comando <code>tessera</code> disponível no terminal</b></summary>
+
+```bash
+npm link
+```
+
+Depois disso, `tessera fanout ...` funciona de qualquer pasta.
+</details>
+
+<details>
+<summary><b>Usar o Mangaba Router como provedor dos quatro agentes</b></summary>
+
+A chave vem de `MANGABA_ROUTER_KEY` ou, na falta dela, de `~/.tessera/router.key`. O arquivo fica fora do repositório, com permissão 600.
+
+```bash
+mkdir -p ~/.tessera && chmod 700 ~/.tessera
+```
+
+```bash
+read -rs MANGABA_ROUTER_KEY && printf %s "$MANGABA_ROUTER_KEY" > ~/.tessera/router.key && chmod 600 ~/.tessera/router.key
+```
+
+> [!CAUTION]
+> A chave **nunca** vai para o repositório. Para usar a configuração própria de cada agente, passe `--no-provider`.
+</details>
 
 ---
 
-## Os três modos de uso
+## 🧠 Como o Tessera decide
 
-### 1. Sincronizar a configuração
+```mermaid
+flowchart TD
+    P([📝 Pedido]) --> F{{⚡ fanout em paralelo}}
+    F --> C1[Claude Code]
+    F --> C2[Codex]
+    F --> C3[OpenClaw]
+    F --> C4[Hermes]
 
-A fonte fica em três lugares:
+    C1 & C2 & C3 & C4 --> V{"✅ Passou na<br/>verificação?"}
 
+    V -- "sim, o primeiro" --> R1([Devolve como está<br/>e cancela os outros])
+    V -- "não há verificador" --> M{"🗳️ Duas respostas<br/>iguais?"}
+    M -- sim --> R2([Devolve a da maioria])
+    M -- não --> S["🧪 Síntese<br/>(com as falhas, se houver)"]
+    V -- "ninguém passou" --> S
+    S --> SV{"Síntese ok?"}
+    SV -- sim --> R3([Resposta sintetizada<br/>verificada de novo])
+    SV -- "falhou ou estourou" --> R4([Devolve um ramo pronto])
+
+    classDef ok fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    classDef warn fill:#fff8e1,stroke:#f9a825,color:#6d4c00
+    classDef agent fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
+    class R1,R2,R3 ok
+    class S,R4 warn
+    class C1,C2,C3,C4 agent
 ```
-core/AGENTS.md          regras compartilhadas (todos os agentes leem)
+
+| Ordem | Caminho | Quando | Custo |
+|:---:|:---|:---|:---|
+| 1️⃣ | **Verificação** | Há `--verify "cmd"` (no eval, os testes públicos da tarefa) | O mais barato: a primeira resposta aprovada encerra o fanout |
+| 2️⃣ | **Maioria** | Sem verificador, duas respostas normalizadas coincidem | Barato: nenhum modelo extra |
+| 3️⃣ | **Síntese** | Impasse. Com verificador, vira **correção** a partir das falhas | O mais caro: uma chamada a mais |
+| 🛟 | **Fallback** | A síntese falhou ou estourou o prazo | Devolve um ramo pronto em vez de nada |
+
+> [!TIP]
+> **Por que não sintetizar sempre?** Na primeira medição, a síntese reescreveu uma solução correta e introduziu um erro de sintaxe, além de responder por metade da latência. Um modelo que reescreve é um seletor fraco. Um teste que passa é um seletor forte.
+
+---
+
+## 🛠️ Comandos
+
+### 🔄 `sync`: uma configuração para todos
+
+A fonte única fica no repositório:
+
+```text
+core/AGENTS.md          regras compartilhadas
 core/SOUL.md            identidade
 core/USER.md            preferências do usuário
 skills/<nome>/SKILL.md  skills (name + description no frontmatter)
 mcp/servers.json        servidores MCP (command/args/env ou url)
-framework.json          alvos padrão, roteamento e configuração do fanout
+framework.json          alvos, roteamento, fanout e provedor
 ```
 
 ```bash
-node bin/tessera.mjs sync --dry-run --root ~/meu-projeto   # mostra o que mudaria
-node bin/tessera.mjs sync --root ~/meu-projeto              # grava
-node bin/tessera.mjs sync --global --target claude,codex    # pastas home dos agentes
+node bin/tessera.mjs sync --dry-run --root ~/meu-projeto
 ```
 
-O que é gerado, por alvo:
+```bash
+node bin/tessera.mjs sync --root ~/meu-projeto
+```
+
+```bash
+node bin/tessera.mjs sync --global --target claude,codex
+```
 
 | Alvo | Instruções | Persona | Skills | MCP |
-|---|---|---|---|---|
-| Claude Code | `CLAUDE.md` | dentro de `CLAUDE.md` | `.claude/skills/` | `.mcp.json` |
-| Codex | `AGENTS.md` | dentro de `AGENTS.md` | `.agents/skills/` | `.codex/config.toml` |
-| OpenClaw | `AGENTS.md` (workspace) | `SOUL.md`, `USER.md` | `skills/` | snippet para `openclaw.json` |
-| Hermes | `AGENTS.md` | `SOUL.md` | `skills/` | snippet para `config.yaml` |
+|:---|:---|:---|:---|:---|
+| **Claude Code** | `CLAUDE.md` | dentro de `CLAUDE.md` | `.claude/skills/` | `.mcp.json` |
+| **Codex** | `AGENTS.md` | dentro de `AGENTS.md` | `.agents/skills/` | `.codex/config.toml` |
+| **OpenClaw** | `AGENTS.md` (workspace) | `SOUL.md`, `USER.md` | `skills/` | snippet para `openclaw.json` |
+| **Hermes** | `AGENTS.md` | `SOUL.md` | `skills/` | snippet para `config.yaml` |
 
-**Garantias de escrita**
-- Conteúdo gerado fica entre marcadores (`<!-- tessera:begin -->`). O que você escreveu fora deles não é tocado.
+<details>
+<summary><b>🔒 Garantias de escrita</b></summary>
+
+- O conteúdo gerado fica entre marcadores (`<!-- tessera:begin -->`). O que você escreveu fora deles não é tocado.
 - Antes de alterar um arquivo existente, a cópia vai para `~/.tessera/backups/<data>/`.
-- Rodar de novo sem mudanças não grava nada (idempotente).
-- Skill que você criou à mão (sem o marcador `.tessera-managed`) não é sobrescrita sem `--force`.
+- Rodar de novo sem mudanças não grava nada.
+- Uma skill criada à mão (sem o marcador `.tessera-managed`) só é sobrescrita com `--force`.
 - Se um `[mcp_servers.<nome>]` já existe fora do bloco, o Tessera reporta conflito em vez de duplicar.
 
-**Limite**: os caminhos seguem a convenção de cada agente. O Tessera não lê a documentação deles. Confirme nas versões instaladas antes de confiar no MCP do OpenClaw e do Hermes, que hoje saem como snippet.
+> [!NOTE]
+> Os caminhos seguem a convenção de cada agente. No OpenClaw e no Hermes, o MCP sai como snippet: confira nas versões instaladas antes de aplicar.
+</details>
 
-### 2. Roteamento por tipo de tarefa (`do`)
+### ⚡ `fanout`: todos ao mesmo tempo
 
-Cada tipo de tarefa tem um agente padrão, definido em `framework.json`:
-
-```json
-"routing": {
-  "codigo": "codex",
-  "revisao": "claude",
-  "resumo": "hermes",
-  "automacao": "openclaw"
-}
+```bash
+node bin/tessera.mjs fanout --prompt "Esta função tem bug de concorrência? <código>"
 ```
 
 ```bash
-node bin/tessera.mjs do --kind codigo --prompt "implemente a função X em src/x.js"
+node bin/tessera.mjs fanout --prompt "Implemente solve() em JS" --verify "node checa.mjs"
 ```
 
-Esta escolha é uma **hipótese**, não uma medição. Antes de confiar nela, rode o fanout (abaixo) na mesma tarefa e compare.
-
-### 3. Fanout: todos ao mesmo tempo (`fanout`)
-
-É o modo para quando você não quer escolher um agente. Todos recebem o mesmo pedido em paralelo; um sintetizador junta as respostas válidas.
-
-```bash
-node bin/tessera.mjs fanout --prompt "Esta função tem bug de concorrência? <colar código>"
-```
-
-Saída típica:
-
-```
-[done]   codex      41230ms (…)
-[failed] claude     tempo esgotado após 120s
-[done]   openclaw   88412ms (…)
-[failed] hermes     não foi possível executar "hermes"
-ramos: 120004ms
-
-=== resposta final (claude, 131800ms no total) ===
-…
-```
-
-O que o sintetizador recebe: o pedido original e, para cada agente que respondeu, um bloco `### <agente>` com a resposta. Ele é instruído a produzir uma resposta final, apontar divergências relevantes e dizer qual afirmação escolheu e por quê.
-
-**Opções**
+O comando de `--verify` recebe a resposta pelo **stdin** e o nome do agente em `TESSERA_AGENT`. Código de saída 0 significa aprovado.
 
 | Flag | Padrão | Função |
-|---|---|---|
-| `--agents a,b,c` | `framework.json > fanout.agents` | quais agentes disparar |
-| `--synth nome` | `framework.json > fanout.synthesizer` | quem sintetiza |
-| `--deadline s` | 120 | prazo de cada agente, em segundos |
-| `--synth-timeout s` | 180 | prazo da síntese |
+|:---|:---:|:---|
+| `--agents a,b,c` | os quatro | quais agentes disparar |
+| `--verify "cmd"` | — | verificador; a primeira resposta aprovada vence |
+| `--no-vote` | — | desliga a decisão por maioria |
+| `--roles` | desligado | dá um foco diferente a cada agente |
+| `--synth nome` | `claude` | quem sintetiza ou corrige |
+| `--deadline s` | `120` | prazo de cada ramo |
+| `--synth-timeout s` | `180` | prazo da síntese |
+| `--quorum n` · `--grace s` | `2` · `15` | com *n* respostas boas, espera *s* segundos e cancela o resto |
+| `--max-wait s` | `30` | espera máxima depois da primeira resposta |
+| `--no-provider` | — | usa a configuração própria de cada agente |
 
-**Como a latência é limitada**
+<details>
+<summary><b>⏱️ Como a latência é limitada</b></summary>
 
-O tempo total é no máximo `deadline + synth-timeout`, mesmo que um agente trave. Um ramo que estoura o prazo é encerrado, vira falha e a síntese segue com as respostas que chegaram a tempo. Se nenhum agente responder no prazo, o fanout termina com erro, sem sintetizar.
+- **Pior caso:** `deadline + synth-timeout`, mesmo com um agente travado.
+- Cada ramo roda num **grupo de processos próprio**. Ao estourar o prazo ou ser cancelado, o grupo inteiro recebe SIGTERM e, 3 s depois, SIGKILL. Subprocessos do agente não conseguem mais segurar o fanout.
+- Um ramo que estoura o prazo vira falha, e o fanout segue com os outros. O fanout só falha se **nenhum** responder.
+- Cada resposta é cortada em `maxCharsPerBranch` (6000) antes da síntese.
 
-Isso limita o **pior caso**. Não reduz o tempo do agente mais lento: se o prazo for 120 s e o agente precisar de 100 s, a resposta dele entra. Por isso o prazo deve refletir o que você aceita esperar.
+Formato da saída com `--verify` (ids encurtados):
 
-**Falhas parciais são normais.** Com um agente fora do ar ou sem chave válida, o fanout continua com os outros. Ele só falha se nenhum responder.
+```text
+[done] openclaw 10912ms (…)  verificação: passou
+[cancelled] claude 11020ms (…)  — dispensado (já havia resposta escolhida)
+[cancelled] codex 11024ms (…)  — dispensado (já havia resposta escolhida)
+[cancelled] hermes 11031ms (…)  — dispensado (já havia resposta escolhida)
+ramos: 11031ms  provedor: mangaba-router
 
-### 4. Pipeline: encadear agentes
+=== resposta final (openclaw passou na verificação, sem síntese, 11040ms no total) ===
+```
+</details>
 
-Quando a etapa seguinte depende da anterior, use um pipeline. `{{previous}}` é substituído pela saída do passo anterior.
+### 🔗 `pipeline`: encadear agentes
+
+`{{previous}}` é trocado pela saída do passo anterior. O pipeline **para no primeiro passo que falha**.
 
 ```json
 {
   "steps": [
-    { "name": "analise", "agent": "codex",  "prompt": "Liste riscos de correção no código do diretório." },
-    { "name": "revisao", "agent": "claude", "prompt": "Confirme ou descarte cada ponto, com severidade:\n\n{{previous}}" },
+    { "name": "analise", "agent": "codex",  "prompt": "Liste riscos de correção no código." },
+    { "name": "revisao", "agent": "claude", "prompt": "Confirme ou descarte cada ponto:\n\n{{previous}}" },
     { "name": "resumo",  "agent": "hermes", "prompt": "Resuma em 10 linhas:\n\n{{previous}}" }
   ]
 }
@@ -190,193 +260,273 @@ Quando a etapa seguinte depende da anterior, use um pipeline. `{{previous}}` é 
 node bin/tessera.mjs pipeline pipelines/revisar-e-resumir.json
 ```
 
-O pipeline **para no primeiro passo que falha**, e informa qual passo quebrou.
-
-### 5. Medir: cada agente sozinho contra o Tessera (`eval`)
-
-O `eval` roda as mesmas tarefas em cada agente sozinho e no Tessera (fanout + síntese), corrige sem usar modelo e compara.
+### 🎯 `do` e `delegate`: um agente só
 
 ```bash
-node bin/tessera.mjs eval                          # 34 tarefas, 5 modos, uma execução por vez
-node bin/tessera.mjs eval --limit 5 --kind code    # amostra rápida
-node bin/tessera.mjs eval --ids qa-fifo,code-kadane --modes openclaw,tessera
+node bin/tessera.mjs do --kind codigo --prompt "implemente a função X em src/x.js"
 ```
 
-- **Tarefas** em [evals/tasks.json](evals/tasks.json): 14 de código (função `solve` checada por testes), 14 perguntas objetivas (regex de aceite e de rejeição) e 6 revisões com bug conhecido.
-- **Código roda em sandbox**: `node --permission`, só leitura do próprio arquivo, sem rede, sem processos filhos, com limite de tempo.
-- **Execução sequencial por padrão**, para a latência de um modo não inflar a do outro. `--parallel` existe para amostras rápidas.
-- **Saída** em `evals/resultados/<data>.json` e `.md`: acerto por modo e por tipo, p50/p95, oráculo (algum agente acertou?) e Tessera contra o melhor agente sozinho, com as tarefas ganhas e perdidas.
+```bash
+node bin/tessera.mjs delegate --agent codex --prompt "explique este erro"
+```
 
-#### Resultado do eval (05/nov/2026)
+O `do` escolhe o agente pelo tipo de tarefa (`framework.json > routing`):
 
-Todos com `mangaba-agente-rapido` pelo Mangaba Router. Síntese pelo Claude. Uma rodada (sem repetição), 93 min.
+| Tipo | `codigo` | `revisao` | `resumo` | `automacao` |
+|:---|:---:|:---:|:---:|:---:|
+| Agente | Codex | Claude | Hermes | OpenClaw |
 
-| Modo | Acerto | p50 | p95 | Código | Perguntas | Revisão |
-|---|---|---|---|---|---|---|
-| claude | 31/34 (91,2%) | 7,1 s | 105,6 s | 11/14 | 14/14 | 6/6 |
-| codex | 31/34 (91,2%) | 8,2 s | 107,4 s | 11/14 | 14/14 | 6/6 |
-| **openclaw** | **33/34 (97,1%)** | **6,4 s** | **10,7 s** | 13/14 | 14/14 | 6/6 |
-| hermes | 29/34 (85,3%) | 31,7 s | 122,0 s | 12/14 | 13/14 | 4/6 |
-| tessera | 33/34 (97,1%) | 55,0 s | 149,4 s | 13/14 | 14/14 | 6/6 |
+> [!WARNING]
+> Esse roteamento ainda é uma **hipótese**, não uma medição. Os dados do eval vão substituí-lo (Fase 3 do [plano](docs/PLANO.md)).
 
-Oráculo: 34/34. Em toda tarefa, pelo menos um agente sozinho acertou.
+### 📊 `eval`: medir em vez de presumir
 
-**O que isso mostra**
+Roda as mesmas tarefas em cada agente sozinho e no Tessera, dá a nota **sem usar modelo** e compara.
 
-- **Acerto: empate com o melhor agente.** O Tessera ganhou em `code-anagrama` (o OpenClaw errou um teste) e perdeu em `code-parenteses`.
-- **A síntese introduziu o erro.** Em `code-parenteses`, o OpenClaw sozinho acertou, e a síntese do Claude devolveu um objeto sem vírgulas (`SyntaxError`). Um modelo reescrevendo a resposta é um seletor fraco. (O eval ainda não guarda nem corrige o texto de cada ramo; isso entra na Fase 1.)
-- **A síntese custa metade da latência.** Fase dos ramos: p50 29 s. Síntese: p50 32 s, p95 124 s.
-- **A cauda vem do roteador.** Claude e Codex respondem em 7 a 8 s no p50, mas às vezes passam de 100 s ou estouram 120 s sem resposta. O OpenClaw quase nunca.
-- **Hermes é o mais fraco**: 4 tarefas sem resposta dentro do prazo e o p50 mais alto.
-- **Há espaço**: o oráculo (100%) está 2,9 pontos acima do Tessera. Escolher o ramo que passa na verificação, em vez de reescrever, é o caminho para chegar perto disso.
-
-Conclusões aplicadas ao plano: seleção por verificação (Fase 1) antes de qualquer outra coisa, e devolver a resposta direto quando os ramos concordam. Ver [docs/PLANO.md](docs/PLANO.md).
-
-#### Fase 1: seleção por verificação (05/nov/2026)
-
-O fanout agora decide nesta ordem:
-
-1. **Verificação.** Com `--verify "cmd"` (no eval, os testes públicos da tarefa), cada resposta é verificada assim que chega. A primeira que passa volta **como está**, e os outros ramos são dispensados.
-2. **Maioria.** Sem verificador, quando duas respostas normalizadas coincidem, essa volta direto.
-3. **Síntese**, só no impasse. Com verificador, ela recebe as falhas para corrigir e é verificada de novo. Se a síntese falhar, volta um ramo pronto em vez de nada.
-
-Os papéis por agente ficaram desligados por padrão (`--roles` liga). Num teste, eles fizeram o Claude acrescentar texto à resposta e o OpenClaw responder "São Paulo" para a capital da Austrália, o que impedia a maioria.
-
-No eval, o Tessera vê só a primeira metade dos testes de cada tarefa. A nota usa todos, para a verificação não virar cola.
-
-Rodada completa nas mesmas condições (solo e Tessera, 93 min):
-
-| Modo | Acerto | p50 | p95 | Código | Perguntas | Revisão |
-|---|---|---|---|---|---|---|
-| claude | 33/34 (97,1%) | 6,9 s | 113,5 s | 14/14 | 13/14 | 6/6 |
-| codex | 31/34 (91,2%) | 8,4 s | 47,0 s | 11/14 | 14/14 | 6/6 |
-| **openclaw** | **34/34 (100%)** | 9,4 s | **13,2 s** | 14/14 | 14/14 | 6/6 |
-| hermes | 29/34 (85,3%) | 23,9 s | 121,9 s | 13/14 | 11/14 | 5/6 |
-| tessera | 33/34 (97,1%) | 23,0 s | 137,2 s | **14/14** | **14/14** | 5/6 |
-
-| Como o Tessera decidiu | Tarefas | Acerto | p50 |
-|---|---|---|---|
-| verificação | 14 | 14/14 | 12,6 s |
-| maioria | 9 | 9/9 | 11,6 s |
-| resposta única | 3 | 3/3 | 35,9 s |
-| síntese | 8 | 7/8 | 45,0 s |
-
-**Fase 0 → Fase 1, no Tessera:** código 13/14 → 14/14; p50 55,0 s → 23,0 s; p95 149 s → 137 s.
-
-- **A única derrota** (`review-default-mutavel`) foi a síntese estourando o prazo com três respostas boas na mão. Isso virou a regra 3 acima (volta um ramo pronto). Na nova rodada das 6 revisões, o Tessera acertou 6/6, mas a síntese não falhou dessa vez: o fallback foi validado só em teste.
-- **A síntese continua sendo o caminho lento.** Revisões têm texto livre, a maioria nunca se forma, e as 6 passam pela síntese (27 a 49 s). Em todas as 6, os quatro agentes apontaram o bug.
-- **O critério não é alcançável neste conjunto.** O OpenClaw fez 34/34. Para medir se o Tessera supera o melhor agente, o conjunto precisa de tarefas mais difíceis, em que nenhum agente sozinho acerte tudo.
-- **A latência ainda não cumpre a meta** (p95 até 1,5× o melhor agente). A cauda vem da síntese e de ramos lentos do roteador.
-
-#### Conjunto difícil, rodada 1 (05/nov/2026)
-
-`evals/tasks-dificeis.json` tem 33 tarefas com armadilhas: arredondamento de `1.005`, CSV com aspas, semver com pré-release, expressão sem `eval`, grafemas, `parseInt(0.0000005)` e outras. Cada tarefa tem uma solução de referência que passa e, quando faz sentido, uma solução ingênua que reprova (`test/eval-dificeis.test.mjs`).
+```bash
+node bin/tessera.mjs eval
+```
 
 ```bash
 node bin/tessera.mjs eval --tasks evals/tasks-dificeis.json
 ```
 
-| Modo | Acerto | Respondeu | p50 | p95 | Código | Perguntas | Revisão |
-|---|---|---|---|---|---|---|---|
-| claude | 22/33 (66,7%) | 26/33 | 23,0 s | 120,5 s | 7/14 | 7/11 | 8/8 |
-| **codex** | **25/33 (75,8%)** | 28/33 | 13,3 s | 120,0 s | 7/14 | 10/11 | 8/8 |
-| openclaw | 21/33 (63,6%) | 28/33 | 12,2 s | 82,8 s | 6/14 | 7/11 | 8/8 |
-| hermes | 19/33 (57,6%) | 24/33 | 83,8 s | 121,9 s | 7/14 | 7/11 | 5/8 |
-| **tessera** | **25/33 (75,8%)** | **29/33** | 48,1 s | 302,1 s | **9/14** | 8/11 | 8/8 |
+```bash
+node bin/tessera.mjs eval --limit 5 --kind code --modes openclaw,tessera
+```
 
-O conjunto cumpriu o papel: o melhor agente sozinho ficou em 75,8%. Pelo menos um agente sozinho acertou 29/33 tarefas.
+| Conjunto | Tarefas | Código | Perguntas | Revisão |
+|:---|:---:|:---:|:---:|:---:|
+| [`evals/tasks.json`](evals/tasks.json) | 34 | 14 | 14 | 6 |
+| [`evals/tasks-dificeis.json`](evals/tasks-dificeis.json) | 33 | 14 | 11 | 8 |
 
-- **Empate com o melhor agente.** O Tessera ganhou do Codex em 5 tarefas (`hard-expressao`, `hard-dia-semana`, `hard-topo-lexico`, `hard-inverter-grafemas`, `hard-qa-sextas-13`) e perdeu em 5.
-- **Em código, o Tessera foi o melhor:** 9/14 contra 7/14. Pela verificação, acertou 9/9. Em `hard-expressao`, nenhum agente sozinho acertou, e o Tessera chegou a 8/8.
-- **Metade das derrotas não foi erro de resposta.** Em 4 tarefas, nenhum dos quatro ramos respondeu no prazo. Em 3 delas, os agentes tinham acertado sozinhos.
-- **As outras 4 derrotas são limites do método:**
-  - `hard-qa-parseint`: a maioria errou. Dois ramos responderam "0" e só o Hermes deu "5".
-  - `hard-qa-sort-js`: um ramo respondeu sozinho, com o valor errado, e os outros foram cancelados pela espera.
-  - `hard-csv-linha` e `hard-semver`: a correção pela síntese não consertou o código.
-- **Bug encontrado:** o prazo de 120 s não era cumprido. Ao estourar o tempo, só o processo do agente recebia o sinal, e os subprocessos dele seguravam a saída. Houve ramos de 499 s e de 1080 s, e isso inflou o p95 de todos os modos. Agora cada agente roda num grupo de processos próprio, que leva SIGTERM e depois SIGKILL no grupo inteiro. Um teste de regressão cobre o caso. **A rodada 2, já com a correção, vai dizer quanto da diferença era ruído do roteador.**
+<details>
+<summary><b>🧪 Como a nota é dada</b></summary>
+
+- **Código:** a função `solve` roda contra testes. O Tessera **vê só a primeira metade** dos testes para verificar; a nota usa **todos**, para a verificação não virar cola.
+- **Perguntas:** regex de aceite e de rejeição (pega pegadinhas como `9.11 > 9.9`).
+- **Revisão:** o bug conhecido precisa ser apontado.
+- **Sandbox:** `node --permission`, leitura só do próprio arquivo, sem rede, sem processos filhos, ambiente mínimo (nenhuma variável do processo vaza) e fuso fixo.
+- **Padrões proibidos:** tarefas como a de expressão reprovam se usarem `eval` ou `Function`.
+- **Conjunto difícil:** cada tarefa tem uma solução de referência que passa e, quando faz sentido, uma solução ingênua que reprova (`test/eval-dificeis.test.mjs`).
+- **Execução sequencial** por padrão, para a latência de um modo não inflar a do outro.
+- **Saída:** `evals/resultados/<data>.json` e `.md`, com acerto por modo e por tipo, p50/p95, oráculo, caminho de decisão e tarefas ganhas e perdidas.
+</details>
 
 ---
 
-## Configuração avançada
+## 📈 Resultados medidos
 
-### Trocar o comando de um agente
+> Todos os agentes com `mangaba-agente-rapido` pelo Mangaba Router, síntese pelo Claude, uma rodada por conjunto. Diferenças de uma tarefa estão dentro do ruído.
 
-Cada agente tem um comando headless padrão. Para mudar, defina `TESSERA_<AGENTE>_CMD`. O prompt é anexado como último argumento. Para argumentos com espaço ou aspas, use JSON:
+### 🔥 Conjunto difícil · rodada 1 · 05/nov/2026
+
+| Modo | Acerto | Respondeu | p50 | p95 | 💻 Código | ❓ Perguntas | 🔍 Revisão |
+|:---|:---:|:---:|---:|---:|:---:|:---:|:---:|
+| claude | 22/33 · 66,7% | 26/33 | 23,0 s | 120,5 s | 7/14 | 7/11 | 8/8 |
+| **codex** | **25/33 · 75,8%** | 28/33 | 13,3 s | 120,0 s | 7/14 | **10/11** | 8/8 |
+| openclaw | 21/33 · 63,6% | 28/33 | **12,2 s** | **82,8 s** | 6/14 | 7/11 | 8/8 |
+| hermes | 19/33 · 57,6% | 24/33 | 83,8 s | 121,9 s | 7/14 | 7/11 | 5/8 |
+| 🧩 **tessera** | **25/33 · 75,8%** | **29/33** | 48,1 s | 302,1 s | **9/14** | 8/11 | 8/8 |
+
+**Como o Tessera decidiu:**
+
+| Caminho | Tarefas | Acerto | p50 |
+|:---|:---:|:---:|---:|
+| ✅ verificação | 9 | **9/9** | 64,3 s |
+| 🧪 síntese | 9 | **9/9** | 43,2 s |
+| 🗳️ maioria | 5 | 4/5 | 12,7 s |
+| 1️⃣ resposta única | 4 | 3/4 | 84,2 s |
+| 🔧 correção pela síntese | 1 | 0/1 | 181,6 s |
+| 🛟 ramo pronto (síntese falhou) | 1 | 0/1 | 302,1 s |
+| ⛔ sem resposta | 4 | 0/4 | 121,8 s |
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**🏆 Onde o Tessera ganhou do Codex**
+
+- `hard-expressao`: **nenhum** agente sozinho acertou; a correção pela síntese chegou a 8/8
+- `hard-dia-semana`
+- `hard-topo-lexico`
+- `hard-inverter-grafemas`
+- `hard-qa-sextas-13`
+
+</td>
+<td width="50%" valign="top">
+
+**💥 Onde perdeu**
+
+- ⛔ **4 tarefas:** nenhum ramo respondeu no prazo (roteador saturado com 4 chamadas ao mesmo tempo)
+- 🗳️ `hard-qa-parseint`: maioria errada, 2 × "0" contra 1 × "5"
+- 1️⃣ `hard-qa-sort-js`: a única resposta que chegou estava errada
+- 🔧 `hard-csv-linha`, `hard-semver`: a correção não consertou
+
+</td>
+</tr>
+</table>
+
+> [!WARNING]
+> **Bug encontrado nesta rodada, já corrigido.** O prazo de 120 s não era cumprido: só o processo do agente recebia o sinal, e os subprocessos dele seguravam a saída. Houve ramos de 499 s e de 1080 s, o que inflou o p95 de todos os modos. A rodada 2, com a correção, está em andamento.
+
+<details>
+<summary><b>📜 Histórico: Fase 0 e Fase 1 no conjunto original (34 tarefas)</b></summary>
+
+#### Fase 0 · síntese sempre
+
+| Modo | Acerto | p50 | p95 |
+|:---|:---:|---:|---:|
+| claude | 31/34 · 91,2% | 7,1 s | 105,6 s |
+| codex | 31/34 · 91,2% | 8,2 s | 107,4 s |
+| **openclaw** | **33/34 · 97,1%** | **6,4 s** | **10,7 s** |
+| hermes | 29/34 · 85,3% | 31,7 s | 122,0 s |
+| tessera | 33/34 · 97,1% | 55,0 s | 149,4 s |
+
+- A única derrota do Tessera foi a síntese quebrando uma solução certa.
+- A síntese respondia por metade do tempo do Tessera.
+
+#### Fase 1 · verificação → maioria → síntese
+
+| Modo | Acerto | p50 | p95 |
+|:---|:---:|---:|---:|
+| claude | 33/34 · 97,1% | 6,9 s | 113,5 s |
+| codex | 31/34 · 91,2% | 8,4 s | 47,0 s |
+| **openclaw** | **34/34 · 100%** | 9,4 s | **13,2 s** |
+| hermes | 29/34 · 85,3% | 23,9 s | 121,9 s |
+| tessera | 33/34 · 97,1% | 23,0 s | 137,2 s |
+
+- No Tessera, código foi de 13/14 para **14/14** e o p50 caiu de **55 s para 23 s**.
+- O OpenClaw fez 100%: o conjunto tinha teto, e isso motivou o conjunto difícil.
+
+Resultados brutos em [`evals/resultados/`](evals/resultados/).
+</details>
+
+<details>
+<summary><b>🩹 O que as medições mudaram no código</b></summary>
+
+| Problema encontrado | Correção |
+|:---|:---|
+| A síntese reescrevia respostas certas | Seleção por verificação e maioria; síntese só no impasse |
+| Síntese que estoura o prazo deixava o fanout vazio | Fallback para um ramo pronto |
+| Papéis mudavam o formato das respostas objetivas | Papéis desligados por padrão (`--roles`) |
+| Subprocessos do agente seguravam o fanout além do prazo | Grupo de processos próprio + SIGKILL no grupo |
+| Plugins e hooks do usuário contaminavam o Claude | `--bare` quando há provedor |
+| `--tools ""` engolia o prompt do Claude | Prompt por stdin |
+| Duas execuções na mesma sessão travavam o OpenClaw | `--session-id` novo por chamada |
+| Logs do OpenClaw entravam como resposta | Limpeza de linhas `[subsistema] ...` |
+| OpenClaw dizia "couldn't generate a response" com código 0 | Tratado como falha |
+| Codex com `mangaba-coder` devolvia mensagem vazia | Modelo trocado para `mangaba-agente-rapido` |
+| Hermes travava com `mangaba-flash` | Modelo trocado; raciocínio oculto no `config.yaml` |
+</details>
+
+---
+
+## ⚙️ Configuração
+
+### 🌐 Provedor compartilhado (Mangaba Router)
+
+Com `provider` em `framework.json`, os quatro agentes usam o mesmo roteador, **sem login próprio** e **sem alterar a configuração global** de cada um:
+
+| Agente | Como é apontado ao roteador |
+|:---|:---|
+| **Claude Code** | `--bare`; `ANTHROPIC_BASE_URL` e `ANTHROPIC_API_KEY` só no processo; prompt por stdin; `--tools ""` |
+| **Codex** | `-c model_provider=tessera` e `-c model_providers.tessera.*` na linha de comando |
+| **OpenClaw** | `--model router/<modelo>` e uma `--session-id` nova por chamada |
+| **Hermes** | `--provider mangaba-router`, que lê a chave de `MANGABA_ROUTER_KEY` |
+
+> [!NOTE]
+> OpenClaw e Hermes precisam, uma vez, do provedor na configuração deles: modelos permitidos em `openclaw.json` e o bloco `providers.mangaba-router` no `config.yaml` do Hermes.
+
+### 🔧 Trocar o comando de um agente
+
+Defina `TESSERA_<AGENTE>_CMD`. O prompt é anexado como último argumento. Para argumentos com espaço ou aspas, use JSON:
 
 ```bash
 export TESSERA_CODEX_CMD="codex exec --skip-git-repo-check --full-auto"
+```
+
+```bash
 export TESSERA_CLAUDE_CMD='["claude", "-p", "--tools", ""]'
 ```
 
-Comandos padrão (sem provedor / com provedor):
+<details>
+<summary><b>Comandos padrão de cada agente</b></summary>
 
 | Agente | Sem provedor | Com provedor |
-|---|---|---|
-| claude | `claude -p --tools ""` (prompt por stdin) | `claude --bare -p --tools ""` (prompt por stdin) |
+|:---|:---|:---|
+| claude | `claude -p --tools ""` (stdin) | `claude --bare -p --tools ""` (stdin) |
 | codex | `codex exec --skip-git-repo-check <prompt>` | idem + `-c model_provider=tessera ...` e `-m <modelo>` |
 | openclaw | `openclaw agent --local --agent main --session-id <novo> --thinking off --message <prompt>` | idem + `--model <modelo>` |
 | hermes | `hermes chat -Q -q <prompt>` | idem + `--provider mangaba-router -m <modelo>` |
 
-### Latência do Claude
-
-Com as ferramentas padrão, o prompt inicial do Claude Code é grande e, em CPU, a leitura dele domina o tempo. Por isso o Tessera chama o Claude com `--tools ""`: ele responde, mas não lê arquivos nem roda comandos. Para tarefas em que o Claude precisa das ferramentas, troque o comando com `TESSERA_CLAUDE_CMD`.
-
-### Agentes com id (OpenClaw)
-
-O OpenClaw exige um agente. Passe `--agent-id main` (ou o id que você configurou) em qualquer comando.
-
-### Provedor compartilhado (Mangaba Router)
-
-Com `provider` em `framework.json`, os quatro agentes usam o mesmo roteador, sem login próprio e sem alterar a configuração global de cada um:
-
-| Agente | Como é apontado ao roteador |
-|---|---|
-| Claude Code | `--bare` (sem hooks, plugins nem memória do usuário); `ANTHROPIC_BASE_URL` e `ANTHROPIC_API_KEY` só no processo; prompt por stdin; `--tools ""` |
-| Codex | `-c model_provider=tessera` e `-c model_providers.tessera.*` na linha de comando |
-| OpenClaw | `--model router/<modelo>` e uma `--session-id` nova por chamada |
-| Hermes | `--provider mangaba-router`, que lê a chave de `MANGABA_ROUTER_KEY` |
-
-A chave vem de `MANGABA_ROUTER_KEY` ou, na falta dela, de `~/.tessera/router.key` (fora do repositório, permissão 600). Ela nunca é gravada no repositório. Para usar a configuração própria de cada agente, passe `--no-provider`.
-
-OpenClaw e Hermes precisam, uma vez, do provedor do roteador na configuração deles: chave válida e modelos permitidos em `openclaw.json`, e o bloco `providers.mangaba-router` no `config.yaml` do Hermes.
-
-### Otimizações do fanout
-
-- **Papéis:** cada agente recebe o mesmo pedido mais um foco (Codex: solução concreta; Claude: correção e riscos; OpenClaw: operação; Hermes: clareza). Respostas diferentes dão mais material à síntese do que quatro respostas iguais. Os papéis podem ser trocados em `fanout.roles`.
-- **Quórum:** com `--quorum 2`, quando dois agentes respondem bem, os demais têm `--grace` segundos (15 por padrão) para chegar e depois são cancelados. O agente mais lento deixa de ditar a latência.
-- **Sem síntese desnecessária:** se só um agente responder, a resposta dele volta direto.
-- **Limite de texto:** cada resposta é cortada em `fanout.maxCharsPerBranch` caracteres (6000) antes da síntese, o que reduz o tempo de leitura do prompt.
-
-O plano para o Tessera superar cada agente sozinho, com medição antes de otimizar, está em [docs/PLANO.md](docs/PLANO.md).
+- **Claude sem ferramentas:** com as ferramentas padrão, o prompt inicial é grande e domina o tempo. Para tarefas que precisam delas, troque o comando.
+- **OpenClaw exige um agente:** passe `--agent-id main` (ou o seu id) em qualquer comando.
+</details>
 
 ---
 
-## Diagnóstico
+## 🩺 Diagnóstico
 
 | Sintoma | Causa provável | O que fazer |
-|---|---|---|
-| `OAuth session expired` no Claude | login vencido | rodar `claude` e fazer login de novo |
-| `401 chave inválida ou revogada` | chave de provedor revogada | gerar chave nova e atualizar a configuração do agente |
-| `Not inside a trusted directory` no Codex | diretório fora de repositório git | já resolvido: o adaptador passa `--skip-git-repo-check` |
+|:---|:---|:---|
+| `OAuth session expired` no Claude | login vencido | rodar `claude` e entrar de novo, ou usar o provedor |
+| `401 chave inválida ou revogada` | chave revogada | gerar chave nova e regravar `~/.tessera/router.key` |
+| `Not inside a trusted directory` no Codex | pasta fora de um repositório git | já tratado: o adaptador passa `--skip-git-repo-check` |
 | `Pass --to ... or --agent` no OpenClaw | falta o id do agente | passar `--agent-id main` |
+| `Agent couldn't generate a response` | OpenClaw sem resposta do modelo | tratado como falha; o fanout segue com os outros |
 | `não foi possível executar "hermes"` | CLI fora do PATH | instalar o Hermes ou ajustar `TESSERA_HERMES_CMD` |
-| `tempo esgotado após Ns` | agente lento | aumentar `--deadline`, desativar ferramentas (Claude) ou trocar o agente |
-| `conflict` no `sync` | `[mcp_servers.x]` já definido fora do bloco | remover a definição duplicada manualmente |
+| `tempo esgotado após Ns` | agente ou roteador lento | aumentar `--deadline` ou tirar o agente com `--agents` |
+| `conflict` no `sync` | `[mcp_servers.x]` duplicado fora do bloco | remover a definição duplicada à mão |
 
-As tarefas executadas ficam registradas em `.tessera/bus/tasks/*.json`, com status, saída, erro e duração. Use `node bin/tessera.mjs tasks` para ver o histórico.
+O histórico de execuções fica em `.tessera/bus/tasks/*.json`, com status, saída, erro e duração:
 
----
-
-## Próximos passos
-
-1. Rodar de novo o conjunto difícil com a correção do prazo e repetir com 3 sementes.
-2. Maioria com peso: não aceitar 2 contra 2 quando há divergência, e em perguntas pedir uma checagem antes de devolver a única resposta.
-3. Concordância em texto livre sem síntese (Fase 2): quando os ramos apontam a mesma coisa, devolver um deles.
-4. Disjuntor para agentes que estouram o prazo (Hermes) e limite de chamadas simultâneas ao roteador.
-5. Adicionar CI para rodar os testes a cada commit.
+```bash
+node bin/tessera.mjs tasks
+```
 
 ---
 
-## Licença
+## 🗺️ Roadmap
 
-MIT
+| | Etapa | Situação |
+|:---:|:---|:---|
+| ✅ | **Fase 0**: medir antes de otimizar (`eval`) | Concluída |
+| ✅ | **Fase 1**: seleção por verificação e maioria | Implementada, sem worktrees |
+| 🔄 | Conjunto difícil, rodada 2 com o prazo corrigido, depois 3 sementes | Em andamento |
+| ⏭️ | Maioria mais exigente (não aceitar empate 2 × 2) e checagem da resposta única | Próximo |
+| ⏭️ | **Fase 2**: concordância em texto livre sem síntese | Planejada |
+| ⏭️ | **Fase 3**: roteamento aprendido com os dados do eval | Planejada |
+| ⏭️ | **Fase 4**: disjuntor por agente e limite de chamadas simultâneas ao roteador | Planejada |
+| ⏭️ | git worktrees para agentes que editam arquivos; CI | Planejada |
+
+O plano completo, com critérios de pronto, está em [`docs/PLANO.md`](docs/PLANO.md).
+
+---
+
+## 📁 Estrutura
+
+```text
+tessera/
+├── bin/tessera.mjs          CLI
+├── src/
+│   ├── bridge.mjs           agentes, fanout, verificação, maioria, síntese
+│   ├── eval.mjs             tarefas, sandbox, nota e relatório
+│   ├── sync.mjs · writer.mjs · canonical.mjs
+├── core/ · skills/ · mcp/   fonte única da configuração
+├── evals/
+│   ├── tasks.json           34 tarefas
+│   ├── tasks-dificeis.json  33 tarefas com armadilha
+│   └── resultados/          relatórios .json e .md de cada rodada
+├── pipelines/               exemplos de pipeline
+├── docs/PLANO.md            plano por fases
+└── test/                    60 testes (node:test)
+```
+
+---
+
+<div align="center">
+
+**MIT** · feito por [@dheiver2](https://github.com/dheiver2)
+
+</div>
