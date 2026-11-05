@@ -3,10 +3,13 @@ import { runSync, doctor, SOURCE_DEFAULT } from '../src/sync.mjs';
 import { adapters } from '../src/adapters/index.mjs';
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
-import { delegate, runPipeline, loadPipeline, listTasks, routeFor, fanout } from '../src/bridge.mjs';
+import { delegate, runPipeline, loadPipeline, listTasks, routeFor, fanout, loadProvider } from '../src/bridge.mjs';
 import { readFrameworkConfig, SOURCE_DEFAULT as SRC } from '../src/sync.mjs';
 
 const args = process.argv.slice(2);
+const CFG = readFrameworkConfig(SRC);
+// --no-provider ignora o provedor configurado e usa a configuração própria de cada agente.
+const PROVIDER = args.includes('--no-provider') ? null : loadProvider(CFG.provider);
 const cmd = args[0] ?? 'help';
 const flag = (name) => args.includes(name);
 const value = (name) => {
@@ -23,7 +26,8 @@ Uso:
   tessera delegate --agent <claude|codex|openclaw|hermes> --prompt "..." [--root DIR]
   tessera pipeline <arquivo.json> [--root DIR]   encadeia agentes ({{previous}} = saída do passo anterior)
   tessera do --kind <codigo|revisao|resumo|automacao> --prompt "..." [--root DIR]   escolhe o agente mais forte (framework.json > routing)
-  tessera fanout --prompt "..." [--agents ...] [--synth claude] [--deadline 120] [--synth-timeout 180] [--root DIR]
+  tessera fanout --prompt "..." [--agents ...] [--synth claude] [--deadline 120] [--synth-timeout 180]
+                 [--quorum 2] [--grace 15] [--no-provider] [--root DIR]
                                                  todos ao mesmo tempo; um sintetiza a melhor resposta
   tessera tasks [--root DIR]                     histórico do barramento
 
@@ -76,7 +80,7 @@ try {
     const agent = value('--agent');
     const prompt = value('--prompt');
     if (!agent || !prompt) throw new Error('uso: tessera delegate --agent <nome> --prompt "..."');
-    const t = delegate({ root: resolve(value('--root') ?? process.cwd()), agent, prompt, agentId: value('--agent-id') });
+    const t = delegate({ root: resolve(value('--root') ?? process.cwd()), agent, prompt, agentId: value('--agent-id'), provider: PROVIDER });
     console.log(`[${t.status}] ${t.agent} (${t.id})`);
     console.log(t.status === 'done' ? t.output : `erro: ${t.error}`);
     if (t.status !== 'done') process.exitCode = 1;
@@ -84,8 +88,8 @@ try {
     const kind = value('--kind');
     const prompt = value('--prompt');
     if (!kind || !prompt) throw new Error('uso: tessera do --kind <tipo> --prompt "..."');
-    const agent = routeFor(kind, readFrameworkConfig(SRC).routing);
-    const t = delegate({ root: resolve(value('--root') ?? process.cwd()), agent, prompt, name: kind });
+    const agent = routeFor(kind, CFG.routing);
+    const t = delegate({ root: resolve(value('--root') ?? process.cwd()), agent, prompt, name: kind, provider: PROVIDER });
     console.log(`[${t.status}] ${kind} → ${agent} (${t.id})`);
     console.log(t.status === 'done' ? t.output : `erro: ${t.error}`);
     if (t.status !== 'done') process.exitCode = 1;
@@ -93,7 +97,7 @@ try {
     const file = args[1];
     if (!file) throw new Error('uso: tessera pipeline <arquivo.json>');
     const def = loadPipeline(resolve(file));
-    const results = runPipeline({ root: resolve(value('--root') ?? process.cwd()), steps: def.steps, agentId: value('--agent-id') });
+    const results = runPipeline({ root: resolve(value('--root') ?? process.cwd()), steps: def.steps, agentId: value('--agent-id'), provider: PROVIDER });
     for (const t of results) console.log(`[${t.status}] ${t.name} (${t.agent}, ${t.id})`);
     const last = results.at(-1);
     if (last?.status === 'done') console.log('\n' + last.output);
@@ -101,7 +105,7 @@ try {
   } else if (cmd === 'fanout') {
     const prompt = value('--prompt');
     if (!prompt) throw new Error('uso: tessera fanout --prompt "..."');
-    const cfg = readFrameworkConfig(SRC).fanout ?? {};
+    const cfg = CFG.fanout ?? {};
     const agents = value('--agents') ?? (cfg.agents ?? ['claude', 'codex', 'openclaw', 'hermes']).join(',');
     const synth = value('--synth') ?? cfg.synthesizer ?? 'claude';
     const res = await fanout({
@@ -112,9 +116,14 @@ try {
       agentId: value('--agent-id'),
       deadlineMs: Number(value('--deadline') ?? cfg.deadlineSeconds ?? 120) * 1000,
       synthTimeoutMs: Number(value('--synth-timeout') ?? cfg.synthTimeoutSeconds ?? 180) * 1000,
+      quorum: Number(value('--quorum') ?? cfg.quorum ?? 0),
+      graceMs: Number(value('--grace') ?? cfg.graceSeconds ?? 15) * 1000,
+      maxCharsPerBranch: Number(cfg.maxCharsPerBranch ?? 6000),
+      roles: cfg.roles,
+      provider: PROVIDER,
     });
     for (const t of res.branches) console.log(`[${t.status}] ${t.agent} ${t.durationMs ?? '?'}ms (${t.id})${t.status !== 'done' ? `  — ${t.error.split('\n')[0]}` : ''}`);
-    console.log(`ramos: ${res.branchesMs}ms`);
+    console.log(`ramos: ${res.branchesMs}ms  provedor: ${PROVIDER ? PROVIDER.name : 'próprio de cada agente'}`);
     if (res.final?.status === 'done') console.log(`\n=== resposta final (${synth}, ${res.totalMs}ms no total) ===\n` + res.final.output);
     else { console.log(`\nerro: ${res.error ?? res.final?.error ?? 'sem síntese'}`); process.exitCode = 1; }
   } else if (cmd === 'tasks') {

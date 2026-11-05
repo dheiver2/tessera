@@ -218,3 +218,116 @@ test('fanout: ramo lento estoura o prazo e a síntese segue com as respostas a t
     delete process.env.TESSERA_HERMES_CMD;
   }
 });
+
+import { buildCommand, loadProvider, capOutput, withRole } from '../src/bridge.mjs';
+
+const PROV = {
+  name: 'mangaba-router', baseUrl: 'https://router.test/v1', keyEnv: 'TESSERA_TEST_KEY', key: 'k-123',
+  hermesProvider: 'mangaba-router', contextTokens: 65536,
+  models: { claude: 'm-claude', codex: 'm-codex', openclaw: 'router/m-oc', hermes: 'm-hermes' },
+};
+
+test('claude via provedor: prompt por stdin, sem ferramentas, base Anthropic sem /v1', () => {
+  const c = buildCommand('claude', 'oi', { provider: PROV });
+  assert.deepEqual(c.args, ['-p', '--tools', '']);
+  assert.equal(c.input, 'oi');
+  assert.equal(c.env.ANTHROPIC_BASE_URL, 'https://router.test');
+  assert.equal(c.env.ANTHROPIC_AUTH_TOKEN, 'k-123');
+  assert.equal(c.env.ANTHROPIC_MODEL, 'm-claude');
+  assert.equal(c.env.CLAUDE_CODE_MAX_CONTEXT_TOKENS, '65536');
+});
+
+test('codex via provedor: model_provider por -c, sem tocar no config.toml', () => {
+  const c = buildCommand('codex', 'oi', { provider: PROV });
+  assert.ok(c.args.includes('model_provider=tessera'));
+  assert.ok(c.args.includes('model_providers.tessera.base_url="https://router.test/v1"'));
+  assert.ok(c.args.includes('model_providers.tessera.env_key="TESSERA_TEST_KEY"'));
+  assert.equal(c.args.at(-1), 'oi');
+  assert.equal(c.env.TESSERA_TEST_KEY, 'k-123');
+});
+
+test('openclaw: sessão própria por chamada e modelo do provedor', () => {
+  const a = buildCommand('openclaw', 'oi', { provider: PROV, taskId: 'a1' });
+  const b = buildCommand('openclaw', 'oi', { provider: PROV, taskId: 'b2' });
+  const sid = (c) => c.args[c.args.indexOf('--session-id') + 1];
+  assert.notEqual(sid(a), sid(b));
+  assert.equal(a.args[a.args.indexOf('--model') + 1], 'router/m-oc');
+});
+
+test('hermes: provedor nomeado e modo silencioso', () => {
+  const c = buildCommand('hermes', 'oi', { provider: PROV });
+  assert.deepEqual(c.args, ['chat', '-Q', '--provider', 'mangaba-router', '-m', 'm-hermes', '-q', 'oi']);
+});
+
+test('sem provedor: comandos próprios de cada agente, sem env extra', () => {
+  assert.deepEqual(buildCommand('codex', 'x').args, ['exec', '--skip-git-repo-check', 'x']);
+  assert.deepEqual(buildCommand('claude', 'x').env, {});
+});
+
+test('loadProvider: env tem prioridade; arquivo como reserva; null sem chave', () => {
+  const dir = fresh();
+  const file = join(dir, 'k');
+  writeFileSync(file, 'do-arquivo\n');
+  const cfg = { baseUrl: 'https://r/v1/', keyEnv: 'TESSERA_TEST_KEY2', keyFile: file };
+  assert.equal(loadProvider(cfg).key, 'do-arquivo');
+  assert.equal(loadProvider(cfg).baseUrl, 'https://r/v1');
+  process.env.TESSERA_TEST_KEY2 = 'do-env';
+  try { assert.equal(loadProvider(cfg).key, 'do-env'); } finally { delete process.env.TESSERA_TEST_KEY2; }
+  assert.equal(loadProvider({ baseUrl: 'https://r', keyEnv: 'NADA_AQUI', keyFile: join(dir, 'nao') }), null);
+});
+
+test('quórum: com 2 respostas, o ramo lento é cancelado após a tolerância', async () => {
+  const fake = resolve('test', 'fake-agent.mjs');
+  const root = fresh();
+  process.env.TESSERA_CODEX_CMD = `node ${fake}`;
+  process.env.TESSERA_CLAUDE_CMD = `node ${fake}`;
+  process.env.TESSERA_HERMES_CMD = 'node -e setTimeout(()=>{},60000) #';
+  try {
+    const t0 = Date.now();
+    const res = await fanout({ root, prompt: 'p', agents: ['codex', 'claude', 'hermes'], synthesizer: 'claude', quorum: 2, graceMs: 300, deadlineMs: 30_000 });
+    const elapsed = Date.now() - t0;
+    assert.equal(res.branches.find((t) => t.agent === 'hermes').status, 'cancelled');
+    assert.equal(res.final.status, 'done');
+    assert.ok(elapsed < 8000, `quórum não cortou a espera: ${elapsed}ms`);
+  } finally {
+    delete process.env.TESSERA_CODEX_CMD;
+    delete process.env.TESSERA_CLAUDE_CMD;
+    delete process.env.TESSERA_HERMES_CMD;
+  }
+});
+
+test('uma só resposta válida: devolve direto, sem gastar uma síntese', async () => {
+  const fake = resolve('test', 'fake-agent.mjs');
+  const root = fresh();
+  process.env.TESSERA_CODEX_CMD = `node ${fake}`;
+  process.env.TESSERA_HERMES_CMD = 'node -e process.exit(1) #';
+  try {
+    const res = await fanout({ root, prompt: 'p', agents: ['codex', 'hermes'], synthesizer: 'claude' });
+    assert.equal(res.final.synthesized, false);
+    assert.equal(res.final.agent, 'codex');
+    assert.equal(listTasks(root).filter((t) => t.name === 'sintese').length, 0);
+  } finally {
+    delete process.env.TESSERA_CODEX_CMD;
+    delete process.env.TESSERA_HERMES_CMD;
+  }
+});
+
+test('papéis entram no prompt e respostas longas são cortadas antes da síntese', () => {
+  assert.match(withRole('tarefa', 'Foque em X'), /\[Seu foco nesta tarefa\] Foque em X$/);
+  assert.equal(withRole('tarefa', undefined), 'tarefa');
+  const cut = capOutput('a'.repeat(100), 10);
+  assert.ok(cut.startsWith('aaaaaaaaaa\n[… 90 caracteres cortados'));
+  assert.equal(capOutput('curto', 10), 'curto');
+});
+
+test('override em JSON aceita argumento com espaço', async () => {
+  const fake = resolve('test', 'fake-agent.mjs');
+  const root = fresh();
+  process.env.TESSERA_CODEX_CMD = JSON.stringify(['node', fake]);
+  try {
+    const res = await fanout({ root, prompt: 'com espaço', agents: ['codex'], synthesizer: null });
+    assert.equal(res.branches[0].output, 'FAKE: com espaço\n\n[Seu foco nesta tarefa] Foque na solução concreta: código, comandos e passos executáveis.');
+  } finally {
+    delete process.env.TESSERA_CODEX_CMD;
+  }
+});

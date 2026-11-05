@@ -1,7 +1,12 @@
 {
   "name": "tessera",
   "version": "0.1.0",
-  "targets": ["claude", "codex", "openclaw", "hermes"],
+  "targets": [
+    "claude",
+    "codex",
+    "openclaw",
+    "hermes"
+  ],
   "routing": {
     "codigo": "codex",
     "revisao": "claude",
@@ -9,9 +14,31 @@
     "automacao": "openclaw"
   },
   "fanout": {
-    "agents": ["claude", "codex", "openclaw", "hermes"],
+    "agents": [
+      "claude",
+      "codex",
+      "openclaw",
+      "hermes"
+    ],
     "synthesizer": "claude",
     "deadlineSeconds": 120,
-    "synthTimeoutSeconds": 180
+    "synthTimeoutSeconds": 180,
+    "quorum": 2,
+    "graceSeconds": 15,
+    "maxCharsPerBranch": 6000
+  },
+  "provider": {
+    "name": "mangaba-router",
+    "baseUrl": "https://mangabarouter.store/v1",
+    "keyEnv": "MANGABA_ROUTER_KEY",
+    "keyFile": "~/.tessera/router.key",
+    "hermesProvider": "mangaba-router",
+    "contextTokens": 65536,
+    "models": {
+      "claude": "mangaba-flash",
+      "codex": "mangaba-coder",
+      "openclaw": "router/mangaba-coder",
+      "hermes": "mangaba-flash"
+    }
   }
 }

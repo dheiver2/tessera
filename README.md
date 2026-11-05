@@ -193,6 +193,30 @@ A nota de uso indica que, com as ferramentas padrão do Claude Code, o prompt in
 
 O OpenClaw exige um agente. Passe `--agent-id main` (ou o id que você configurou) em qualquer comando.
 
+### Provedor compartilhado (Mangaba Router)
+
+Com `provider` em `framework.json`, os quatro agentes usam o mesmo roteador, sem login próprio e sem alterar a configuração global de cada um:
+
+| Agente | Como é apontado ao roteador |
+|---|---|
+| Claude Code | variáveis `ANTHROPIC_BASE_URL` e `ANTHROPIC_AUTH_TOKEN` só no processo; prompt por stdin; `--tools ""` |
+| Codex | `-c model_provider=tessera` e `-c model_providers.tessera.*` na linha de comando |
+| OpenClaw | `--model router/<modelo>` e uma `--session-id` nova por chamada |
+| Hermes | `--provider mangaba-router`, que lê a chave de `MANGABA_ROUTER_KEY` |
+
+A chave vem de `MANGABA_ROUTER_KEY` ou, na falta dela, de `~/.tessera/router.key` (fora do repositório, permissão 600). Ela nunca é gravada no repositório. Para usar a configuração própria de cada agente, passe `--no-provider`.
+
+OpenClaw e Hermes precisam, uma vez, do provedor do roteador na configuração deles: chave válida e modelos permitidos em `openclaw.json`, e o bloco `providers.mangaba-router` no `config.yaml` do Hermes.
+
+### Otimizações do fanout
+
+- **Papéis:** cada agente recebe o mesmo pedido mais um foco (Codex: solução concreta; Claude: correção e riscos; OpenClaw: operação; Hermes: clareza). Respostas diferentes dão mais material à síntese do que quatro respostas iguais. Os papéis podem ser trocados em `fanout.roles`.
+- **Quórum:** com `--quorum 2`, quando dois agentes respondem bem, os demais têm `--grace` segundos (15 por padrão) para chegar e depois são cancelados. O agente mais lento deixa de ditar a latência.
+- **Sem síntese desnecessária:** se só um agente responder, a resposta dele volta direto.
+- **Limite de texto:** cada resposta é cortada em `fanout.maxCharsPerBranch` caracteres (6000) antes da síntese, o que reduz o tempo de leitura do prompt.
+
+O plano para o Tessera superar cada agente sozinho, com medição antes de otimizar, está em [docs/PLANO.md](docs/PLANO.md).
+
 ---
 
 ## Diagnóstico
