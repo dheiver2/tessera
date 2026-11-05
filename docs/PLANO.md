@@ -81,8 +81,15 @@ Troca "um modelo escolhe" por "o resultado se prova".
 - Bug corrigido: o prazo não matava os subprocessos dos agentes, e houve ramos de 499 s e 1080 s.
 - Resultado bruto: `evals/resultados/2026-11-05T11-40-06-767Z.json`.
 
+**Conjunto difícil, rodada 2** (prazo corrigido): Tessera 26/33 = OpenClaw 26/33, o melhor agente sozinho. Claude 25, Codex 21, Hermes 11 (estourou 120 s em 21 tarefas).
+- p95 do Tessera caiu de 302 s para 122 s (2,2× o melhor agente; meta 1,5×).
+- Das 7 derrotas: 3 sem ramo no prazo (em 2, um agente sozinho respondeu: disputa no roteador), 1 verificação aceitou solução que falha nos testes privados, 1 maioria errada (parseint, igual à rodada 1), 1 síntese errada com dois ramos certos, 1 correção que falhou.
+- O melhor agente sozinho mudou entre rodadas (Codex 25→21, OpenClaw 21→26): ruído de 4 a 5 tarefas.
+- Resultado bruto: `evals/resultados/2026-11-05T14-24-27-567Z.json`.
+
 **Falta:**
-- Rodada 2 do conjunto difícil com a correção, depois 3 sementes.
+- 3 sementes do conjunto difícil.
+- Limitar chamadas simultâneas ao roteador ou dar prazo maior no fanout que no modo solo.
 - git worktrees para agentes que editam arquivos.
 
 ## Fase 2: crítica cruzada só quando há divergência

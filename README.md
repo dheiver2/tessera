@@ -45,7 +45,7 @@ O Tessera **não substitui** os agentes: ele chama os CLIs que já estão instal
 ## 🚦 Estado atual
 
 > [!IMPORTANT]
-> **No conjunto difícil, o Tessera empata com o melhor agente sozinho (25/33) e lidera em código (9/14 contra 7/14).** A rodada teve um bug de prazo, já corrigido. Uma segunda rodada está em andamento para separar o efeito do bug do desempenho do método.
+> **No conjunto difícil, o Tessera empatou com o melhor agente sozinho nas duas rodadas (25/33 e 26/33).** Com o prazo corrigido, o p95 do Tessera caiu de 302 s para 122 s. O melhor agente sozinho mudou de uma rodada para outra (Codex na 1, OpenClaw na 2), então só 3 sementes vão dizer se há vantagem real.
 
 | Parte | Situação | Evidência |
 |:---|:---:|:---|
@@ -55,9 +55,9 @@ O Tessera **não substitui** os agentes: ele chama os CLIs que já estão instal
 | Prazo por ramo (mata o grupo de processos) | ✅ | Teste de regressão: um neto que dorme 30 s já não segura o fanout |
 | Mangaba Router como provedor único | ✅ | Os quatro agentes rodam por ele, sem login próprio |
 | Claude Code · Codex · OpenClaw | ✅ | `mangaba-agente-rapido`, respostas em 6 a 36 s |
-| Hermes | ⚠️ | Funciona, mas é o mais lento e o que mais estoura o prazo |
-| **Tessera melhor que cada agente** | 🟨 **Empate** | 25/33 = Codex. Ver [resultados](#-resultados-medidos) |
-| Latência p95 ≤ 1,5× o melhor agente | ❌ | Ainda 2,5× no conjunto difícil |
+| Hermes | ⚠️ | Funciona, mas estourou o prazo de 120 s em 21 de 33 tarefas na rodada 2 |
+| **Tessera melhor que cada agente** | 🟨 **Empate** | 26/33 = OpenClaw (rodada 2). Ver [resultados](#-resultados-medidos) |
+| Latência p95 ≤ 1,5× o melhor agente | ❌ | 2,2× no conjunto difícil (era 3,6× antes da correção do prazo) |
 
 ---
 
@@ -319,7 +319,58 @@ node bin/tessera.mjs eval --limit 5 --kind code --modes openclaw,tessera
 
 > Todos os agentes com `mangaba-agente-rapido` pelo Mangaba Router, síntese pelo Claude, uma rodada por conjunto. Diferenças de uma tarefa estão dentro do ruído.
 
-### 🔥 Conjunto difícil · rodada 1 · 05/nov/2026
+### 🔥 Conjunto difícil · rodada 2 · prazo corrigido · 05/nov/2026
+
+| Modo | Acerto | Respondeu | p50 | p95 | 💻 Código | ❓ Perguntas | 🔍 Revisão |
+|:---|:---:|:---:|---:|---:|:---:|:---:|:---:|
+| claude | 25/33 · 75,8% | **30/33** | 12,0 s | 120,2 s | **9/14** | 9/11 | 7/8 |
+| codex | 21/33 · 63,6% | 28/33 | 12,2 s | 120,0 s | 5/14 | 8/11 | **8/8** |
+| **openclaw** | **26/33 · 78,8%** | 28/33 | **11,5 s** | **54,3 s** | **9/14** | **10/11** | 7/8 |
+| hermes | 11/33 · 33,3% | 12/33 | 121,7 s | 122,5 s | 4/14 | 2/11 | 5/8 |
+| 🧩 **tessera** | **26/33 · 78,8%** | **30/33** | 37,6 s | 121,8 s | **9/14** | 9/11 | **8/8** |
+
+Oráculo (pelo menos um agente sozinho acertou): 31/33. Algum ramo do fanout acertou: 27/33.
+
+**Como o Tessera decidiu:**
+
+| Caminho | Tarefas | Acerto | p50 |
+|:---|:---:|:---:|---:|
+| ✅ verificação | 10 | 9/10 | 34,5 s |
+| 🧪 síntese | 11 | **10/11** | 40,3 s |
+| 🗳️ maioria | 8 | 7/8 | 12,9 s |
+| 🔧 correção pela síntese | 1 | 0/1 | 192,9 s |
+| ⛔ sem resposta | 3 | 0/3 | 121,8 s |
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**✅ O que a correção do prazo resolveu**
+
+- p95 do Tessera: **302 s → 122 s**; p50: 48 s → 38 s
+- Nenhum ramo passou de 120 s
+- Tessera ganhou do OpenClaw em `hard-atoi` e `hard-review-map-parseint`
+
+</td>
+<td width="50%" valign="top">
+
+**💥 As 7 derrotas do Tessera**
+
+- ⛔ **3 tarefas** sem nenhum ramo no prazo. Em duas delas um agente sozinho respondeu: com quatro chamadas ao mesmo tempo, o roteador fica mais lento
+- ✅ `hard-semver`: a verificação aceitou uma solução que passou nos testes públicos e falhou nos privados (6/8)
+- 🗳️ `hard-qa-parseint`: maioria errada de novo, 2 × "0" (o mesmo erro da rodada 1)
+- 🧪 `hard-qa-coercao`: a síntese errou, embora dois ramos estivessem certos
+- 🔧 `hard-inverter-grafemas`: a correção não consertou
+
+</td>
+</tr>
+</table>
+
+> [!NOTE]
+> **Uma rodada não basta.** Entre as rodadas 1 e 2, o Codex caiu de 25 para 21 e o OpenClaw subiu de 21 para 26, com as mesmas tarefas. Esse ruído de 4 a 5 tarefas é maior que qualquer vantagem medida até aqui. Por isso o próximo passo é rodar 3 sementes.
+
+<details>
+<summary><b>🔥 Conjunto difícil · rodada 1 · com o bug do prazo</b></summary>
 
 | Modo | Acerto | Respondeu | p50 | p95 | 💻 Código | ❓ Perguntas | 🔍 Revisão |
 |:---|:---:|:---:|---:|---:|:---:|:---:|:---:|
@@ -368,7 +419,9 @@ node bin/tessera.mjs eval --limit 5 --kind code --modes openclaw,tessera
 </table>
 
 > [!WARNING]
-> **Bug encontrado nesta rodada, já corrigido.** O prazo de 120 s não era cumprido: só o processo do agente recebia o sinal, e os subprocessos dele seguravam a saída. Houve ramos de 499 s e de 1080 s, o que inflou o p95 de todos os modos. A rodada 2, com a correção, está em andamento.
+> **Bug encontrado nesta rodada, corrigido na rodada 2.** O prazo de 120 s não era cumprido: só o processo do agente recebia o sinal, e os subprocessos dele seguravam a saída. Houve ramos de 499 s e de 1080 s, o que inflou o p95 de todos os modos.
+
+</details>
 
 <details>
 <summary><b>📜 Histórico: Fase 0 e Fase 1 no conjunto original (34 tarefas)</b></summary>
@@ -493,7 +546,8 @@ node bin/tessera.mjs tasks
 |:---:|:---|:---|
 | ✅ | **Fase 0**: medir antes de otimizar (`eval`) | Concluída |
 | ✅ | **Fase 1**: seleção por verificação e maioria | Implementada, sem worktrees |
-| 🔄 | Conjunto difícil, rodada 2 com o prazo corrigido, depois 3 sementes | Em andamento |
+| ✅ | Conjunto difícil, rodada 2 com o prazo corrigido | Concluída: empate, 26/33 |
+| ⏭️ | Conjunto difícil com 3 sementes | Próximo |
 | ⏭️ | Maioria mais exigente (não aceitar empate 2 × 2) e checagem da resposta única | Próximo |
 | ⏭️ | **Fase 2**: concordância em texto livre sem síntese | Planejada |
 | ⏭️ | **Fase 3**: roteamento aprendido com os dados do eval | Planejada |
