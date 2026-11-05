@@ -98,6 +98,19 @@ export function grade(task, text) {
   return { pass: false, detail: `tipo desconhecido: ${task.kind}` };
 }
 
+// Fase 1: o Tessera só vê os testes públicos (a primeira metade, arredondada para cima),
+// como os testes que existem num projeto. A nota final usa todos, inclusive os ocultos,
+// para a verificação não virar cola.
+export function publicTests(tests) {
+  return tests.slice(0, Math.ceil(tests.length / 2));
+}
+
+export function verifierFor(task) {
+  if (task.kind !== 'code' || !task.tests?.length) return null;
+  const tests = publicTests(task.tests);
+  return (text) => runCodeTests(extractCode(text), tests);
+}
+
 // ---------------------------------------------------------------------------
 // Execução
 //
@@ -125,15 +138,21 @@ export async function runEval({
     }
 
     if (modes.includes('tessera')) {
-      jobs.push(() => fanout({ root, prompt, agents, provider, ...fanoutOpts })
+      const verify = verifierFor(task);
+      jobs.push(() => fanout({ root, prompt, agents, provider, ...fanoutOpts, ...(verify ? { verify } : {}) })
         .then((r) => {
           const text = r.final?.status === 'done' ? r.final.output : '';
           return {
             taskId: task.id, kind: task.kind, mode: 'tessera',
             status: r.final?.status ?? 'failed', error: r.error ?? r.final?.error ?? '',
-            durationMs: r.totalMs ?? r.branchesMs, output: text,
+            durationMs: r.totalMs ?? r.branchesMs, branchesMs: r.branchesMs, output: text,
             synthesized: r.final?.synthesized !== false && Boolean(r.final),
-            branches: r.branches.map((b) => ({ agent: b.agent, status: b.status, durationMs: b.durationMs })),
+            selectedBy: r.final?.selectedBy ?? null,
+            branches: r.branches.map((b) => ({
+              agent: b.agent, status: b.status, durationMs: b.durationMs, dismissed: Boolean(b.dismissed),
+              output: b.output ?? '', verify: b.verify ?? null,
+              pass: b.status === 'done' ? grade(task, b.output).pass : false,
+            })),
             ...grade(task, text),
           };
         }));
@@ -207,7 +226,27 @@ export function summarize(results) {
     };
   }
 
-  return { tasks: taskIds.length, modes, byMode, bestSolo, oracle, oracleAccuracy: taskIds.length ? oracle / taskIds.length : 0, comparison };
+  // Como o Tessera decidiu cada tarefa, e quanto acertou em cada caminho.
+  let decisions = null;
+  const tess = results.filter((r) => r.mode === 'tessera');
+  if (tess.length) {
+    decisions = {};
+    for (const r of tess) {
+      const k = r.selectedBy ?? (r.synthesized ? 'synthesis' : 'none');
+      decisions[k] ??= { total: 0, passed: 0, p50Ms: null, _ms: [] };
+      decisions[k].total += 1;
+      if (r.pass) decisions[k].passed += 1;
+      decisions[k]._ms.push(r.durationMs);
+    }
+    for (const d of Object.values(decisions)) { d.p50Ms = percentile(d._ms, 0.5); delete d._ms; }
+  }
+  // Algum ramo do próprio fanout acertou (teto da seleção dentro do Tessera).
+  const branchOracle = tess.filter((r) => r.branches?.some((b) => b.pass)).length;
+
+  return {
+    tasks: taskIds.length, modes, byMode, bestSolo, oracle, oracleAccuracy: taskIds.length ? oracle / taskIds.length : 0,
+    comparison, decisions, branchOracle: tess.length ? branchOracle : null,
+  };
 }
 
 const pct = (x) => `${(x * 100).toFixed(1)}%`;
@@ -235,6 +274,14 @@ export function renderMarkdown(summary, meta = {}) {
     lines.push(`- Tessera acertou e ${c.bestSolo} errou: ${c.wins.length ? c.wins.join(', ') : 'nenhuma'}.`);
     lines.push(`- Tessera errou e ${c.bestSolo} acertou: ${c.losses.length ? c.losses.join(', ') : 'nenhuma'}.`);
     lines.push('', `**Critério de sucesso:** acerto maior que o melhor agente: ${c.beatsBestSolo ? 'sim' : 'não'}. Latência dentro da meta: ${c.latencyWithinTarget == null ? '—' : c.latencyWithinTarget ? 'sim' : 'não'}.`);
+  }
+  if (summary.decisions) {
+    const label = { verify: 'verificação (testes públicos)', vote: 'maioria', single: 'resposta única', synthesis: 'síntese', repair: 'correção pela síntese', none: 'sem resposta' };
+    lines.push('', '## Como o Tessera decidiu', '', '| Caminho | Tarefas | Acerto | p50 |', '|---|---|---|---|');
+    for (const [k, d] of Object.entries(summary.decisions)) {
+      lines.push(`| ${label[k] ?? k} | ${d.total} | ${d.passed}/${d.total} | ${sec(d.p50Ms)} |`);
+    }
+    if (summary.branchOracle != null) lines.push('', `Algum ramo do fanout acertou: ${summary.branchOracle}/${summary.tasks}.`);
   }
   return lines.join('\n') + '\n';
 }

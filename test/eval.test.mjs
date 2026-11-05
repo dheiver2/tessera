@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import {
   loadTasks, grade, extractCode, runCodeTests, normalize, summarize, percentile, renderMarkdown, runEval, promptFor,
+  publicTests, verifierFor,
 } from '../src/eval.mjs';
 
 const TASKS = resolve('evals', 'tasks.json');
@@ -141,6 +142,35 @@ test('summarize: acerto por modo, melhor agente, oráculo, vitórias e derrotas'
   assert.match(renderMarkdown(s, { date: 'x' }), /Tessera: \*\*66\.7%\*\*/);
 });
 
+test('publicTests: metade arredondada para cima; verificador só existe em código', () => {
+  assert.equal(publicTests([1, 2, 3, 4, 5]).length, 3);
+  assert.equal(publicTests([1, 2]).length, 1);
+  assert.equal(verifierFor(byId['qa-fifo']), null);
+  const v = verifierFor(byId['code-dedup']);
+  assert.equal(v(fence(REFERENCE_CODE['code-dedup'])).pass, true);
+});
+
+test('runEval: sem ramo verificado, a síntese recebe as falhas e é verificada de novo', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'tessera-eval-repair-'));
+  const bad = JSON.stringify(['node', '-e', 'console.log("```js\\nfunction solve(a){return a}\\n```")', '--']);
+  const fix = JSON.stringify(['node', '-e', 'console.log("```js\\nfunction solve(a){return [...new Set(a)]}\\n```")', '--']);
+  process.env.TESSERA_CODEX_CMD = bad;
+  process.env.TESSERA_HERMES_CMD = bad;
+  process.env.TESSERA_CLAUDE_CMD = fix;
+  try {
+    const [r] = await runEval({
+      root, tasks: [byId['code-dedup']], agents: ['codex', 'hermes'], modes: ['tessera'],
+      fanoutOpts: { synthesizer: 'claude', maxWaitAfterFirstMs: 0 },
+    });
+    assert.equal(r.selectedBy, 'repair');
+    assert.equal(r.pass, true);
+  } finally {
+    delete process.env.TESSERA_CODEX_CMD;
+    delete process.env.TESSERA_HERMES_CMD;
+    delete process.env.TESSERA_CLAUDE_CMD;
+  }
+});
+
 test('runEval de ponta a ponta com agentes falsos', async () => {
   const root = mkdtempSync(join(tmpdir(), 'tessera-eval-run-'));
   const good = JSON.stringify(['node', '-e', 'console.log("```js\\nfunction solve(a){return [...new Set(a)]}\\n```")', '--']);
@@ -155,10 +185,13 @@ test('runEval de ponta a ponta com agentes falsos', async () => {
     const by = Object.fromEntries(results.map((x) => [x.mode, x]));
     assert.equal(by.codex.pass, true);
     assert.equal(by.claude.pass, false);
-    // O sintetizador falso responde "não sei": o Tessera erra mesmo com um ramo certo.
-    // É o caso que a Fase 1 (seleção por verificação) precisa resolver.
-    assert.equal(by.tessera.pass, false);
+    // Fase 1: o ramo do codex passa nos testes públicos e volta como está, sem passar
+    // pelo sintetizador falso (que responderia "não sei").
+    assert.equal(by.tessera.pass, true);
+    assert.equal(by.tessera.selectedBy, 'verify');
+    assert.equal(by.tessera.synthesized, false);
     assert.equal(by.tessera.branches.length, 2);
+    assert.equal(by.tessera.branches.find((b) => b.agent === 'codex').pass, true);
   } finally {
     delete process.env.TESSERA_CODEX_CMD;
     delete process.env.TESSERA_CLAUDE_CMD;

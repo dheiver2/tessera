@@ -3,10 +3,10 @@ import { runSync, doctor, SOURCE_DEFAULT } from '../src/sync.mjs';
 import { adapters } from '../src/adapters/index.mjs';
 import { spawnSync } from 'node:child_process';
 import { resolve, join } from 'node:path';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { loadTasks, runEval, summarize, saveResults, renderMarkdown } from '../src/eval.mjs';
-import { delegate, runPipeline, loadPipeline, listTasks, routeFor, fanout, loadProvider } from '../src/bridge.mjs';
+import { delegate, runPipeline, loadPipeline, listTasks, routeFor, fanout, loadProvider, commandVerifier, voteKey, DEFAULT_ROLES } from '../src/bridge.mjs';
 import { readFrameworkConfig, SOURCE_DEFAULT as SRC } from '../src/sync.mjs';
 
 const args = process.argv.slice(2);
@@ -30,10 +30,10 @@ Uso:
   tessera pipeline <arquivo.json> [--root DIR]   encadeia agentes ({{previous}} = saída do passo anterior)
   tessera do --kind <codigo|revisao|resumo|automacao> --prompt "..." [--root DIR]   escolhe o agente mais forte (framework.json > routing)
   tessera fanout --prompt "..." [--agents ...] [--synth claude] [--deadline 120] [--synth-timeout 180]
-                 [--quorum 2] [--grace 15] [--max-wait 30] [--no-provider] [--root DIR]
-                                                 todos ao mesmo tempo; um sintetiza a melhor resposta
+                 [--quorum 2] [--grace 15] [--max-wait 30] [--verify "cmd"] [--no-vote] [--roles] [--no-provider] [--root DIR]
+                                                 todos ao mesmo tempo; vence a resposta verificada ou a maioria; síntese só no impasse
   tessera tasks [--root DIR]                     histórico do barramento
-  tessera eval [--limit N] [--kind code,qa,review] [--ids a,b] [--agents ...] [--modes solo,tessera] [--parallel]
+  tessera eval [--limit N] [--kind code,qa,review] [--ids a,b] [--agents ...] [--modes solo,tessera] [--parallel] [--baseline arq.json]
                                                  mede cada agente sozinho contra o Tessera
 
   --target   alvos (padrão: framework.json)
@@ -125,14 +125,27 @@ try {
       graceMs: Number(value('--grace') ?? cfg.graceSeconds ?? 15) * 1000,
       maxCharsPerBranch: Number(cfg.maxCharsPerBranch ?? 6000),
       maxWaitAfterFirstMs: Number(value('--max-wait') ?? cfg.maxWaitAfterFirstSeconds ?? 30) * 1000,
-      roles: cfg.roles,
+      roles: flag('--roles') ? (cfg.roles ?? DEFAULT_ROLES) : null,
       provider: PROVIDER,
+      verify: value('--verify') ? commandVerifier(value('--verify'), { cwd: resolve(value('--root') ?? process.cwd()) }) : null,
+      vote: flag('--no-vote') ? null : voteKey,
     });
-    for (const t of res.branches) console.log(`[${t.status}] ${t.agent} ${t.durationMs ?? '?'}ms (${t.id})${t.status !== 'done' ? `  — ${t.error.split('\n')[0]}` : ''}`);
+    for (const t of res.branches) {
+      const v = t.verify ? `  verificação: ${t.verify.pass ? 'passou' : 'falhou'}` : '';
+      const why = t.dismissed ? '  — dispensado (já havia resposta escolhida)' : t.status !== 'done' ? `  — ${t.error.split('\n')[0]}` : '';
+      console.log(`[${t.status}] ${t.agent} ${t.durationMs ?? '?'}ms (${t.id})${v}${why}`);
+    }
     console.log(`ramos: ${res.branchesMs}ms  provedor: ${PROVIDER ? PROVIDER.name : 'próprio de cada agente'}`);
     if (res.final?.status === 'done') {
-      const who = res.final.synthesized === false ? `só ${res.final.agent} respondeu, sem síntese` : `síntese por ${synth}`;
+      const who = {
+        verify: `${res.final.agent} passou na verificação, sem síntese`,
+        vote: `maioria (${res.final.votes?.join(', ')}), sem síntese`,
+        single: `só ${res.final.agent} respondeu, sem síntese`,
+        repair: `correção por ${synth}${res.final.verify ? `; verificação ${res.final.verify.pass ? 'passou' : 'falhou'}` : ''}`,
+        synthesis: `síntese por ${synth}`,
+      }[res.final.selectedBy] ?? `síntese por ${synth}`;
       console.log(`\n=== resposta final (${who}, ${res.totalMs}ms no total) ===\n` + res.final.output);
+      if (res.final.verify && !res.final.verify.pass) process.exitCode = 2;
     }
     else { console.log(`\nerro: ${res.error ?? res.final?.error ?? 'sem síntese'}`); process.exitCode = 1; }
   } else if (cmd === 'eval') {
@@ -159,12 +172,21 @@ try {
         graceMs: Number(cfg.graceSeconds ?? 15) * 1000,
         maxWaitAfterFirstMs: Number(cfg.maxWaitAfterFirstSeconds ?? 30) * 1000,
         maxCharsPerBranch: Number(cfg.maxCharsPerBranch ?? 6000),
-        roles: cfg.roles,
+        roles: flag('--roles') ? (cfg.roles ?? DEFAULT_ROLES) : null,
       },
       onResult: (r) => console.log(`  ${r.pass ? '✓' : '✗'} ${r.taskId.padEnd(24)} ${r.mode.padEnd(9)} ${((r.durationMs ?? 0) / 1000).toFixed(1).padStart(6)}s  ${r.detail}${r.status !== 'done' ? `  [${r.status}: ${(r.error ?? '').slice(0, 80)}]` : ''}`),
     });
+    // --baseline: reaproveita os resultados de agentes sozinhos de uma rodada anterior
+    // (mesmas tarefas), para medir só o que mudou no Tessera.
+    const baseline = value('--baseline');
+    if (baseline) {
+      const ids = new Set(tasks.map((t) => t.id));
+      const prev = JSON.parse(readFileSync(resolve(baseline), 'utf8')).results
+        .filter((r) => r.mode !== 'tessera' && ids.has(r.taskId) && !results.some((x) => x.mode === r.mode));
+      results.unshift(...prev);
+    }
     const summary = summarize(results);
-    const meta = { date, provider: PROVIDER?.name ?? null, models: PROVIDER ? JSON.stringify(PROVIDER.models) : null, agents, modes, parallel: flag('--parallel'), tasks: tasks.map((t) => t.id) };
+    const meta = { date, provider: PROVIDER?.name ?? null, models: PROVIDER ? JSON.stringify(PROVIDER.models) : null, agents, modes, parallel: flag('--parallel'), tasks: tasks.map((t) => t.id), baseline: baseline ?? null };
     const files = saveResults(join(SRC, 'evals', 'resultados'), { results, summary, meta });
     console.log('\n' + renderMarkdown(summary, meta));
     console.log(`resultados: ${files.md}`);

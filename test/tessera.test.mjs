@@ -170,7 +170,7 @@ test('fanout roda agentes em paralelo e sintetiza; falha de um não derruba o re
   process.env.TESSERA_CODEX_CMD = `node ${fake}`;
   process.env.TESSERA_HERMES_CMD = 'node -e process.exit(2) #';
   try {
-    const res = await fanout({ root, prompt: 'pergunta', agents: ['codex', 'claude', 'hermes'], synthesizer: 'claude' });
+    const res = await fanout({ root, prompt: 'pergunta', agents: ['codex', 'claude', 'hermes'], synthesizer: 'claude', vote: null });
     assert.equal(res.branches.length, 3);
     assert.equal(res.branches.filter((t) => t.status === 'done').length, 2);
     assert.equal(res.branches.find((t) => t.agent === 'hermes').status, 'failed');
@@ -182,6 +182,50 @@ test('fanout roda agentes em paralelo e sintetiza; falha de um não derruba o re
     delete process.env.TESSERA_CODEX_CMD;
     delete process.env.TESSERA_HERMES_CMD;
   }
+});
+
+test('Fase 1: maioria — duas respostas iguais voltam direto, sem síntese, e o lento é dispensado', async () => {
+  const root = fresh();
+  process.env.TESSERA_CODEX_CMD = 'node -e console.log("**Canberra**.") #';
+  process.env.TESSERA_OPENCLAW_CMD = 'node -e console.log("canberra") #';
+  process.env.TESSERA_HERMES_CMD = 'node -e setTimeout(()=>{},60000) #';
+  process.env.TESSERA_CLAUDE_CMD = 'node -e console.log("SINTESE") #';
+  try {
+    const t0 = Date.now();
+    const res = await fanout({ root, prompt: 'capital?', agents: ['codex', 'openclaw', 'hermes'], synthesizer: 'claude', maxWaitAfterFirstMs: 0 });
+    assert.equal(res.final.selectedBy, 'vote');
+    assert.equal(res.final.synthesized, false);
+    assert.deepEqual(new Set(res.final.votes), new Set(['codex', 'openclaw']));
+    assert.equal(res.branches.find((b) => b.agent === 'hermes').dismissed, true);
+    assert.ok(Date.now() - t0 < 10_000);
+  } finally {
+    for (const a of ['CODEX', 'OPENCLAW', 'HERMES', 'CLAUDE']) delete process.env[`TESSERA_${a}_CMD`];
+  }
+});
+
+test('Fase 1: verificação — a primeira resposta que passa vence, mesmo sendo minoria', async () => {
+  const root = fresh();
+  process.env.TESSERA_CODEX_CMD = 'node -e console.log("errado") #';
+  process.env.TESSERA_HERMES_CMD = 'node -e console.log("errado") #';
+  process.env.TESSERA_OPENCLAW_CMD = 'node -e setTimeout(()=>console.log("CERTO"),300) #';
+  process.env.TESSERA_CLAUDE_CMD = 'node -e console.log("SINTESE") #';
+  try {
+    const res = await fanout({
+      root, prompt: 'p', agents: ['codex', 'hermes', 'openclaw'], synthesizer: 'claude', maxWaitAfterFirstMs: 0,
+      verify: (text) => ({ pass: text.includes('CERTO'), detail: 'precisa de CERTO' }),
+    });
+    assert.equal(res.final.selectedBy, 'verify');
+    assert.equal(res.final.agent, 'openclaw');
+    assert.equal(res.branches.find((b) => b.agent === 'codex').verify.pass, false);
+  } finally {
+    for (const a of ['CODEX', 'OPENCLAW', 'HERMES', 'CLAUDE']) delete process.env[`TESSERA_${a}_CMD`];
+  }
+});
+
+test('Fase 1: verificador por comando lê a resposta no stdin', async () => {
+  const v = commandVerifier('grep -q CERTO');
+  assert.equal((await v('isto está CERTO')).pass, true);
+  assert.equal((await v('nada aqui')).pass, false);
 });
 
 test('fanout sem agente válido não sintetiza', async () => {
@@ -219,7 +263,7 @@ test('fanout: ramo lento estoura o prazo e a síntese segue com as respostas a t
   }
 });
 
-import { buildCommand, loadProvider, capOutput, withRole, extractError, cleanOutput } from '../src/bridge.mjs';
+import { buildCommand, loadProvider, capOutput, withRole, extractError, cleanOutput, commandVerifier } from '../src/bridge.mjs';
 
 const PROV = {
   name: 'mangaba-router', baseUrl: 'https://router.test/v1', keyEnv: 'TESSERA_TEST_KEY', key: 'k-123',
@@ -327,7 +371,7 @@ test('override em JSON aceita argumento com espaço', async () => {
   process.env.TESSERA_CODEX_CMD = JSON.stringify(['node', fake]);
   try {
     const res = await fanout({ root, prompt: 'com espaço', agents: ['codex'], synthesizer: null });
-    assert.equal(res.branches[0].output, 'FAKE: com espaço\n\n[Seu foco nesta tarefa] Foque na solução concreta: código, comandos e passos executáveis.');
+    assert.equal(res.branches[0].output, 'FAKE: com espaço');
   } finally {
     delete process.env.TESSERA_CODEX_CMD;
   }

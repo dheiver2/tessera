@@ -264,8 +264,9 @@ export async function delegateAsync({ root, agent, prompt, agentId, provider = n
   return task;
 }
 
-// Papéis padrão: o mesmo pedido, com foco no ponto forte de cada agente.
-// Respostas diversas dão mais material à síntese do que quatro respostas iguais.
+// Papéis opcionais (--roles): o mesmo pedido, com foco no ponto forte de cada agente.
+// Desligados por padrão desde a Fase 1: em respostas objetivas eles mudavam o formato
+// (texto extra, resposta errada) e impediam a maioria de se formar.
 export const DEFAULT_ROLES = {
   codex: 'Foque na solução concreta: código, comandos e passos executáveis.',
   claude: 'Foque em correção: riscos, casos de borda e o que pode estar errado.',
@@ -282,17 +283,51 @@ export function capOutput(text, maxChars) {
   return `${text.slice(0, maxChars)}\n[… ${text.length - maxChars} caracteres cortados pelo Tessera]`;
 }
 
-// Fan-out com quórum:
+// Chave de votação: a mesma resposta curta escrita de formas diferentes vira a mesma chave.
+// Respostas longas quase nunca coincidem, então a votação só decide respostas objetivas.
+export function voteKey(text) {
+  return (text ?? '')
+    .replace(/\*\*|__|`/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .replace(/[\s.!;:]+$/g, '')
+    .trim();
+}
+
+// Verificador por comando: a resposta vai pelo stdin; código de saída 0 = passou.
+export function commandVerifier(cmd, { timeoutMs = 60_000, cwd } = {}) {
+  return (text, agent) => new Promise((resolvePromise) => {
+    const child = spawn(cmd, { shell: true, cwd, env: { ...process.env, TESSERA_AGENT: agent ?? '' } });
+    let out = '';
+    const timer = setTimeout(() => child.kill('SIGKILL'), timeoutMs);
+    child.stdout.on('data', (d) => { out += d; });
+    child.stderr.on('data', (d) => { out += d; });
+    child.on('error', (e) => { clearTimeout(timer); resolvePromise({ pass: false, detail: e.message }); });
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      resolvePromise({ pass: code === 0, detail: code === 0 ? 'ok' : (out.trim().split('\n').slice(-5).join('\n') || `saiu com ${code}`) });
+    });
+    child.stdin.on('error', () => {});
+    child.stdin.end(text);
+  });
+}
+
+// Fan-out com seleção por verificação (Fase 1):
 // - Todos começam juntos. Cada ramo tem prazo próprio (deadlineMs).
+// - Com `verify`, cada resposta é verificada assim que chega. A primeira que passa
+//   encerra o fanout e volta como está: nada de reescrever uma resposta já provada.
+// - Sem verificação, `vote`: quando `voteQuorum` respostas coincidem (voteKey), essa volta direto.
+// - Só sem verificação aprovada e sem consenso entra a síntese. Com verificação, a síntese
+//   recebe as falhas para corrigir, e o resultado dela é verificado de novo.
 // - Quando `quorum` ramos terminam bem, os demais têm `graceMs` para chegar e depois são cancelados.
-// - Cada resposta é cortada em maxCharsPerBranch antes da síntese (menos prefill).
 // - Depois da primeira resposta boa, os demais têm no máximo maxWaitAfterFirstMs.
-// Pior caso: deadlineMs + synthTimeoutMs. Caso típico: tempo do quórum + graceMs + síntese.
+// - Cada resposta é cortada em maxCharsPerBranch antes da síntese (menos prefill).
 export async function fanout({
   root, prompt, agents, synthesizer, agentId, provider = null,
   deadlineMs = 120_000, synthTimeoutMs = 180_000,
-  quorum = 0, graceMs = 15_000, roles = DEFAULT_ROLES, maxCharsPerBranch = 6000,
+  quorum = 0, graceMs = 15_000, roles = null, maxCharsPerBranch = 6000,
   maxWaitAfterFirstMs = 30_000,
+  verify = null, vote = voteKey, voteQuorum = 2,
 }) {
   const started = Date.now();
   const controller = new AbortController();
@@ -300,12 +335,31 @@ export async function fanout({
   let okCount = 0;
   let graceTimer = null;
   let firstTimer = null;
+  let decided = null;
+  const votes = new Map();
 
   const branches = await Promise.all(agents.map(async (agent) => {
     const t = await delegateAsync({
       root, agent, agentId, provider, timeoutMs: deadlineMs, name: `fanout:${agent}`,
       prompt: withRole(prompt, roles?.[agent]), signal: controller.signal,
     });
+    if (t.status === 'done' && t.output) {
+      if (verify) {
+        t.verify = await Promise.resolve(verify(t.output, agent)).catch((e) => ({ pass: false, detail: e.message }));
+        if (t.verify.pass && !decided) { decided = { by: 'verify', branch: t }; controller.abort(); }
+      } else if (vote) {
+        const key = vote(t.output);
+        if (key) {
+          const list = votes.get(key) ?? [];
+          list.push(t);
+          votes.set(key, list);
+          if (list.length >= Math.min(voteQuorum, agents.length) && agents.length > 1 && !decided) {
+            decided = { by: 'vote', branch: list[0], votes: list.map((b) => b.agent) };
+            controller.abort();
+          }
+        }
+      }
+    }
     if (t.status === 'done') {
       okCount += 1;
       // Primeira resposta boa: os demais têm no máximo maxWaitAfterFirstMs,
@@ -322,24 +376,44 @@ export async function fanout({
   clearTimeout(graceTimer);
   clearTimeout(firstTimer);
 
+  // Ramos cancelados depois de uma decisão não são falha: foram dispensados.
+  if (decided) for (const b of branches) if (b !== decided.branch && b.status === 'cancelled') b.dismissed = true;
+
   const ok = branches.filter((t) => t.status === 'done' && t.output);
   const branchesMs = Date.now() - started;
+  const pick = (t, selectedBy, extra = {}) => ({ ...t, name: 'selecao', synthesized: false, selectedBy, ...extra });
+
+  if (decided) {
+    return { branches, final: pick(decided.branch, decided.by, decided.votes ? { votes: decided.votes } : {}), branchesMs, totalMs: branchesMs };
+  }
   if (!synthesizer) return { branches, final: null, branchesMs };
   if (ok.length === 0) return { branches, final: null, branchesMs, error: 'nenhum agente respondeu no prazo' };
-  if (ok.length === 1) {
-    // Uma resposta só: sintetizar seria latência sem ganho.
-    return { branches, final: { ...ok[0], name: 'sintese', synthesized: false }, branchesMs, totalMs: Date.now() - started };
+  if (ok.length === 1 && !verify) {
+    // Uma resposta só e nada a corrigir: sintetizar seria latência sem ganho.
+    return { branches, final: pick(ok[0], 'single'), branchesMs, totalMs: branchesMs };
   }
 
-  const merged = ok.map((t) => `### ${t.agent}\n${capOutput(t.output, maxCharsPerBranch)}`).join('\n\n');
-  const final = await delegateAsync({
-    root, agent: synthesizer, agentId, provider, timeoutMs: synthTimeoutMs, name: 'sintese',
-    prompt: `Pergunta original:\n${prompt}\n\nRespostas de diferentes agentes (cada um com um foco):\n\n${merged}\n\n` +
-      'Produza UMA resposta final, aproveitando o melhor de cada uma.\n' +
+  const merged = ok.map((t) => {
+    const fail = t.verify && !t.verify.pass ? `\n[Verificação falhou] ${capOutput(t.verify.detail ?? '', 800)}` : '';
+    return `### ${t.agent}\n${capOutput(t.output, maxCharsPerBranch)}${fail}`;
+  }).join('\n\n');
+  const instructions = verify
+    ? 'Nenhuma das respostas passou na verificação; as falhas estão indicadas.\n' +
+      'Produza UMA resposta final corrigida que passe na verificação.\n' +
+      '- Copie com cuidado o que estiver certo; não introduza erros de sintaxe.\n' +
+      '- Respeite exatamente o formato pedido na pergunta original, sem preâmbulo.'
+    : 'Produza UMA resposta final, aproveitando o melhor de cada uma.\n' +
       '- Responda direto, sem preâmbulo e sem falar de si mesmo.\n' +
       '- Respeite o formato e o tamanho pedidos na pergunta original.\n' +
-      '- Se as respostas divergirem em algo relevante, diga em uma linha qual você escolheu e por quê. Se concordarem, não comente.',
+      '- Se as respostas divergirem em algo relevante, diga em uma linha qual você escolheu e por quê. Se concordarem, não comente.';
+  const final = await delegateAsync({
+    root, agent: synthesizer, agentId, provider, timeoutMs: synthTimeoutMs, name: 'sintese',
+    prompt: `Pergunta original:\n${prompt}\n\nRespostas de diferentes agentes (cada um com um foco):\n\n${merged}\n\n${instructions}`,
   });
+  final.selectedBy = verify ? 'repair' : 'synthesis';
+  if (verify && final.status === 'done' && final.output) {
+    final.verify = await Promise.resolve(verify(final.output, synthesizer)).catch((e) => ({ pass: false, detail: e.message }));
+  }
   return { branches, final, branchesMs, totalMs: Date.now() - started };
 }
 
