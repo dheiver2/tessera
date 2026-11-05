@@ -2,6 +2,7 @@
 // plan() não escreve nada: devolve operações que o sync executa.
 import { join } from 'node:path';
 import { renderInstructions, renderPersona } from '../canonical.mjs';
+// Todo AGENTS.md usa o mesmo corpo: alvos que compartilham a pasta não podem se sobrescrever.
 
 const toClaude = (def) =>
   def.url ? { type: def.type ?? 'http', url: def.url } : { type: 'stdio', command: def.command, args: def.args ?? [], env: def.env ?? {} };
@@ -42,7 +43,7 @@ export const adapters = {
     plan(canon, { root, home, scope }) {
       const ws = scope === 'global' ? join(home, '.openclaw', 'workspace') : root;
       return [
-        { kind: 'block', file: join(ws, 'AGENTS.md'), id: 'instructions', body: renderInstructions(canon) },
+        { kind: 'block', file: join(ws, 'AGENTS.md'), id: 'instructions', body: instructionsWithPersona(canon) },
         { kind: 'block', file: join(ws, 'SOUL.md'), id: 'persona', body: canon.core['SOUL.md'] },
         { kind: 'block', file: join(ws, 'USER.md'), id: 'user', body: canon.core['USER.md'] },
         { kind: 'skills', dir: join(ws, 'skills') },
@@ -57,7 +58,7 @@ export const adapters = {
       const base = scope === 'global' ? join(home, '.hermes') : join(root, '.hermes');
       return [
         { kind: 'block', file: join(base, 'SOUL.md'), id: 'persona', body: renderPersona(canon) },
-        { kind: 'block', file: join(base, 'AGENTS.md'), id: 'instructions', body: renderInstructions(canon) },
+        { kind: 'block', file: join(base, 'AGENTS.md'), id: 'instructions', body: instructionsWithPersona(canon) },
         { kind: 'skills', dir: join(base, 'skills') },
         { kind: 'snippet', file: join(base, 'tessera-mcp.yaml'), content: JSON.stringify({ mcp_servers: mapServers(canon, passthrough) }, null, 2) + '\n', note: 'JSON é YAML válido; mesclar em config.yaml na chave MCP da sua versão' },
       ];

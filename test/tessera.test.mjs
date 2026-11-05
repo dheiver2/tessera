@@ -43,8 +43,9 @@ test('sync claude projeto: CLAUDE.md, skills e .mcp.json', () => {
 test('idempotente: segunda execução não altera nada', () => {
   const root = fresh();
   const home = fakeHome();
-  runSync({ root, home, targets: ['claude', 'codex'] });
-  const again = runSync({ root, home, targets: ['claude', 'codex'] });
+  const all = ['claude', 'codex', 'openclaw', 'hermes'];
+  runSync({ root, home, targets: all });
+  const again = runSync({ root, home, targets: all });
   const changed = again.actions.filter((a) => ['created', 'updated'].includes(a.action));
   assert.deepEqual(changed.map((a) => a.file), []);
 });
