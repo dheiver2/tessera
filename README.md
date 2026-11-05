@@ -17,7 +17,7 @@ mesma configuração, a mesma tarefa em paralelo e a resposta que **se prova** e
 
 [Início rápido](#-início-rápido) •
 [Como decide](#-como-o-tessera-decide) •
-[Comandos](#-comandos) •
+[Comandos](#%EF%B8%8F-comandos) •
 [Resultados](#-resultados-medidos) •
 [Configuração](#%EF%B8%8F-configuração) •
 [Diagnóstico](#-diagnóstico) •
