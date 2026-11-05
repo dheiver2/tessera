@@ -10,7 +10,7 @@ import { randomBytes } from 'node:crypto';
 // Podem ser sobrescritos por env TESSERA_<AGENTE>_CMD (separado por espaço, o prompt é anexado).
 export const headless = {
   claude: (p) => ['claude', ['-p', p]],
-  codex: (p) => ['codex', ['exec', p]],
+  codex: (p) => ['codex', ['exec', '--skip-git-repo-check', p]],
   openclaw: (p, opts) => ['openclaw', ['agent', '--local', ...(opts.agentId ? ['--agent', opts.agentId] : []), '--message', p]],
   hermes: (p) => ['hermes', ['chat', '-q', p]],
 };
