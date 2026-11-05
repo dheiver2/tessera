@@ -7,5 +7,11 @@
     "revisao": "claude",
     "resumo": "hermes",
     "automacao": "openclaw"
+  },
+  "fanout": {
+    "agents": ["claude", "codex", "openclaw", "hermes"],
+    "synthesizer": "claude",
+    "deadlineSeconds": 120,
+    "synthTimeoutSeconds": 180
   }
 }

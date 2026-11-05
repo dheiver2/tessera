@@ -3,7 +3,7 @@ import { runSync, doctor, SOURCE_DEFAULT } from '../src/sync.mjs';
 import { adapters } from '../src/adapters/index.mjs';
 import { spawnSync } from 'node:child_process';
 import { resolve } from 'node:path';
-import { delegate, runPipeline, loadPipeline, listTasks, routeFor } from '../src/bridge.mjs';
+import { delegate, runPipeline, loadPipeline, listTasks, routeFor, fanout } from '../src/bridge.mjs';
 import { readFrameworkConfig, SOURCE_DEFAULT as SRC } from '../src/sync.mjs';
 
 const args = process.argv.slice(2);
@@ -23,6 +23,8 @@ Uso:
   tessera delegate --agent <claude|codex|openclaw|hermes> --prompt "..." [--root DIR]
   tessera pipeline <arquivo.json> [--root DIR]   encadeia agentes ({{previous}} = saída do passo anterior)
   tessera do --kind <codigo|revisao|resumo|automacao> --prompt "..." [--root DIR]   escolhe o agente mais forte (framework.json > routing)
+  tessera fanout --prompt "..." [--agents ...] [--synth claude] [--deadline 120] [--synth-timeout 180] [--root DIR]
+                                                 todos ao mesmo tempo; um sintetiza a melhor resposta
   tessera tasks [--root DIR]                     histórico do barramento
 
   --target   alvos (padrão: framework.json)
@@ -96,6 +98,25 @@ try {
     const last = results.at(-1);
     if (last?.status === 'done') console.log('\n' + last.output);
     else { console.log(`\nerro: ${last?.error ?? 'pipeline vazio'}`); process.exitCode = 1; }
+  } else if (cmd === 'fanout') {
+    const prompt = value('--prompt');
+    if (!prompt) throw new Error('uso: tessera fanout --prompt "..."');
+    const cfg = readFrameworkConfig(SRC).fanout ?? {};
+    const agents = value('--agents') ?? (cfg.agents ?? ['claude', 'codex', 'openclaw', 'hermes']).join(',');
+    const synth = value('--synth') ?? cfg.synthesizer ?? 'claude';
+    const res = await fanout({
+      root: resolve(value('--root') ?? process.cwd()),
+      prompt,
+      agents: agents.split(',').map((s) => s.trim()).filter(Boolean),
+      synthesizer: synth,
+      agentId: value('--agent-id'),
+      deadlineMs: Number(value('--deadline') ?? cfg.deadlineSeconds ?? 120) * 1000,
+      synthTimeoutMs: Number(value('--synth-timeout') ?? cfg.synthTimeoutSeconds ?? 180) * 1000,
+    });
+    for (const t of res.branches) console.log(`[${t.status}] ${t.agent} ${t.durationMs ?? '?'}ms (${t.id})${t.status !== 'done' ? `  — ${t.error.split('\n')[0]}` : ''}`);
+    console.log(`ramos: ${res.branchesMs}ms`);
+    if (res.final?.status === 'done') console.log(`\n=== resposta final (${synth}, ${res.totalMs}ms no total) ===\n` + res.final.output);
+    else { console.log(`\nerro: ${res.error ?? res.final?.error ?? 'sem síntese'}`); process.exitCode = 1; }
   } else if (cmd === 'tasks') {
     for (const t of listTasks(resolve(value('--root') ?? process.cwd()))) {
       console.log(`${t.createdAt}  [${t.status}] ${t.agent.padEnd(9)} ${t.name || ''}  ${t.id}`);

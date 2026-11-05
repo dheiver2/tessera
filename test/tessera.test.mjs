@@ -114,7 +114,7 @@ test('fonte alternativa é respeitada', () => {
   assert.ok(readFileSync(join(root, 'CLAUDE.md'), 'utf8').includes('REGRA ÚNICA'));
 });
 
-import { runPipeline, listTasks, routeFor } from '../src/bridge.mjs';
+import { runPipeline, listTasks, routeFor, fanout } from '../src/bridge.mjs';
 
 test('pipeline encadeia saída via {{previous}} usando agente falso', () => {
   const fake = resolve('test', 'fake-agent.mjs');
@@ -161,4 +161,60 @@ test('routeFor escolhe agente pelo tipo e falha com mensagem clara', () => {
 test('framework.json define roteamento padrão para os quatro agentes', () => {
   const cfg = readFrameworkConfig(SOURCE_DEFAULT);
   assert.deepEqual(new Set(Object.values(cfg.routing)), new Set(['codex', 'claude', 'hermes', 'openclaw']));
+});
+
+test('fanout roda agentes em paralelo e sintetiza; falha de um não derruba o resto', async () => {
+  const fake = resolve('test', 'fake-agent.mjs');
+  const root = fresh();
+  process.env.TESSERA_CLAUDE_CMD = `node ${fake}`;
+  process.env.TESSERA_CODEX_CMD = `node ${fake}`;
+  process.env.TESSERA_HERMES_CMD = 'node -e process.exit(2) #';
+  try {
+    const res = await fanout({ root, prompt: 'pergunta', agents: ['codex', 'claude', 'hermes'], synthesizer: 'claude' });
+    assert.equal(res.branches.length, 3);
+    assert.equal(res.branches.filter((t) => t.status === 'done').length, 2);
+    assert.equal(res.branches.find((t) => t.agent === 'hermes').status, 'failed');
+    assert.equal(res.final.status, 'done');
+    assert.ok(res.final.output.startsWith('FAKE: '));
+    assert.ok(res.final.prompt.includes('pergunta'));
+  } finally {
+    delete process.env.TESSERA_CLAUDE_CMD;
+    delete process.env.TESSERA_CODEX_CMD;
+    delete process.env.TESSERA_HERMES_CMD;
+  }
+});
+
+test('fanout sem agente válido não sintetiza', async () => {
+  const root = fresh();
+  process.env.TESSERA_CODEX_CMD = 'node -e process.exit(2) #';
+  try {
+    const res = await fanout({ root, prompt: 'x', agents: ['codex'], synthesizer: 'claude' });
+    assert.equal(res.final, null);
+    assert.match(res.error, /nenhum agente respondeu/);
+  } finally {
+    delete process.env.TESSERA_CODEX_CMD;
+  }
+});
+
+test('fanout: ramo lento estoura o prazo e a síntese segue com as respostas a tempo', async () => {
+  const fake = resolve('test', 'fake-agent.mjs');
+  const root = fresh();
+  process.env.TESSERA_CODEX_CMD = `node ${fake}`;
+  process.env.TESSERA_CLAUDE_CMD = `node ${fake}`;
+  process.env.TESSERA_HERMES_CMD = 'node -e setTimeout(()=>{},60000) #';
+  try {
+    const t0 = Date.now();
+    const res = await fanout({ root, prompt: 'p', agents: ['codex', 'hermes'], synthesizer: 'claude', deadlineMs: 1500 });
+    const elapsed = Date.now() - t0;
+    const slow = res.branches.find((t) => t.agent === 'hermes');
+    assert.equal(slow.status, 'failed');
+    assert.match(slow.error, /tempo esgotado/);
+    assert.equal(res.final.status, 'done');
+    assert.ok(elapsed < 10_000, `latência acima do esperado: ${elapsed}ms`);
+    assert.ok(res.branches.find((t) => t.agent === 'codex').durationMs >= 0);
+  } finally {
+    delete process.env.TESSERA_CODEX_CMD;
+    delete process.env.TESSERA_CLAUDE_CMD;
+    delete process.env.TESSERA_HERMES_CMD;
+  }
 });
