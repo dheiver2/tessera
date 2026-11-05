@@ -1,0 +1,11 @@
+{
+  "name": "tessera",
+  "version": "0.1.0",
+  "targets": ["claude", "codex", "openclaw", "hermes"],
+  "routing": {
+    "codigo": "codex",
+    "revisao": "claude",
+    "resumo": "hermes",
+    "automacao": "openclaw"
+  }
+}

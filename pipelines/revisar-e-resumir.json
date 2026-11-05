@@ -1,0 +1,9 @@
+{
+  "name": "revisar-e-resumir",
+  "description": "Codex gera uma análise, Claude revisa, Hermes resume em PT-BR",
+  "steps": [
+    { "name": "analise", "agent": "codex", "prompt": "Analise o código do diretório atual e liste riscos de correção, em tópicos curtos." },
+    { "name": "revisao", "agent": "claude", "prompt": "Revise esta análise, confirme ou descarte cada ponto com base no código e indique severidade:\n\n{{previous}}" },
+    { "name": "resumo", "agent": "hermes", "prompt": "Resuma em português do Brasil, em no máximo 10 linhas, a revisão abaixo:\n\n{{previous}}" }
+  ]
+}
