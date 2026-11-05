@@ -2,7 +2,10 @@
 import { runSync, doctor, SOURCE_DEFAULT } from '../src/sync.mjs';
 import { adapters } from '../src/adapters/index.mjs';
 import { spawnSync } from 'node:child_process';
-import { resolve } from 'node:path';
+import { resolve, join } from 'node:path';
+import { mkdirSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { loadTasks, runEval, summarize, saveResults, renderMarkdown } from '../src/eval.mjs';
 import { delegate, runPipeline, loadPipeline, listTasks, routeFor, fanout, loadProvider } from '../src/bridge.mjs';
 import { readFrameworkConfig, SOURCE_DEFAULT as SRC } from '../src/sync.mjs';
 
@@ -30,6 +33,8 @@ Uso:
                  [--quorum 2] [--grace 15] [--max-wait 30] [--no-provider] [--root DIR]
                                                  todos ao mesmo tempo; um sintetiza a melhor resposta
   tessera tasks [--root DIR]                     histórico do barramento
+  tessera eval [--limit N] [--kind code,qa,review] [--ids a,b] [--agents ...] [--modes solo,tessera] [--parallel]
+                                                 mede cada agente sozinho contra o Tessera
 
   --target   alvos (padrão: framework.json)
   --global   escreve nas pastas home de cada agente (padrão: projeto em --root)
@@ -130,6 +135,39 @@ try {
       console.log(`\n=== resposta final (${who}, ${res.totalMs}ms no total) ===\n` + res.final.output);
     }
     else { console.log(`\nerro: ${res.error ?? res.final?.error ?? 'sem síntese'}`); process.exitCode = 1; }
+  } else if (cmd === 'eval') {
+    const cfg = CFG.fanout ?? {};
+    const tasks = loadTasks(join(SRC, 'evals', 'tasks.json'), {
+      kinds: value('--kind')?.split(','),
+      ids: value('--ids')?.split(','),
+      limit: value('--limit') ? Number(value('--limit')) : undefined,
+    });
+    const agents = (value('--agents') ?? (cfg.agents ?? ['claude', 'codex', 'openclaw', 'hermes']).join(',')).split(',').map((s) => s.trim());
+    const modes = (value('--modes') ?? 'solo,tessera').split(',');
+    const root = resolve(value('--root') ?? join(homedir(), '.tessera', 'eval-work'));
+    mkdirSync(root, { recursive: true });
+    const date = new Date().toISOString();
+    console.log(`eval: ${tasks.length} tarefas × [${modes.includes('solo') ? agents.join(', ') : ''}${modes.includes('tessera') ? ' + tessera' : ''}]  provedor: ${PROVIDER ? PROVIDER.name : 'próprio'}`);
+    const results = await runEval({
+      root, tasks, agents, provider: PROVIDER, modes, parallel: flag('--parallel'),
+      soloTimeoutMs: Number(value('--deadline') ?? cfg.deadlineSeconds ?? 120) * 1000,
+      fanoutOpts: {
+        synthesizer: cfg.synthesizer ?? 'claude',
+        deadlineMs: Number(cfg.deadlineSeconds ?? 120) * 1000,
+        synthTimeoutMs: Number(cfg.synthTimeoutSeconds ?? 180) * 1000,
+        quorum: Number(cfg.quorum ?? 0),
+        graceMs: Number(cfg.graceSeconds ?? 15) * 1000,
+        maxWaitAfterFirstMs: Number(cfg.maxWaitAfterFirstSeconds ?? 30) * 1000,
+        maxCharsPerBranch: Number(cfg.maxCharsPerBranch ?? 6000),
+        roles: cfg.roles,
+      },
+      onResult: (r) => console.log(`  ${r.pass ? '✓' : '✗'} ${r.taskId.padEnd(24)} ${r.mode.padEnd(9)} ${((r.durationMs ?? 0) / 1000).toFixed(1).padStart(6)}s  ${r.detail}${r.status !== 'done' ? `  [${r.status}: ${(r.error ?? '').slice(0, 80)}]` : ''}`),
+    });
+    const summary = summarize(results);
+    const meta = { date, provider: PROVIDER?.name ?? null, models: PROVIDER ? JSON.stringify(PROVIDER.models) : null, agents, modes, parallel: flag('--parallel'), tasks: tasks.map((t) => t.id) };
+    const files = saveResults(join(SRC, 'evals', 'resultados'), { results, summary, meta });
+    console.log('\n' + renderMarkdown(summary, meta));
+    console.log(`resultados: ${files.md}`);
   } else if (cmd === 'tasks') {
     for (const t of listTasks(resolve(value('--root') ?? process.cwd()))) {
       console.log(`${t.createdAt}  [${t.status}] ${t.agent.padEnd(9)} ${t.name || ''}  ${t.id}`);
