@@ -75,7 +75,15 @@ Troca "um modelo escolhe" por "o resultado se prova".
 - O eval usa só testes públicos (metade) na verificação e todos na nota.
 - Resultado bruto: `evals/resultados/2026-11-05T08-00-11-101Z.json` (rodada completa) e `2026-11-05T09-34-38-897Z.json` (revisões de novo).
 
-**Falta:** git worktrees para agentes que editam arquivos; e um conjunto mais difícil, porque o melhor agente sozinho já faz 100% no atual.
+**Conjunto difícil, rodada 1** (`evals/tasks-dificeis.json`, 33 tarefas): Tessera 25/33 = Codex 25/33, o melhor agente sozinho. Em código, Tessera 9/14 e o melhor agente 7/14; pela verificação, 9/9.
+- Das 8 derrotas, 4 foram todos os ramos estourando o prazo.
+- As outras 4: maioria errada (2 contra 1), resposta única errada e duas correções pela síntese que falharam.
+- Bug corrigido: o prazo não matava os subprocessos dos agentes, e houve ramos de 499 s e 1080 s.
+- Resultado bruto: `evals/resultados/2026-11-05T11-40-06-767Z.json`.
+
+**Falta:**
+- Rodada 2 do conjunto difícil com a correção, depois 3 sementes.
+- git worktrees para agentes que editam arquivos.
 
 ## Fase 2: crítica cruzada só quando há divergência
 

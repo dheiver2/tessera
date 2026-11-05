@@ -114,7 +114,7 @@ test('fonte alternativa é respeitada', () => {
   assert.ok(readFileSync(join(root, 'CLAUDE.md'), 'utf8').includes('REGRA ÚNICA'));
 });
 
-import { runPipeline, listTasks, routeFor, fanout } from '../src/bridge.mjs';
+import { runPipeline, listTasks, routeFor, fanout, delegateAsync } from '../src/bridge.mjs';
 
 test('pipeline encadeia saída via {{previous}} usando agente falso', () => {
   const fake = resolve('test', 'fake-agent.mjs');
@@ -435,5 +435,20 @@ test('espera máxima após a primeira resposta corta agente travado mesmo sem qu
   } finally {
     delete process.env.TESSERA_CODEX_CMD;
     delete process.env.TESSERA_HERMES_CMD;
+  }
+});
+
+test('prazo vale mesmo quando o agente deixa subprocessos segurando o stdout', async () => {
+  const root = fresh();
+  // O "agente" abre um neto que herda o stdout e dorme 30 s; antes, o fanout esperava o neto.
+  process.env.TESSERA_CODEX_CMD = JSON.stringify(['sh', '-c', 'sleep 30 & sleep 30']);
+  try {
+    const t0 = Date.now();
+    const t = await delegateAsync({ root, agent: 'codex', prompt: 'x', timeoutMs: 500 });
+    assert.ok(Date.now() - t0 < 8000, `levou ${Date.now() - t0} ms`);
+    assert.equal(t.status, 'failed');
+    assert.match(t.error, /tempo esgotado/);
+  } finally {
+    delete process.env.TESSERA_CODEX_CMD;
   }
 });

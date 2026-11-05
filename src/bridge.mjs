@@ -228,10 +228,27 @@ function runAsync(cmd, cwd, timeoutMs, signal) {
     let finished = false;
     let timedOut = false;
     let cancelled = false;
-    const child = spawn(cmd.bin, cmd.args, { cwd, stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, ...cmd.env } });
+    // Grupo de processos próprio: os agentes abrem subprocessos (node, python,
+    // ferramentas) que seguram o stdout. Matar só o filho deixava o 'close'
+    // esperando os netos — houve ramos de 120 s que levaram 500 s ou mais.
+    const group = process.platform !== 'win32';
+    const child = spawn(cmd.bin, cmd.args, { cwd, detached: group, stdio: ['pipe', 'pipe', 'pipe'], env: { ...process.env, ...cmd.env } });
     child.stdin.on('error', () => {});
     child.stdin.end(cmd.input ?? '');
-    const kill = () => { try { child.kill('SIGTERM'); } catch {} };
+    const signalAll = (sig) => {
+      try { if (group) process.kill(-child.pid, sig); else child.kill(sig); } catch { try { child.kill(sig); } catch {} }
+    };
+    let hardTimer = null;
+    const kill = () => {
+      if (hardTimer) return;
+      signalAll('SIGTERM');
+      // Quem ignora o SIGTERM leva SIGKILL; se o pipe ainda não fechar, encerra assim mesmo.
+      hardTimer = setTimeout(() => {
+        signalAll('SIGKILL');
+        setTimeout(() => done({ status: null, stdout, stderr, error: null, timedOut: timedOut && !cancelled, cancelled }), 2000).unref();
+      }, 3000);
+      hardTimer.unref();
+    };
     const timer = setTimeout(() => { timedOut = true; kill(); }, timeoutMs);
     const onAbort = () => { cancelled = true; kill(); };
     if (signal) {
@@ -244,6 +261,7 @@ function runAsync(cmd, cwd, timeoutMs, signal) {
       if (finished) return;
       finished = true;
       clearTimeout(timer);
+      if (group && !hardTimer) { try { process.kill(-child.pid, 'SIGKILL'); } catch {} } // netos órfãos
       signal?.removeEventListener('abort', onAbort);
       resolveP(r);
     };

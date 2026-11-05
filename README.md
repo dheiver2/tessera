@@ -27,7 +27,7 @@ Nem tudo está validado com agentes reais. Esta tabela separa o que foi comprova
 | OpenClaw (`mangaba-agente-rapido`) | **Funciona** | Resposta certa em 9 a 36 s, com sessão própria |
 | Hermes (`mangaba-agente-rapido`) | **Funciona, mas é lento** | Cerca de 45 s sozinho; no fanout costuma ser cancelado pela espera máxima |
 | Seleção por verificação e maioria (Fase 1) | **Funciona** | Código: 14/14 com p50 de 12,6 s, sem síntese. Perguntas: 14/14 |
-| Tessera melhor que cada agente | **Ainda não** | Na rodada da Fase 1 o OpenClaw sozinho fez 34/34: neste conjunto não há como superá-lo. Ver [Resultado do eval](#resultado-do-eval-05nov2026) |
+| Tessera melhor que cada agente | **Empate** | No conjunto difícil: Tessera 25/33 e Codex 25/33. Em código, Tessera 9/14 e o melhor agente 7/14. A rodada teve um bug de prazo, já corrigido. Ver [Conjunto difícil](#conjunto-difícil-rodada-1-05nov2026) |
 
 **Último fanout real** (pergunta: complexidade da busca binária, em até 3 linhas):
 
@@ -268,6 +268,33 @@ Rodada completa nas mesmas condições (solo e Tessera, 93 min):
 - **O critério não é alcançável neste conjunto.** O OpenClaw fez 34/34. Para medir se o Tessera supera o melhor agente, o conjunto precisa de tarefas mais difíceis, em que nenhum agente sozinho acerte tudo.
 - **A latência ainda não cumpre a meta** (p95 até 1,5× o melhor agente). A cauda vem da síntese e de ramos lentos do roteador.
 
+#### Conjunto difícil, rodada 1 (05/nov/2026)
+
+`evals/tasks-dificeis.json` tem 33 tarefas com armadilhas: arredondamento de `1.005`, CSV com aspas, semver com pré-release, expressão sem `eval`, grafemas, `parseInt(0.0000005)` e outras. Cada tarefa tem uma solução de referência que passa e, quando faz sentido, uma solução ingênua que reprova (`test/eval-dificeis.test.mjs`).
+
+```bash
+node bin/tessera.mjs eval --tasks evals/tasks-dificeis.json
+```
+
+| Modo | Acerto | Respondeu | p50 | p95 | Código | Perguntas | Revisão |
+|---|---|---|---|---|---|---|---|
+| claude | 22/33 (66,7%) | 26/33 | 23,0 s | 120,5 s | 7/14 | 7/11 | 8/8 |
+| **codex** | **25/33 (75,8%)** | 28/33 | 13,3 s | 120,0 s | 7/14 | 10/11 | 8/8 |
+| openclaw | 21/33 (63,6%) | 28/33 | 12,2 s | 82,8 s | 6/14 | 7/11 | 8/8 |
+| hermes | 19/33 (57,6%) | 24/33 | 83,8 s | 121,9 s | 7/14 | 7/11 | 5/8 |
+| **tessera** | **25/33 (75,8%)** | **29/33** | 48,1 s | 302,1 s | **9/14** | 8/11 | 8/8 |
+
+O conjunto cumpriu o papel: o melhor agente sozinho ficou em 75,8%. Pelo menos um agente sozinho acertou 29/33 tarefas.
+
+- **Empate com o melhor agente.** O Tessera ganhou do Codex em 5 tarefas (`hard-expressao`, `hard-dia-semana`, `hard-topo-lexico`, `hard-inverter-grafemas`, `hard-qa-sextas-13`) e perdeu em 5.
+- **Em código, o Tessera foi o melhor:** 9/14 contra 7/14. Pela verificação, acertou 9/9. Em `hard-expressao`, nenhum agente sozinho acertou, e o Tessera chegou a 8/8.
+- **Metade das derrotas não foi erro de resposta.** Em 4 tarefas, nenhum dos quatro ramos respondeu no prazo. Em 3 delas, os agentes tinham acertado sozinhos.
+- **As outras 4 derrotas são limites do método:**
+  - `hard-qa-parseint`: a maioria errou. Dois ramos responderam "0" e só o Hermes deu "5".
+  - `hard-qa-sort-js`: um ramo respondeu sozinho, com o valor errado, e os outros foram cancelados pela espera.
+  - `hard-csv-linha` e `hard-semver`: a correção pela síntese não consertou o código.
+- **Bug encontrado:** o prazo de 120 s não era cumprido. Ao estourar o tempo, só o processo do agente recebia o sinal, e os subprocessos dele seguravam a saída. Houve ramos de 499 s e de 1080 s, e isso inflou o p95 de todos os modos. Agora cada agente roda num grupo de processos próprio, que leva SIGTERM e depois SIGKILL no grupo inteiro. Um teste de regressão cobre o caso. **A rodada 2, já com a correção, vai dizer quanto da diferença era ruído do roteador.**
+
 ---
 
 ## Configuração avançada
@@ -342,10 +369,11 @@ As tarefas executadas ficam registradas em `.tessera/bus/tasks/*.json`, com stat
 
 ## Próximos passos
 
-1. Tarefas mais difíceis no eval (código com casos de borda, bugs sutis), para o melhor agente sozinho não fazer 100%.
-2. Concordância em texto livre sem síntese (Fase 2): quando os ramos apontam a mesma coisa, devolver um deles.
-3. Disjuntor para agentes que estouram o prazo (Hermes) e repetir o eval com 3 sementes.
-4. Adicionar CI para rodar os testes a cada commit.
+1. Rodar de novo o conjunto difícil com a correção do prazo e repetir com 3 sementes.
+2. Maioria com peso: não aceitar 2 contra 2 quando há divergência, e em perguntas pedir uma checagem antes de devolver a única resposta.
+3. Concordância em texto livre sem síntese (Fase 2): quando os ramos apontam a mesma coisa, devolver um deles.
+4. Disjuntor para agentes que estouram o prazo (Hermes) e limite de chamadas simultâneas ao roteador.
+5. Adicionar CI para rodar os testes a cada commit.
 
 ---
 
