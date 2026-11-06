@@ -35,7 +35,7 @@ export function runSync({
 
   for (const name of chosen) {
     const adapter = adapters[name];
-    if (!adapter) throw new Error(`alvo desconhecido: ${name} (disponíveis: ${Object.keys(adapters).join(', ')})`);
+    if (!adapter) throw new Error(`unknown target: ${name} (available: ${Object.keys(adapters).join(', ')})`);
     for (const op of adapter.plan(canon, { root, home, scope })) {
       if (op.kind === 'block') writer.upsertBlock(op.file, op.id, op.body);
       else if (op.kind === 'skills') writer.writeSkills(op.dir, canon.skills);

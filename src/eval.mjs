@@ -43,7 +43,7 @@ export function extractCode(text) {
 // Roda o código do agente com node --permission: sem leitura/escrita de arquivos
 // (exceto o próprio script), sem processos filhos. Cada teste compara JSON canônico.
 export function runCodeTests(code, tests, { timeoutMs = 5000 } = {}) {
-  if (!/\bsolve\b/.test(code)) return { pass: false, detail: 'função solve não encontrada' };
+  if (!/\bsolve\b/.test(code)) return { pass: false, detail: 'function solve not found' };
   // Caminho real: no macOS /var é link para /private/var, e o --allow-fs-read compara o caminho resolvido.
   const dir = realpathSync(mkdtempSync(join(tmpdir(), 'tessera-eval-')));
   const file = join(dir, 'candidato.cjs');
@@ -71,12 +71,12 @@ ${code}
     const res = spawnSync(process.execPath, ['--permission', `--allow-fs-read=${file}`, file], {
       encoding: 'utf8', timeout: timeoutMs, cwd: dir, env: { TZ: 'America/Sao_Paulo' },
     });
-    if (res.error?.code === 'ETIMEDOUT' || res.signal) return { pass: false, detail: 'tempo esgotado nos testes' };
+    if (res.error?.code === 'ETIMEDOUT' || res.signal) return { pass: false, detail: 'timed out running the tests' };
     const m = (res.stdout ?? '').match(/__TESSERA__(\[.*\])/);
-    if (!m) return { pass: false, detail: `código não executou: ${(res.stderr ?? '').split('\n').find((l) => /Error/.test(l)) ?? 'sem saída'}`.slice(0, 200) };
+    if (!m) return { pass: false, detail: `code did not run: ${(res.stderr ?? '').split('\n').find((l) => /Error/.test(l)) ?? 'no output'}`.slice(0, 200) };
     const results = JSON.parse(m[1]);
     const ok = results.filter(Boolean).length;
-    return { pass: ok === results.length, detail: `${ok}/${results.length} testes` };
+    return { pass: ok === results.length, detail: `${ok}/${results.length} tests` };
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -85,7 +85,7 @@ ${code}
 // Padrões proibidos (ex.: eval numa tarefa de parser) reprovam antes de rodar.
 export function checkCode(task, code, tests) {
   const hit = (task.forbid ?? []).find((re) => new RegExp(re).test(code));
-  if (hit) return { pass: false, detail: `usa o proibido: ${hit}` };
+  if (hit) return { pass: false, detail: `uses forbidden: ${hit}` };
   return runCodeTests(code, tests);
 }
 
@@ -97,12 +97,12 @@ export function grade(task, text) {
     const missing = (task.expect ?? []).filter((re) => !new RegExp(re, 'i').test(t));
     const rejected = (task.reject ?? []).filter((re) => new RegExp(re, 'i').test(t));
     if (missing.length) return { pass: false, detail: `faltou: ${missing.join(', ')}` };
-    if (rejected.length) return { pass: false, detail: `contém o proibido: ${rejected.join(', ')}` };
+    if (rejected.length) return { pass: false, detail: `contains forbidden: ${rejected.join(', ')}` };
     return { pass: true, detail: 'ok' };
   }
   if (task.kind === 'review') {
     const hit = (task.expectAny ?? []).find((re) => new RegExp(re, 'i').test(t));
-    return hit ? { pass: true, detail: `apontou: ${hit}` } : { pass: false, detail: 'não apontou o bug' };
+    return hit ? { pass: true, detail: `pointed out: ${hit}` } : { pass: false, detail: 'did not point out the bug' };
   }
   return { pass: false, detail: `tipo desconhecido: ${task.kind}` };
 }
@@ -263,34 +263,34 @@ const sec = (ms) => (ms == null ? '—' : `${(ms / 1000).toFixed(1)} s`);
 
 export function renderMarkdown(summary, meta = {}) {
   const lines = [];
-  lines.push(`# Resultado do eval — ${meta.date ?? ''}`.trim(), '');
-  if (meta.provider) lines.push(`Provedor: ${meta.provider}. Modelos: ${meta.models ?? '—'}.`, '');
-  lines.push(`Tarefas: ${summary.tasks}.`, '');
-  lines.push('| Modo | Acerto | Respondeu | p50 | p95 | Código | Perguntas | Revisão |', '|---|---|---|---|---|---|---|---|');
+  lines.push(`# Eval result — ${meta.date ?? ''}`.trim(), '');
+  if (meta.provider) lines.push(`Gateway: ${meta.provider}. Models: ${meta.models ?? '—'}.`, '');
+  lines.push(`Tasks: ${summary.tasks}.`, '');
+  lines.push('| Mode | Correct | Answered | p50 | p95 | Code | Questions | Review |', '|---|---|---|---|---|---|---|---|');
   const order = [...summary.modes.filter((m) => m !== 'tessera'), ...summary.modes.filter((m) => m === 'tessera')];
   for (const m of order) {
     const s = summary.byMode[m];
     const k = (name) => (s.byKind[name] ? `${s.byKind[name].passed}/${s.byKind[name].total}` : '—');
     lines.push(`| ${m === 'tessera' ? '**tessera**' : m} | ${s.passed}/${s.total} (${pct(s.accuracy)}) | ${s.answered}/${s.total} | ${sec(s.p50Ms)} | ${sec(s.p95Ms)} | ${k('code')} | ${k('qa')} | ${k('review')} |`);
   }
-  lines.push('', `Oráculo (pelo menos um agente sozinho acertou): ${summary.oracle}/${summary.tasks} (${pct(summary.oracleAccuracy)}).`, '');
+  lines.push('', `Oracle (at least one agent alone got it right): ${summary.oracle}/${summary.tasks} (${pct(summary.oracleAccuracy)}).`, '');
   const c = summary.comparison;
   if (c) {
-    lines.push('## Tessera contra o melhor agente sozinho', '');
-    lines.push(`- Melhor agente sozinho: **${c.bestSolo}** (${pct(c.bestSoloAccuracy)}).`);
-    lines.push(`- Tessera: **${pct(c.tesseraAccuracy)}** (${c.deltaPoints >= 0 ? '+' : ''}${c.deltaPoints} pontos).`);
-    lines.push(`- Latência p95: ${c.latencyRatioP95 == null ? '—' : `${c.latencyRatioP95.toFixed(2)}×`} a do melhor agente (meta: até 1,5×).`);
-    lines.push(`- Tessera acertou e ${c.bestSolo} errou: ${c.wins.length ? c.wins.join(', ') : 'nenhuma'}.`);
-    lines.push(`- Tessera errou e ${c.bestSolo} acertou: ${c.losses.length ? c.losses.join(', ') : 'nenhuma'}.`);
-    lines.push('', `**Critério de sucesso:** acerto maior que o melhor agente: ${c.beatsBestSolo ? 'sim' : 'não'}. Latência dentro da meta: ${c.latencyWithinTarget == null ? '—' : c.latencyWithinTarget ? 'sim' : 'não'}.`);
+    lines.push('## Tessera vs. the best single agent', '');
+    lines.push(`- Best single agent: **${c.bestSolo}** (${pct(c.bestSoloAccuracy)}).`);
+    lines.push(`- Tessera: **${pct(c.tesseraAccuracy)}** (${c.deltaPoints >= 0 ? '+' : ''}${c.deltaPoints} points).`);
+    lines.push(`- p95 latency: ${c.latencyRatioP95 == null ? '—' : `${c.latencyRatioP95.toFixed(2)}×`} the best agent's (target: up to 1.5×).`);
+    lines.push(`- Tessera right, ${c.bestSolo} wrong: ${c.wins.length ? c.wins.join(', ') : 'none'}.`);
+    lines.push(`- Tessera wrong, ${c.bestSolo} right: ${c.losses.length ? c.losses.join(', ') : 'none'}.`);
+    lines.push('', `**Success criterion:** more correct than the best agent: ${c.beatsBestSolo ? 'yes' : 'no'}. Latency within target: ${c.latencyWithinTarget == null ? '—' : c.latencyWithinTarget ? 'yes' : 'no'}.`);
   }
   if (summary.decisions) {
-    const label = { verify: 'verificação (testes públicos)', vote: 'maioria', single: 'resposta única', synthesis: 'síntese', repair: 'correção pela síntese', fallback: 'ramo pronto (síntese falhou)', none: 'sem resposta' };
-    lines.push('', '## Como o Tessera decidiu', '', '| Caminho | Tarefas | Acerto | p50 |', '|---|---|---|---|');
+    const label = { verify: 'verification (public tests)', vote: 'majority', single: 'single answer', synthesis: 'synthesis', repair: 'repair by synthesis', fallback: 'finished branch (synthesis failed)', none: 'no answer' };
+    lines.push('', '## How Tessera decided', '', '| Path | Tasks | Correct | p50 |', '|---|---|---|---|');
     for (const [k, d] of Object.entries(summary.decisions)) {
       lines.push(`| ${label[k] ?? k} | ${d.total} | ${d.passed}/${d.total} | ${sec(d.p50Ms)} |`);
     }
-    if (summary.branchOracle != null) lines.push('', `Algum ramo do fanout acertou: ${summary.branchOracle}/${summary.tasks}.`);
+    if (summary.branchOracle != null) lines.push('', `Some fanout branch got it right: ${summary.branchOracle}/${summary.tasks}.`);
   }
   return lines.join('\n') + '\n';
 }

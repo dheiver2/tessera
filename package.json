@@ -1,14 +1,49 @@
 {
   "name": "tessera",
   "version": "0.1.0",
-  "description": "Tessera: uma única fonte de instruções, skills e MCP para Claude Code, Codex, OpenClaw e Hermes",
+  "description": "Run Claude Code, Codex, OpenClaw and Hermes on the same task and keep the answer that passes your tests. Gateway-agnostic, zero dependencies.",
   "type": "module",
-  "bin": { "tessera": "bin/tessera.mjs" },
+  "bin": {
+    "tessera": "bin/tessera.mjs"
+  },
   "scripts": {
     "test": "node --test test/tessera.test.mjs test/eval.test.mjs test/eval-dificeis.test.mjs",
     "doctor": "node bin/tessera.mjs doctor"
   },
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=22"
+  },
   "license": "MIT",
-  "keywords": ["ai-agents", "claude-code", "codex", "openclaw", "hermes", "agent-skills", "mcp"]
+  "keywords": [
+    "agent-skills",
+    "ai-agents",
+    "claude-code",
+    "codex",
+    "coding-agents",
+    "ensemble",
+    "eval",
+    "hermes",
+    "llm",
+    "mcp",
+    "multi-agent",
+    "openclaw"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dheiver2/tessera.git"
+  },
+  "homepage": "https://dheiver2.github.io/tessera/",
+  "files": [
+    "bin",
+    "src",
+    "core",
+    "skills",
+    "mcp",
+    "evals/*.json",
+    "evals/agregar.mjs",
+    "pipelines",
+    "examples",
+    "framework.json",
+    "README.md"
+  ]
 }

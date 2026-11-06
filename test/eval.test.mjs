@@ -107,7 +107,7 @@ test('sandbox: código não lê arquivos nem executa processos', () => {
 test('sandbox: laço infinito é cortado pelo tempo', () => {
   const r = runCodeTests('function solve(){while(true){}}', [[[], 1]], { timeoutMs: 1500 });
   assert.equal(r.pass, false);
-  assert.match(r.detail, /tempo esgotado/);
+  assert.match(r.detail, /timed out/);
 });
 
 test('normalize tira negrito e crases', () => {

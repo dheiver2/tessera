@@ -2,8 +2,8 @@
 // Cada tarefa vira um JSON em <root>/.tessera/bus/tasks/. Pipelines encadeiam
 // agentes; o fanout dispara todos ao mesmo tempo e sintetiza.
 import { spawnSync, spawn } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync, readdirSync, appendFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, readFileSync, writeFileSync, readdirSync, appendFileSync, existsSync, accessSync, constants } from 'node:fs';
+import { join, delimiter, isAbsolute } from 'node:path';
 import { homedir } from 'node:os';
 import { randomBytes } from 'node:crypto';
 
@@ -141,14 +141,14 @@ function newTask(agent, prompt, name) {
 function finish(task, res, bin, timeoutMs) {
   if (res.error) {
     task.status = 'failed';
-    task.error = `${res.error.code ?? res.error.message}: não foi possível executar "${bin}"`;
+    task.error = `${res.error.code ?? res.error.message}: could not run "${bin}" (is it installed and on PATH?)`;
   } else if (res.cancelled) {
     task.status = 'cancelled';
-    task.error = 'cancelado: quórum atingido ou espera máxima após a primeira resposta';
+    task.error = 'cancelled: quorum reached or max wait after the first answer';
     task.output = (res.stdout ?? '').trim();
   } else if (res.timedOut) {
     task.status = 'failed';
-    task.error = `tempo esgotado após ${Math.round(timeoutMs / 1000)}s`;
+    task.error = `timed out after ${Math.round(timeoutMs / 1000)}s`;
     task.output = (res.stdout ?? '').trim();
   } else if (res.status !== 0) {
     task.status = 'failed';
@@ -159,10 +159,10 @@ function finish(task, res, bin, timeoutMs) {
     const bad = NO_ANSWER.find((re) => re.test(out));
     if (!out) {
       task.status = 'failed';
-      task.error = 'resposta vazia';
+      task.error = 'empty answer';
     } else if (bad) {
       task.status = 'failed';
-      task.error = `agente sem resposta: ${out.slice(0, 200)}`;
+      task.error = `agent gave no answer: ${out.slice(0, 200)}`;
       task.output = out;
     } else {
       task.status = 'done';
@@ -199,7 +199,7 @@ export function extractError(stderr = '', stdout = '', status) {
   const lines = `${stderr}\n${stdout}`.split('\n').map((l) => l.trim()).filter(Boolean);
   const errs = lines.filter((l) => /\b(error|erro|failed|unexpected status|exception)\b/i.test(l) && l.length < 600);
   const pick = errs.length ? errs.slice(-2).join(' | ') : lines.at(-1);
-  return (pick ?? `saída ${status}`).slice(0, 600);
+  return (pick ?? `exit ${status}`).slice(0, 600);
 }
 
 // ---------------------------------------------------------------------------
@@ -232,9 +232,12 @@ export function runPipeline({ root, steps, agentId, provider = null }) {
   return results;
 }
 
+// English aliases for the routing kinds in framework.json.
+export const KIND_ALIASES = { code: 'codigo', review: 'revisao', summary: 'resumo', automation: 'automacao' };
+
 export function routeFor(kind, routing = {}) {
-  const agent = routing[kind];
-  if (!agent) throw new Error(`sem roteamento para "${kind}" (tipos: ${Object.keys(routing).join(', ') || 'nenhum'})`);
+  const agent = routing[kind] ?? routing[KIND_ALIASES[kind]];
+  if (!agent) throw new Error(`no routing for "${kind}" (kinds: ${[...Object.keys(KIND_ALIASES), ...Object.keys(routing)].join(', ') || 'none'})`);
   return agent;
 }
 
@@ -305,9 +308,9 @@ export async function delegateAsync({ root, agent, prompt, agentId, provider = n
 // Desligados por padrão desde a Fase 1: em respostas objetivas eles mudavam o formato
 // (texto extra, resposta errada) e impediam a maioria de se formar.
 export const DEFAULT_ROLES = {
-  codex: 'Foque na solução concreta: código, comandos e passos executáveis.',
-  claude: 'Foque em correção: riscos, casos de borda e o que pode estar errado.',
-  openclaw: 'Foque na operação: automação, integração e o que fazer em seguida.',
+  codex: 'Focus on the concrete solution: code, commands and runnable steps.',
+  claude: 'Focus on correctness: risks, edge cases and what could be wrong.',
+  openclaw: 'Focus on operations: automation, integration and what to do next.',
   hermes: 'Foque em clareza: explique a resposta de forma direta para o usuário.',
 };
 
@@ -409,7 +412,7 @@ export async function fanout({
 
   async function runBranch(agent) {
     if (controller.signal.aborted) {
-      return { agent, status: 'cancelled', output: '', error: 'dispensado antes de começar', durationMs: 0, queued: true };
+      return { agent, status: 'cancelled', output: '', error: 'dismissed before starting', durationMs: 0, queued: true };
     }
     const t = await delegateAsync({
       root, agent, agentId, provider, timeoutMs: deadlineMs, name: `fanout:${agent}`,
@@ -457,25 +460,25 @@ export async function fanout({
     return { branches, final: pick(decided.branch, decided.by, decided.votes ? { votes: decided.votes } : {}), branchesMs, totalMs: branchesMs };
   }
   if (!synthesizer) return { branches, final: null, branchesMs };
-  if (ok.length === 0) return { branches, final: null, branchesMs, error: 'nenhum agente respondeu no prazo' };
+  if (ok.length === 0) return { branches, final: null, branchesMs, error: 'no agent answered in time' };
   if (ok.length === 1 && !verify) {
     // Uma resposta só e nada a corrigir: sintetizar seria latência sem ganho.
     return { branches, final: pick(ok[0], 'single'), branchesMs, totalMs: branchesMs };
   }
 
   const merged = ok.map((t) => {
-    const fail = t.verify && !t.verify.pass ? `\n[Verificação falhou] ${capOutput(t.verify.detail ?? '', 800)}` : '';
+    const fail = t.verify && !t.verify.pass ? `\n[Verification failed] ${capOutput(t.verify.detail ?? '', 800)}` : '';
     return `### ${t.agent}\n${capOutput(t.output, maxCharsPerBranch)}${fail}`;
   }).join('\n\n');
   const instructions = verify
-    ? 'Nenhuma das respostas passou na verificação; as falhas estão indicadas.\n' +
-      'Produza UMA resposta final corrigida que passe na verificação.\n' +
-      '- Copie com cuidado o que estiver certo; não introduza erros de sintaxe.\n' +
-      '- Respeite exatamente o formato pedido na pergunta original, sem preâmbulo.'
+    ? 'None of the answers passed verification; the failures are shown.\n' +
+      'Produce ONE corrected final answer that passes verification.\n' +
+      '- Carefully keep what is right; do not introduce syntax errors.\n' +
+      '- Follow exactly the format asked in the original question, with no preamble, in the same language as the question.'
     : 'Produza UMA resposta final, aproveitando o melhor de cada uma.\n' +
-      '- Responda direto, sem preâmbulo e sem falar de si mesmo.\n' +
+      '- Answer directly, with no preamble and without talking about yourself, in the same language as the question.\n' +
       '- Respeite o formato e o tamanho pedidos na pergunta original.\n' +
-      '- Se as respostas divergirem em algo relevante, diga em uma linha qual você escolheu e por quê. Se concordarem, não comente.';
+      '- If the answers disagree on something relevant, say in one line which one you chose and why. If they agree, do not comment.';
   const final = await delegateAsync({
     root, agent: synthesizer, agentId, provider, timeoutMs: synthTimeoutMs, name: 'sintese',
     prompt: `Pergunta original:\n${prompt}\n\nRespostas de diferentes agentes (cada um com um foco):\n\n${merged}\n\n${instructions}`,
@@ -496,6 +499,32 @@ export async function fanout({
 }
 
 // ---------------------------------------------------------------------------
+// Which agents can actually run here: a TESSERA_<AGENT>_CMD override or the CLI on PATH.
+const AGENT_BIN = { claude: 'claude', codex: 'codex', openclaw: 'openclaw', hermes: 'hermes' };
+
+export function onPath(bin, env = process.env) {
+  if (!bin) return false;
+  const exe = (f) => { try { accessSync(f, constants.X_OK); return true; } catch { return false; } };
+  if (isAbsolute(bin)) return exe(bin);
+  return (env.PATH ?? '').split(delimiter).filter(Boolean).some((dir) => exe(join(dir, bin)));
+}
+
+export function agentAvailable(agent, env = process.env) {
+  const override = env[`TESSERA_${agent.toUpperCase()}_CMD`];
+  if (override) {
+    const bin = override.trim().startsWith('[') ? JSON.parse(override)[0] : override.trim().split(' ')[0];
+    return onPath(bin, env);
+  }
+  return onPath(AGENT_BIN[agent] ?? agent, env);
+}
+
+// Keeps the requested agents that are installed; reports the ones that are missing.
+export function availableAgents(agents, env = process.env) {
+  const ok = agents.filter((a) => agentAvailable(a, env));
+  return { ok, missing: agents.filter((a) => !ok.includes(a)) };
+}
+
+// ---------------------------------------------------------------------------
 export function listTasks(root) {
   const dir = join(busDir(root), 'tasks');
   return readdirSync(dir)
@@ -506,7 +535,7 @@ export function listTasks(root) {
 
 export function loadPipeline(file) {
   const def = JSON.parse(readFileSync(file, 'utf8'));
-  if (!Array.isArray(def.steps) || def.steps.length === 0) throw new Error('pipeline precisa de "steps" não vazio');
+  if (!Array.isArray(def.steps) || def.steps.length === 0) throw new Error('pipeline needs a non-empty "steps" list');
   for (const s of def.steps) {
     if (!s.agent || !s.prompt) throw new Error('cada passo precisa de "agent" e "prompt"');
   }

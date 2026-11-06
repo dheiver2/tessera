@@ -95,7 +95,7 @@ test('toToml gera tabelas e env', () => {
 });
 
 test('alvo desconhecido gera erro claro', () => {
-  assert.throws(() => runSync({ root: fresh(), home: fakeHome(), targets: ['nope'] }), /alvo desconhecido/);
+  assert.throws(() => runSync({ root: fresh(), home: fakeHome(), targets: ['nope'] }), /unknown target/);
 });
 
 test('global escreve nas pastas home do agente', () => {
@@ -155,7 +155,7 @@ test('routeFor escolhe agente pelo tipo e falha com mensagem clara', () => {
   const routing = { codigo: 'codex', revisao: 'claude' };
   assert.equal(routeFor('codigo', routing), 'codex');
   assert.equal(routeFor('revisao', routing), 'claude');
-  assert.throws(() => routeFor('design', routing), /sem roteamento para "design"/);
+  assert.throws(() => routeFor('design', routing), /no routing for "design"/);
 });
 
 test('framework.json define roteamento padrão para os quatro agentes', () => {
@@ -234,7 +234,7 @@ test('fanout sem agente válido não sintetiza', async () => {
   try {
     const res = await fanout({ root, prompt: 'x', agents: ['codex'], synthesizer: 'claude' });
     assert.equal(res.final, null);
-    assert.match(res.error, /nenhum agente respondeu/);
+    assert.match(res.error, /no agent answered/);
   } finally {
     delete process.env.TESSERA_CODEX_CMD;
   }
@@ -252,7 +252,7 @@ test('fanout: ramo lento estoura o prazo e a síntese segue com as respostas a t
     const elapsed = Date.now() - t0;
     const slow = res.branches.find((t) => t.agent === 'hermes');
     assert.equal(slow.status, 'failed');
-    assert.match(slow.error, /tempo esgotado/);
+    assert.match(slow.error, /timed out/);
     assert.equal(res.final.status, 'done');
     assert.ok(elapsed < 10_000, `latência acima do esperado: ${elapsed}ms`);
     assert.ok(res.branches.find((t) => t.agent === 'codex').durationMs >= 0);
@@ -263,7 +263,7 @@ test('fanout: ramo lento estoura o prazo e a síntese segue com as respostas a t
   }
 });
 
-import { buildCommand, loadProvider, providerConfig, capOutput, withRole, extractError, cleanOutput, commandVerifier } from '../src/bridge.mjs';
+import { buildCommand, loadProvider, providerConfig, agentAvailable, availableAgents, onPath, KIND_ALIASES, capOutput, withRole, extractError, cleanOutput, commandVerifier } from '../src/bridge.mjs';
 
 const PROV = {
   name: 'gw-teste', baseUrl: 'https://router.test/v1', keyEnv: 'TESSERA_TEST_KEY', key: 'k-123',
@@ -350,6 +350,27 @@ test('framework.json do repositório não traz gateway nenhum', () => {
   assert.equal(fw.provider, undefined);
 });
 
+test('availableAgents: only agents on PATH or with a working TESSERA_<AGENT>_CMD', () => {
+  const dir = fresh();
+  const bin = join(dir, 'codex');
+  writeFileSync(bin, '#!/bin/sh\necho ok\n', { mode: 0o755 });
+  const env = { PATH: dir };
+  assert.equal(onPath('codex', env), true);
+  assert.equal(agentAvailable('codex', env), true);
+  assert.equal(agentAvailable('claude', env), false);
+  assert.equal(agentAvailable('hermes', { ...env, TESSERA_HERMES_CMD: `${bin} chat` }), true);
+  assert.equal(agentAvailable('hermes', { ...env, TESSERA_HERMES_CMD: '["nao-existe","x"]' }), false);
+  assert.deepEqual(availableAgents(['claude', 'codex', 'openclaw', 'hermes'], env), { ok: ['codex'], missing: ['claude', 'openclaw', 'hermes'] });
+});
+
+test('routeFor accepts English kinds', () => {
+  const routing = { codigo: 'codex', revisao: 'claude' };
+  assert.equal(routeFor('code', routing), 'codex');
+  assert.equal(routeFor('review', routing), 'claude');
+  assert.equal(routeFor('codigo', routing), 'codex');
+  assert.equal(KIND_ALIASES.summary, 'resumo');
+});
+
 test('quórum: com 2 respostas, o ramo lento é cancelado após a tolerância', async () => {
   const fake = resolve('test', 'fake-agent.mjs');
   const root = fresh();
@@ -424,7 +445,7 @@ test('override em JSON aceita argumento com espaço', async () => {
 test('extractError prioriza a linha de erro, não o último log', () => {
   const stderr = 'ERROR: unexpected status 503 Service Unavailable: titan reiniciando\n{"data":[{"id":"m1"},{"id":"m2"}]}';
   assert.match(extractError(stderr, '', 1), /503 Service Unavailable/);
-  assert.equal(extractError('', '', 7), 'saída 7');
+  assert.equal(extractError('', '', 7), 'exit 7');
   assert.equal(extractError('só uma linha', '', 1), 'só uma linha');
 });
 
@@ -443,7 +464,7 @@ test('saída 0 com "Agent couldn\'t generate a response" conta como falha', asyn
   try {
     const res = await fanout({ root, prompt: 'p', agents: ['openclaw'], synthesizer: null });
     assert.equal(res.branches[0].status, 'failed');
-    assert.match(res.branches[0].error, /sem resposta/);
+    assert.match(res.branches[0].error, /no answer/);
   } finally {
     delete process.env.TESSERA_OPENCLAW_CMD;
   }
@@ -476,7 +497,7 @@ test('prazo vale mesmo quando o agente deixa subprocessos segurando o stdout', a
     const t = await delegateAsync({ root, agent: 'codex', prompt: 'x', timeoutMs: 500 });
     assert.ok(Date.now() - t0 < 8000, `levou ${Date.now() - t0} ms`);
     assert.equal(t.status, 'failed');
-    assert.match(t.error, /tempo esgotado/);
+    assert.match(t.error, /timed out/);
   } finally {
     delete process.env.TESSERA_CODEX_CMD;
   }

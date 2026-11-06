@@ -79,7 +79,7 @@ test('conjunto difícil: soluções ingênuas caem na armadilha', () => {
   for (const [id, code] of Object.entries(NAIVE)) {
     assert.equal(grade(byId[id], fence(code)).pass, false, `${id} deveria reprovar`);
   }
-  assert.match(grade(byId['hard-expressao'], fence(NAIVE['hard-expressao'])).detail, /proibido/);
+  assert.match(grade(byId['hard-expressao'], fence(NAIVE['hard-expressao'])).detail, /forbidden/);
 });
 
 test('conjunto difícil: respostas-pegadinha reprovam', () => {

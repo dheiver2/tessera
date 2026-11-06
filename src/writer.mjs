@@ -28,7 +28,7 @@ export function createWriter({ dryRun = false, force = false } = {}) {
   function writeFile(file, content, { overwriteUnmanaged = true } = {}) {
     const exists = existsSync(file);
     if (exists && readFileSync(file, 'utf8') === content) return record('unchanged', file);
-    if (exists && !overwriteUnmanaged) return record('skipped', file, 'existe e não é gerenciado');
+    if (exists && !overwriteUnmanaged) return record('skipped', file, 'exists and is not managed by tessera');
     if (!dryRun) {
       if (exists) backup(file);
       mkdirSync(dirname(file), { recursive: true });
@@ -53,7 +53,7 @@ export function createWriter({ dryRun = false, force = false } = {}) {
       const dest = join(dir, s.name);
       const managed = existsSync(join(dest, MANAGED_MARK));
       if (existsSync(dest) && !managed && !force) {
-        record('skipped', dest, 'skill existe e não foi criada pelo tessera (use --force)');
+        record('skipped', dest, 'skill exists and was not created by tessera (use --force)');
         continue;
       }
       const exists = existsSync(dest);
@@ -64,7 +64,7 @@ export function createWriter({ dryRun = false, force = false } = {}) {
       if (!dryRun) {
         if (exists) rmSync(dest, { recursive: true, force: true });
         cpSync(s.dir, dest, { recursive: true });
-        writeFileSync(join(dest, MANAGED_MARK), 'gerenciado pelo tessera: não editar aqui\n');
+        writeFileSync(join(dest, MANAGED_MARK), 'managed by tessera: do not edit here\n');
       }
       record(exists ? 'updated' : 'created', dest);
     }

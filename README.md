@@ -9,9 +9,9 @@ same configuration, the same task in parallel, and the answer that **proves itse
 
 <br>
 
-![Node](https://img.shields.io/badge/node-%E2%89%A520-339933?logo=nodedotjs&logoColor=white)
+[![tests](https://github.com/dheiver2/tessera/actions/workflows/test.yml/badge.svg)](https://github.com/dheiver2/tessera/actions/workflows/test.yml)
+![Node](https://img.shields.io/badge/node-%E2%89%A522-339933?logo=nodedotjs&logoColor=white)
 ![Dependencies](https://img.shields.io/badge/dependencies-zero-brightgreen)
-![Tests](https://img.shields.io/badge/tests-66%20passing-success)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Status](https://img.shields.io/badge/status-experimental-orange)
 
@@ -43,7 +43,7 @@ Tessera **does not replace** your agents: it calls the CLIs you already have ins
 </table>
 
 > [!NOTE]
-> The CLI messages and the task files are currently in Portuguese. Commands, flags and outputs are shown below exactly as they are.
+> Works with **any two or more** of the four agents: the ones that are not installed are skipped automatically. The eval task files are still in Portuguese.
 
 ---
 
@@ -68,30 +68,31 @@ Tessera **does not replace** your agents: it calls the CLIs you already have ins
 
 ## 🚀 Quick start
 
-> **Requirements:** Node.js 20 or newer. Nothing to install.
+> **Requirements:** Node.js 22 or newer and at least two of `claude`, `codex`, `openclaw`, `hermes` installed and logged in. Nothing else to install.
+
+Run it straight from GitHub:
+
+```bash
+npx github:dheiver2/tessera doctor
+```
+
+```bash
+npx github:dheiver2/tessera fanout "What is the time complexity of binary search? One line."
+```
+
+`doctor` shows which agents it found and whether a gateway is configured. `fanout` sends the prompt to every installed agent and prints the chosen answer.
+
+<details>
+<summary><b>Install it locally instead</b></summary>
 
 ```bash
 git clone https://github.com/dheiver2/tessera.git
 cd tessera
 npm test
-```
-
-```bash
-node bin/tessera.mjs doctor
-```
-
-```bash
-node bin/tessera.mjs fanout --prompt "What is the time complexity of binary search? Answer in 1 line."
-```
-
-<details>
-<summary><b>Make the <code>tessera</code> command available in your terminal</b></summary>
-
-```bash
 npm link
 ```
 
-After that, `tessera fanout ...` works from any folder.
+After `npm link`, `tessera ...` works from any folder.
 </details>
 
 > [!TIP]
@@ -156,15 +157,15 @@ framework.json          targets, routing, fanout and provider
 ```
 
 ```bash
-node bin/tessera.mjs sync --dry-run --root ~/my-project
+tessera sync --dry-run --root ~/my-project
 ```
 
 ```bash
-node bin/tessera.mjs sync --root ~/my-project
+tessera sync --root ~/my-project
 ```
 
 ```bash
-node bin/tessera.mjs sync --global --target claude,codex
+tessera sync --global --target claude,codex
 ```
 
 | Target | Instructions | Persona | Skills | MCP |
@@ -190,22 +191,22 @@ node bin/tessera.mjs sync --global --target claude,codex
 ### ⚡ `fanout`: everyone at once
 
 ```bash
-node bin/tessera.mjs fanout --prompt "Does this function have a concurrency bug? <code>"
+tessera fanout "Does this function have a concurrency bug? <code>"
 ```
 
 ```bash
-node bin/tessera.mjs fanout --prompt "Implement solve() in JS" --verify "node check.mjs"
+tessera fanout "Implement solve() in JS" --verify "node check.mjs"
 ```
 
 The `--verify` command receives the answer on **stdin** and the agent name in `TESSERA_AGENT`. Exit code 0 means approved.
 
 | Flag | Default | Purpose |
 |:---|:---:|:---|
-| `--agents a,b,c` | all four | which agents to run |
+| `--agents a,b,c` | all installed | which agents to run |
 | `--verify "cmd"` | — | verifier; the first approved answer wins |
 | `--no-vote` | — | turns off majority voting |
 | `--roles` | off | gives each agent a different focus |
-| `--synth name` | `claude` | who synthesizes or repairs |
+| `--synth name` | `claude`, or the first installed | who synthesizes or repairs |
 | `--deadline s` | `120` | per-branch deadline |
 | `--synth-timeout s` | `180` | synthesis deadline |
 | `--quorum n` · `--grace s` | `2` · `15` | with *n* good answers, wait *s* seconds and cancel the rest |
@@ -220,19 +221,17 @@ The `--verify` command receives the answer on **stdin** and the agent name in `T
 - A branch that times out becomes a failure, and the fanout continues with the others. The fanout only fails if **none** of them answer.
 - Each answer is truncated to `maxCharsPerBranch` (6000) before synthesis.
 
-Output format with `--verify` (shortened ids; the CLI currently prints in Portuguese):
+Output format with `--verify` (shortened ids):
 
 ```text
-[done] openclaw 10912ms (…)  verificação: passou
-[cancelled] claude 11020ms (…)  — dispensado (já havia resposta escolhida)
-[cancelled] codex 11024ms (…)  — dispensado (já havia resposta escolhida)
-[cancelled] hermes 11031ms (…)  — dispensado (já havia resposta escolhida)
-ramos: 11031ms  provedor: mangaba-router
+[done] openclaw 10912ms (…)  verification: passed
+[cancelled] claude 11020ms (…)  — dismissed (an answer was already chosen)
+[cancelled] codex 11024ms (…)  — dismissed (an answer was already chosen)
+[cancelled] hermes 11031ms (…)  — dismissed (an answer was already chosen)
+branches: 11031ms  gateway: each agent's own
 
-=== resposta final (openclaw passou na verificação, sem síntese, 11040ms no total) ===
+=== final answer (openclaw passed verification, no synthesis, 11040ms total) ===
 ```
-
-That reads: OpenClaw passed verification after 10.9 s, the other three were dismissed, and the final answer came back with no synthesis in 11 s total.
 </details>
 
 ### 🔗 `pipeline`: chain agents
@@ -250,22 +249,22 @@ That reads: OpenClaw passed verification after 10.9 s, the other three were dism
 ```
 
 ```bash
-node bin/tessera.mjs pipeline pipelines/revisar-e-resumir.json
+tessera pipeline pipelines/revisar-e-resumir.json
 ```
 
 ### 🎯 `do` and `delegate`: a single agent
 
 ```bash
-node bin/tessera.mjs do --kind codigo --prompt "implement function X in src/x.js"
+tessera do --kind code "implement function X in src/x.js"
 ```
 
 ```bash
-node bin/tessera.mjs delegate --agent codex --prompt "explain this error"
+tessera delegate --agent codex "explain this error"
 ```
 
 `do` picks the agent by task kind (`framework.json > routing`):
 
-| Kind | `codigo` (code) | `revisao` (review) | `resumo` (summary) | `automacao` (automation) |
+| Kind | `code` | `review` | `summary` | `automation` |
 |:---|:---:|:---:|:---:|:---:|
 | Agent | Codex | Claude | Hermes | OpenClaw |
 
@@ -277,15 +276,15 @@ node bin/tessera.mjs delegate --agent codex --prompt "explain this error"
 Runs the same tasks on each agent alone and on Tessera, grades them **without using a model**, and compares.
 
 ```bash
-node bin/tessera.mjs eval
+tessera eval
 ```
 
 ```bash
-node bin/tessera.mjs eval --tasks evals/tasks-dificeis.json
+tessera eval --tasks evals/tasks-dificeis.json
 ```
 
 ```bash
-node bin/tessera.mjs eval --limit 5 --kind code --modes openclaw,tessera
+tessera eval --limit 5 --kind code --modes openclaw,tessera
 ```
 
 | Set | Tasks | Code | Questions | Review |
@@ -585,14 +584,14 @@ export TESSERA_CLAUDE_CMD='["claude", "-p", "--tools", ""]'
 | `Not inside a trusted directory` in Codex | folder outside a git repository | already handled: the adapter passes `--skip-git-repo-check` |
 | `Pass --to ... or --agent` in OpenClaw | missing agent id | pass `--agent-id main` |
 | `Agent couldn't generate a response` | OpenClaw got no answer from the model | treated as a failure; the fanout continues with the others |
-| `não foi possível executar "hermes"` | CLI not on PATH | install Hermes or set `TESSERA_HERMES_CMD` |
-| `tempo esgotado após Ns` (timed out after N s) | slow agent or router | raise `--deadline` or drop the agent with `--agents` |
+| `could not run "hermes"` / `skipping hermes (not installed)` | CLI not on PATH | install it, set `TESSERA_HERMES_CMD`, or just run with the others |
+| `timed out after Ns` | slow agent or gateway | raise `--deadline` or drop the agent with `--agents` |
 | `conflict` in `sync` | duplicate `[mcp_servers.x]` outside the block | remove the duplicate definition by hand |
 
 The run history lives in `.tessera/bus/tasks/*.json`, with status, output, error and duration:
 
 ```bash
-node bin/tessera.mjs tasks
+tessera tasks
 ```
 
 ---
@@ -633,7 +632,7 @@ tessera/
 ├── pipelines/               pipeline examples
 ├── examples/                gateway configuration example
 ├── docs/PLANO.md            phased plan
-└── test/                    66 tests (node:test)
+└── test/                    68 tests (node:test, run in CI)
 ```
 
 ---
