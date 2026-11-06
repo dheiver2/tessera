@@ -92,9 +92,18 @@ Troca "um modelo escolhe" por "o resultado se prova".
 - Conclusão: o método decide bem (93% quando decide); o que falta é responder no prazo sob disputa no roteador.
 - 4 tarefas que pegaram o Mac dormindo foram refeitas (`2026-11-06T02-30-33-047Z`, `2026-11-06T02-36-29-036Z`). Agregação: `node evals/agregar.mjs <rodadas> --patch <refeitas>`.
 
+**Fila no fanout** (06/nov, 1 rodada): no máximo 2 ramos ao mesmo tempo (`maxConcurrent: 2`) e prazo próprio de 180 s por ramo (`branchDeadlineSeconds`).
+- Diagnóstico: sem carga, o roteador responde em cerca de 1 s. Com 4 agentes ao mesmo tempo, a maioria das chamadas ficava 60 s sem resposta.
+- Tessera 26/33 = Claude 26/33, o melhor agente sozinho. OpenClaw 24, Codex 18, Hermes 16.
+- Sem resposta: de 13/132 (10%) para 2/33 (6%). Somando as sínteses que estouraram, de 14% para 12%. As 2 tarefas sem resposta (`hard-semver`, `hard-expressao`) nenhum agente sozinho resolve.
+- p95: 363 s, 3,0× o do melhor agente, porque dois prazos de 180 s podem se somar.
+- Veredito: a fila resolve a trava do roteador, mas não sobe o acerto e piora a latência. Continua como padrão porque os próximos passos precisam de um roteador que responda.
+- Resultado bruto: `evals/resultados/2026-11-06T09-37-14-358Z.json`.
+
 **Falta:**
-- Limitar chamadas simultâneas ao roteador e dar ao fanout um prazo próprio, maior que o do modo solo.
-- Medir de novo com 3 rodadas depois disso.
+- Diversidade de modelo por agente (`models.<agente>` em `~/.tessera/provider.json`).
+- Maioria mais exigente (3 votos, ou 2 sem divergência).
+- Latência: p95 até 1,5× o do melhor agente.
 - git worktrees para agentes que editam arquivos.
 
 ## Fase 2: crítica cruzada só quando há divergência

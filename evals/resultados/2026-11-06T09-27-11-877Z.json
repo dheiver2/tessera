@@ -1,0 +1,395 @@
+{
+  "meta": {
+    "date": "2026-11-06T09:27:11.877Z",
+    "provider": "mangaba-router",
+    "models": "{\"claude\":\"mangaba-agente-rapido\",\"codex\":\"mangaba-agente-rapido\",\"openclaw\":\"router/mangaba-agente-rapido\",\"hermes\":\"mangaba-agente-rapido\"}",
+    "agents": [
+      "openclaw",
+      "claude",
+      "codex",
+      "hermes"
+    ],
+    "modes": [
+      "tessera"
+    ],
+    "parallel": false,
+    "tasks": [
+      "hard-excel-coluna",
+      "hard-arredondar",
+      "hard-popcount",
+      "hard-ordem-natural",
+      "hard-topo-lexico",
+      "hard-lucro-2"
+    ],
+    "baseline": null,
+    "taskFile": "evals/tasks-dificeis.json"
+  },
+  "summary": {
+    "tasks": 6,
+    "modes": [
+      "tessera"
+    ],
+    "byMode": {
+      "tessera": {
+        "total": 6,
+        "passed": 5,
+        "accuracy": 0.8333333333333334,
+        "answered": 5,
+        "p50Ms": 32797,
+        "p95Ms": 362251,
+        "byKind": {
+          "code": {
+            "total": 6,
+            "passed": 5
+          }
+        }
+      }
+    },
+    "bestSolo": null,
+    "oracle": 0,
+    "oracleAccuracy": 0,
+    "comparison": null,
+    "decisions": {
+      "verify": {
+        "total": 5,
+        "passed": 5,
+        "p50Ms": 32797
+      },
+      "none": {
+        "total": 1,
+        "passed": 0,
+        "p50Ms": 362251
+      }
+    },
+    "branchOracle": 5
+  },
+  "results": [
+    {
+      "taskId": "hard-excel-coluna",
+      "kind": "code",
+      "mode": "tessera",
+      "status": "done",
+      "error": "",
+      "durationMs": 11986,
+      "branchesMs": 11986,
+      "output": "```js\nfunction solve(n) {\n  let result = '';\n  while (n > 0) {\n    n--;\n    result = String.fromCharCode(65 + (n % 26)) + result;\n    n = Math.floor(n / 26);\n  }\n  return result;\n}\n```",
+      "synthesized": false,
+      "selectedBy": "verify",
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 11615,
+          "dismissed": false,
+          "output": "```js\nfunction solve(n) {\n  let result = '';\n  while (n > 0) {\n    n--;\n    result = String.fromCharCode(65 + (n % 26)) + result;\n    n = Math.floor(n / 26);\n  }\n  return result;\n}\n```",
+          "verify": {
+            "pass": true,
+            "detail": "4/4 testes"
+          },
+          "pass": true
+        },
+        {
+          "agent": "claude",
+          "status": "cancelled",
+          "durationMs": 11979,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "codex",
+          "status": "cancelled",
+          "durationMs": 0,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 0,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "detail": "7/7 testes"
+    },
+    {
+      "taskId": "hard-arredondar",
+      "kind": "code",
+      "mode": "tessera",
+      "status": "failed",
+      "error": "nenhum agente respondeu no prazo",
+      "durationMs": 362251,
+      "branchesMs": 362251,
+      "output": "",
+      "synthesized": false,
+      "selectedBy": null,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "failed",
+          "durationMs": 70007,
+          "dismissed": false,
+          "output": "⚠️ Agent couldn't generate a response. Please try again.",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "claude",
+          "status": "failed",
+          "durationMs": 180371,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "codex",
+          "status": "failed",
+          "durationMs": 180022,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "hermes",
+          "status": "failed",
+          "durationMs": 181864,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": false,
+      "detail": "sem resposta"
+    },
+    {
+      "taskId": "hard-popcount",
+      "kind": "code",
+      "mode": "tessera",
+      "status": "done",
+      "error": "",
+      "durationMs": 79860,
+      "branchesMs": 79860,
+      "output": "```js\nfunction solve(n) {\n  let count = 0;\n  let x = n >>> 0;\n  while (x) {\n    count += x & 1;\n    x >>>= 1;\n  }\n  return count;\n}\n```",
+      "synthesized": false,
+      "selectedBy": "verify",
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 79587,
+          "dismissed": false,
+          "output": "```js\nfunction solve(n) {\n  let count = 0;\n  let x = n >>> 0;\n  while (x) {\n    count += x & 1;\n    x >>>= 1;\n  }\n  return count;\n}\n```",
+          "verify": {
+            "pass": true,
+            "detail": "3/3 testes"
+          },
+          "pass": true
+        },
+        {
+          "agent": "claude",
+          "status": "cancelled",
+          "durationMs": 79855,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "codex",
+          "status": "cancelled",
+          "durationMs": 0,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 0,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "detail": "6/6 testes"
+    },
+    {
+      "taskId": "hard-ordem-natural",
+      "kind": "code",
+      "mode": "tessera",
+      "status": "done",
+      "error": "",
+      "durationMs": 77806,
+      "branchesMs": 77806,
+      "output": "```js\nfunction solve(lista) {\n  return lista.slice().sort((a, b) => {\n    const aParts = a.match(/(\\d+)|[^0-9]+/g) || [''];\n    const bParts = b.match(/(\\d+)|[^0-9]+/g) || [''];\n\n    const len = Math.min(aParts.length, bParts.length);\n    for (let i = 0; i < len; i++) {\n      const aNum = parseInt(aParts[i], 10);\n      const bNum = parseInt(bParts[i], 10);\n\n      if (!isNaN(aNum) && !isNaN(bNum)) {\n        if (aNum !== bNum) return aNum - bNum;\n      } else if (!isNaN(aNum)) {\n        return -1;\n      } else if (!isNaN(bNum)) {\n        return 1;\n      } else {\n        if (aParts[i] !== bParts[i]) return aParts[i].localeCompare(bParts[i]);\n      }\n    }\n    return aParts.length - bParts.length;\n  });\n}\n```",
+      "synthesized": false,
+      "selectedBy": "verify",
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "cancelled",
+          "durationMs": 77804,
+          "dismissed": true,
+          "output": "[agents/tool-policy] tool policy removed 5 tool(s) via tools.profile (coding): agents_list, gateway, message, nodes, tts\n[agents/tool-policy] tool policy removed 8 tool(s) via tools.deny: create_goal, cron, get_goal, sessions_spawn, sessions_yield, skill_workshop, subagents, update_goal; matched create_goal, cron, get_goal, sessions_spawn, sessions_yield, skill_workshop, subagents, update_goal\n[provider-transport-fetch] [model-fetch] start provider=router api=openai-completions model=mangaba-agente-rapido method=POST url=https://mangabarouter.store/v1/chat/completions timeoutMs=900000 proxy=none policy=custom\n[provider-transport-fetch] [model-fetch] response provider=router api=openai-completions model=mangaba-agente-rapido status=200 elapsedMs=40899 contentType=text/event-stream; charset=utf-8\nLLM request failed.",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 77242,
+          "dismissed": false,
+          "output": "```js\nfunction solve(lista) {\n  return lista.slice().sort((a, b) => {\n    const aParts = a.match(/(\\d+)|[^0-9]+/g) || [''];\n    const bParts = b.match(/(\\d+)|[^0-9]+/g) || [''];\n\n    const len = Math.min(aParts.length, bParts.length);\n    for (let i = 0; i < len; i++) {\n      const aNum = parseInt(aParts[i], 10);\n      const bNum = parseInt(bParts[i], 10);\n\n      if (!isNaN(aNum) && !isNaN(bNum)) {\n        if (aNum !== bNum) return aNum - bNum;\n      } else if (!isNaN(aNum)) {\n        return -1;\n      } else if (!isNaN(bNum)) {\n        return 1;\n      } else {\n        if (aParts[i] !== bParts[i]) return aParts[i].localeCompare(bParts[i]);\n      }\n    }\n    return aParts.length - bParts.length;\n  });\n}\n```",
+          "verify": {
+            "pass": true,
+            "detail": "2/2 testes"
+          },
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "cancelled",
+          "durationMs": 0,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 0,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "detail": "4/4 testes"
+    },
+    {
+      "taskId": "hard-topo-lexico",
+      "kind": "code",
+      "mode": "tessera",
+      "status": "done",
+      "error": "",
+      "durationMs": 32797,
+      "branchesMs": 32797,
+      "output": "```javascript\nfunction solve(n, arestas) {\n    const adj = Array.from({ length: n }, () => []);\n    const indeg = new Array(n).fill(0);\n\n    for (const [a, b] of arestas) {\n        adj[a].push(b);\n        indeg[b]++;\n    }\n\n    // Min-heap (priority queue)\n    const heap = [];\n    const push = (val) => {\n        heap.push(val);\n        let i = heap.length - 1;\n        while (i > 0) {\n            const parent = (i - 1) >> 1;\n            if (heap[parent] > heap[i]) {\n                [heap[parent], heap[i]] = [heap[i], heap[parent]];\n                i = parent;\n            } else break;\n        }\n    };\n\n    const pop = () => {\n        const top = heap[0];\n        const end = heap.pop();\n        if (heap.length > 0) {\n            heap[0] = end;\n            let i = 0;\n            const len = heap.length;\n            while (true) {\n                let smallest = i;\n                const left = 2 * i + 1;\n                const right = 2 * i + 2;\n                if (left < len && heap[left] < heap[smallest]) smallest = left;\n                if (right < len && heap[right] < heap[smallest]) smallest = right;\n                if (smallest !== i) {\n                    [heap[i], heap[smallest]] = [heap[smallest], heap[i]];\n                    i = smallest;\n                } else break;\n            }\n        }\n        return top;\n    };\n\n    const result = [];\n    for (let i = 0; i < n; i++) {\n        if (indeg[i] === 0) push(i);\n    }\n\n    while (heap.length > 0) {\n        const u = pop();\n        result.push(u);\n        for (const v of adj[u]) {\n            indeg[v]--;\n            if (indeg[v] === 0) push(v);\n        }\n    }\n\n    return result.length === n ? result : null;\n}\n```",
+      "synthesized": false,
+      "selectedBy": "verify",
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "cancelled",
+          "durationMs": 32796,
+          "dismissed": true,
+          "output": "[agents/tool-policy] tool policy removed 5 tool(s) via tools.profile (coding): agents_list, gateway, message, nodes, tts\n[agents/tool-policy] tool policy removed 8 tool(s) via tools.deny: create_goal, cron, get_goal, sessions_spawn, sessions_yield, skill_workshop, subagents, update_goal; matched create_goal, cron, get_goal, sessions_spawn, sessions_yield, skill_workshop, subagents, update_goal\n[provider-transport-fetch] [model-fetch] start provider=router api=openai-completions model=mangaba-agente-rapido method=POST url=https://mangabarouter.store/v1/chat/completions timeoutMs=900000 proxy=none policy=custom\n[provider-transport-fetch] [model-fetch] response provider=router api=openai-completions model=mangaba-agente-rapido status=200 elapsedMs=13513 contentType=text/event-stream; charset=utf-8\nLLM request failed.",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 32526,
+          "dismissed": false,
+          "output": "```javascript\nfunction solve(n, arestas) {\n    const adj = Array.from({ length: n }, () => []);\n    const indeg = new Array(n).fill(0);\n\n    for (const [a, b] of arestas) {\n        adj[a].push(b);\n        indeg[b]++;\n    }\n\n    // Min-heap (priority queue)\n    const heap = [];\n    const push = (val) => {\n        heap.push(val);\n        let i = heap.length - 1;\n        while (i > 0) {\n            const parent = (i - 1) >> 1;\n            if (heap[parent] > heap[i]) {\n                [heap[parent], heap[i]] = [heap[i], heap[parent]];\n                i = parent;\n            } else break;\n        }\n    };\n\n    const pop = () => {\n        const top = heap[0];\n        const end = heap.pop();\n        if (heap.length > 0) {\n            heap[0] = end;\n            let i = 0;\n            const len = heap.length;\n            while (true) {\n                let smallest = i;\n                const left = 2 * i + 1;\n                const right = 2 * i + 2;\n                if (left < len && heap[left] < heap[smallest]) smallest = left;\n                if (right < len && heap[right] < heap[smallest]) smallest = right;\n                if (smallest !== i) {\n                    [heap[i], heap[smallest]] = [heap[smallest], heap[i]];\n                    i = smallest;\n                } else break;\n            }\n        }\n        return top;\n    };\n\n    const result = [];\n    for (let i = 0; i < n; i++) {\n        if (indeg[i] === 0) push(i);\n    }\n\n    while (heap.length > 0) {\n        const u = pop();\n        result.push(u);\n        for (const v of adj[u]) {\n            indeg[v]--;\n            if (indeg[v] === 0) push(v);\n        }\n    }\n\n    return result.length === n ? result : null;\n}\n```",
+          "verify": {
+            "pass": true,
+            "detail": "3/3 testes"
+          },
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "cancelled",
+          "durationMs": 0,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 0,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "detail": "5/5 testes"
+    },
+    {
+      "taskId": "hard-lucro-2",
+      "kind": "code",
+      "mode": "tessera",
+      "status": "done",
+      "error": "",
+      "durationMs": 17788,
+      "branchesMs": 17788,
+      "output": "```js\nfunction solve(precos) {\n  let buy1 = -precos[0];\n  let sell1 = 0;\n  let buy2 = -precos[0];\n  let sell2 = 0;\n\n  for (let i = 1; i < precos.length; i++) {\n    const p = precos[i];\n    buy1 = Math.max(buy1, -p);\n    sell1 = Math.max(sell1, buy1 + p);\n    buy2 = Math.max(buy2, sell1 - p);\n    sell2 = Math.max(sell2, buy2 + p);\n  }\n\n  return sell2;\n}\n```",
+      "synthesized": false,
+      "selectedBy": "verify",
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 17408,
+          "dismissed": false,
+          "output": "```js\nfunction solve(precos) {\n  let buy1 = -precos[0];\n  let sell1 = 0;\n  let buy2 = -precos[0];\n  let sell2 = 0;\n\n  for (let i = 1; i < precos.length; i++) {\n    const p = precos[i];\n    buy1 = Math.max(buy1, -p);\n    sell1 = Math.max(sell1, buy1 + p);\n    buy2 = Math.max(buy2, sell1 - p);\n    sell2 = Math.max(sell2, buy2 + p);\n  }\n\n  return sell2;\n}\n```",
+          "verify": {
+            "pass": true,
+            "detail": "3/3 testes"
+          },
+          "pass": true
+        },
+        {
+          "agent": "claude",
+          "status": "cancelled",
+          "durationMs": 17786,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "codex",
+          "status": "cancelled",
+          "durationMs": 0,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 0,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "detail": "5/5 testes"
+    }
+  ]
+}

@@ -311,6 +311,23 @@ tessera eval --limit 5 --kind code --modes openclaw,tessera
 
 > Measured with all four agents on the same model (`mangaba-agente-rapido`) through one gateway (the author's Mangaba Router), so differences come only from each agent's harness. Synthesis by Claude. A one-task difference is within noise.
 
+### 🚦 Hard set · fanout queue (at most 2 branches at once) · Nov 6, 2026 · 1 round
+
+| Mode | Correct | Answered | p50 | p95 |
+|:---|:---:|:---:|---:|---:|
+| **claude** | **26/33** | 29/33 | 10.3 s | 120 s |
+| 🧩 **tessera** | **26/33** | **31/33** | 38.9 s | 363 s |
+| openclaw | 24/33 | 30/33 | 7.6 s | 60 s |
+| codex | 18/33 | 29/33 | 11.9 s | 120 s |
+| hermes | 16/33 | 23/33 | 54.6 s | 122 s |
+
+> [!IMPORTANT]
+> **Verdict: the queue removes the router stall, but it does not raise accuracy, and it doubles p95.** Tasks with no answer fell from 13 of 132 (10%) to 2 of 33 (6%). Counting synthesis timeouts too, they fell from 14% to 12%. Both tasks left with no answer (`hard-semver`, `hard-expressao`) are ones no agent alone solves either, so they are hard tasks, not a stalled router. Accuracy is a tie with the best agent (26 = 26), as before. p95 is 3.0× the best agent's, because with 2 slots two 180 s branch deadlines can add up. The queue stays the default (`maxConcurrent: 2`, `branchDeadlineSeconds: 180` in `framework.json`, or `--max-concurrent`), because the next steps need a router that answers. Latency is step 4 of the plan.
+
+How the queue works: branches start in the order of `agents`, a slot is freed only after that branch is verified and voted, and a branch still waiting is dropped without starting if a decision comes first. With no load, a 5-token call to the router takes about 1 s. Under the old fanout with 4 agents at once, most calls got no answer within 60 s.
+
+Raw result: `evals/resultados/2026-11-06T09-37-14-358Z.json`.
+
 ### 🎲 Hard set · 4 rounds with the deadline fix · Nov 5–6, 2026
 
 | Mode | Per round | Mean | Std dev | Mean p95 |
@@ -336,7 +353,7 @@ tessera eval --limit 5 --kind code --modes openclaw,tessera
 | 🛟 finished branch (synthesis failed) | 6 | **0/6** |
 | ⛔ no answer | 13 | **0/13** |
 
-When Tessera reaches a decision, it is right on 104 of 112 (93%). **The losses come from not answering:** on 19 tasks (14%) no branch finished in time or the synthesis timed out. With four agents calling the router at once, the router stalls; with no load it answers in about 1 s. Next step: limit concurrent calls and give the fanout its own deadline.
+When Tessera reaches a decision, it is right on 104 of 112 (93%). **The losses come from not answering:** on 19 tasks (14%) no branch finished in time or the synthesis timed out. With four agents calling the router at once, the router stalls; with no load it answers in about 1 s. The queue above was the fix.
 
 The tasks that caught the Mac asleep (4 of 132) were re-run and replaced. The aggregation script is [`evals/agregar.mjs`](evals/agregar.mjs).
 

@@ -1,0 +1,169 @@
+{
+  "meta": {
+    "date": "2026-11-06T09:02:10.692Z",
+    "provider": "mangaba-router",
+    "models": "{\"claude\":\"mangaba-agente-rapido\",\"codex\":\"mangaba-agente-rapido\",\"openclaw\":\"router/mangaba-agente-rapido\",\"hermes\":\"mangaba-agente-rapido\"}",
+    "agents": [
+      "claude",
+      "codex",
+      "openclaw",
+      "hermes"
+    ],
+    "modes": [
+      "tessera"
+    ],
+    "parallel": false,
+    "tasks": [
+      "hard-excel-coluna",
+      "hard-ordem-natural"
+    ],
+    "baseline": null,
+    "taskFile": "evals/tasks-dificeis.json"
+  },
+  "summary": {
+    "tasks": 2,
+    "modes": [
+      "tessera"
+    ],
+    "byMode": {
+      "tessera": {
+        "total": 2,
+        "passed": 2,
+        "accuracy": 1,
+        "answered": 2,
+        "p50Ms": 14438,
+        "p95Ms": 87478,
+        "byKind": {
+          "code": {
+            "total": 2,
+            "passed": 2
+          }
+        }
+      }
+    },
+    "bestSolo": null,
+    "oracle": 0,
+    "oracleAccuracy": 0,
+    "comparison": null,
+    "decisions": {
+      "verify": {
+        "total": 2,
+        "passed": 2,
+        "p50Ms": 14438
+      }
+    },
+    "branchOracle": 2
+  },
+  "results": [
+    {
+      "taskId": "hard-excel-coluna",
+      "kind": "code",
+      "mode": "tessera",
+      "status": "done",
+      "error": "",
+      "durationMs": 14438,
+      "branchesMs": 14438,
+      "output": "```js\nfunction solve(n) {\n  let result = '';\n  while (n > 0) {\n    n--;\n    const remainder = n % 26;\n    result = String.fromCharCode(65 + remainder) + result;\n    n = Math.floor(n / 26);\n  }\n  return result;\n}\n```",
+      "synthesized": false,
+      "selectedBy": "verify",
+      "branches": [
+        {
+          "agent": "claude",
+          "status": "cancelled",
+          "durationMs": 13140,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "codex",
+          "status": "cancelled",
+          "durationMs": 12782,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 12749,
+          "dismissed": false,
+          "output": "```js\nfunction solve(n) {\n  let result = '';\n  while (n > 0) {\n    n--;\n    const remainder = n % 26;\n    result = String.fromCharCode(65 + remainder) + result;\n    n = Math.floor(n / 26);\n  }\n  return result;\n}\n```",
+          "verify": {
+            "pass": true,
+            "detail": "4/4 testes"
+          },
+          "pass": true
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 14426,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "detail": "7/7 testes"
+    },
+    {
+      "taskId": "hard-ordem-natural",
+      "kind": "code",
+      "mode": "tessera",
+      "status": "done",
+      "error": "",
+      "durationMs": 87478,
+      "branchesMs": 87478,
+      "output": "```js\nfunction solve(lista) {\n  return lista.slice().sort((a, b) => {\n    const aTokens = a.match(/(\\d+)|([^0-9]+)/g) || [];\n    const bTokens = b.match(/(\\d+)|([^0-9]+)/g) || [];\n\n    const len = Math.min(aTokens.length, bTokens.length);\n    for (let i = 0; i < len; i++) {\n      const aToken = aTokens[i];\n      const bToken = bTokens[i];\n\n      const aIsDigit = /^\\d+$/.test(aToken);\n      const bIsDigit = /^\\d+$/.test(bToken);\n\n      if (aIsDigit && bIsDigit) {\n        const aNum = parseInt(aToken, 10);\n        const bNum = parseInt(bToken, 10);\n        if (aNum !== bNum) return aNum - bNum;\n      } else if (aIsDigit) {\n        return -1;\n      } else if (bIsDigit) {\n        return 1;\n      } else {\n        if (aToken !== bToken) return aToken.localeCompare(bToken);\n      }\n    }\n\n    return aTokens.length - bTokens.length;\n  });\n}\n```",
+      "synthesized": false,
+      "selectedBy": "verify",
+      "branches": [
+        {
+          "agent": "claude",
+          "status": "cancelled",
+          "durationMs": 86037,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "codex",
+          "status": "cancelled",
+          "durationMs": 85814,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 85780,
+          "dismissed": false,
+          "output": "```js\nfunction solve(lista) {\n  return lista.slice().sort((a, b) => {\n    const aTokens = a.match(/(\\d+)|([^0-9]+)/g) || [];\n    const bTokens = b.match(/(\\d+)|([^0-9]+)/g) || [];\n\n    const len = Math.min(aTokens.length, bTokens.length);\n    for (let i = 0; i < len; i++) {\n      const aToken = aTokens[i];\n      const bToken = bTokens[i];\n\n      const aIsDigit = /^\\d+$/.test(aToken);\n      const bIsDigit = /^\\d+$/.test(bToken);\n\n      if (aIsDigit && bIsDigit) {\n        const aNum = parseInt(aToken, 10);\n        const bNum = parseInt(bToken, 10);\n        if (aNum !== bNum) return aNum - bNum;\n      } else if (aIsDigit) {\n        return -1;\n      } else if (bIsDigit) {\n        return 1;\n      } else {\n        if (aToken !== bToken) return aToken.localeCompare(bToken);\n      }\n    }\n\n    return aTokens.length - bTokens.length;\n  });\n}\n```",
+          "verify": {
+            "pass": true,
+            "detail": "2/2 testes"
+          },
+          "pass": true
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 87475,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "detail": "4/4 testes"
+    }
+  ]
+}
