@@ -15,13 +15,15 @@
   },
   "fanout": {
     "agents": [
+      "openclaw",
       "claude",
       "codex",
-      "openclaw",
       "hermes"
     ],
     "synthesizer": "claude",
     "deadlineSeconds": 120,
+    "branchDeadlineSeconds": 180,
+    "maxConcurrent": 2,
     "synthTimeoutSeconds": 180,
     "quorum": 2,
     "graceSeconds": 15,

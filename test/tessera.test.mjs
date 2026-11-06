@@ -114,7 +114,7 @@ test('fonte alternativa é respeitada', () => {
   assert.ok(readFileSync(join(root, 'CLAUDE.md'), 'utf8').includes('REGRA ÚNICA'));
 });
 
-import { runPipeline, listTasks, routeFor, fanout, delegateAsync } from '../src/bridge.mjs';
+import { runPipeline, listTasks, routeFor, fanout, delegateAsync, createSlots } from '../src/bridge.mjs';
 
 test('pipeline encadeia saída via {{previous}} usando agente falso', () => {
   const fake = resolve('test', 'fake-agent.mjs');
@@ -450,5 +450,62 @@ test('prazo vale mesmo quando o agente deixa subprocessos segurando o stdout', a
     assert.match(t.error, /tempo esgotado/);
   } finally {
     delete process.env.TESSERA_CODEX_CMD;
+  }
+});
+
+test('createSlots: no máximo n donos ao mesmo tempo, por ordem de chegada', async () => {
+  const slots = createSlots(2);
+  let running = 0, peak = 0;
+  const order = [];
+  await Promise.all([0, 1, 2, 3, 4].map(async (i) => {
+    const release = await slots.acquire();
+    running += 1; peak = Math.max(peak, running); order.push(i);
+    await new Promise((r) => setTimeout(r, 30));
+    running -= 1; release(); release(); // liberar duas vezes não pode abrir vaga extra
+  }));
+  assert.equal(peak, 2);
+  assert.deepEqual(order, [0, 1, 2, 3, 4]);
+});
+
+test('fanout com maxConcurrent: ramos excedentes esperam, e quem está na fila é dispensado sem começar', async () => {
+  const root = fresh();
+  const log = join(root, 'inicios.log');
+  // Cada agente anota quando começa e quando termina; a resposta sai depois de 300 ms.
+  const cmd = (txt) => `node -e require("fs").appendFileSync(${JSON.stringify(log)},"I"+Date.now()+"\\n");setTimeout(()=>{require("fs").appendFileSync(${JSON.stringify(log)},"F"+Date.now()+"\\n");console.log(${JSON.stringify(txt)})},300) #`;
+  process.env.TESSERA_OPENCLAW_CMD = cmd('CERTO');
+  process.env.TESSERA_CODEX_CMD = 'node -e setTimeout(()=>console.log("lento"),3000) #';
+  process.env.TESSERA_HERMES_CMD = cmd('nunca roda');
+  process.env.TESSERA_CLAUDE_CMD = 'node -e console.log("SINTESE") #';
+  try {
+    const res = await fanout({
+      root, prompt: 'p', agents: ['openclaw', 'codex', 'hermes'], synthesizer: 'claude',
+      maxConcurrent: 2, maxWaitAfterFirstMs: 0,
+      verify: (text) => ({ pass: text.includes('CERTO'), detail: '' }),
+    });
+    assert.equal(res.final.selectedBy, 'verify');
+    assert.equal(res.final.agent, 'openclaw');
+    const hermes = res.branches.find((b) => b.agent === 'hermes');
+    assert.equal(hermes.queued, true);
+    assert.equal(hermes.dismissed, true);
+    // O hermes, terceiro na fila, nunca começou.
+    const marks = readFileSync(log, 'utf8').trim().split('\n');
+    assert.equal(marks.filter((m) => m.startsWith('I')).length, 1);
+  } finally {
+    for (const a of ['CODEX', 'OPENCLAW', 'HERMES', 'CLAUDE']) delete process.env[`TESSERA_${a}_CMD`];
+  }
+});
+
+test('fanout com maxConcurrent 1: um ramo só começa depois que o anterior termina', async () => {
+  const root = fresh();
+  const log = join(root, 'inicios.log');
+  const cmd = (txt) => `node -e require("fs").appendFileSync(${JSON.stringify(log)},"I"+Date.now()+"\\n");setTimeout(()=>{require("fs").appendFileSync(${JSON.stringify(log)},"F"+Date.now()+"\\n");console.log(${JSON.stringify(txt)})},200) #`;
+  process.env.TESSERA_OPENCLAW_CMD = cmd('a');
+  process.env.TESSERA_CODEX_CMD = cmd('b');
+  try {
+    await fanout({ root, prompt: 'p', agents: ['openclaw', 'codex'], synthesizer: null, maxConcurrent: 1, maxWaitAfterFirstMs: 0, vote: null });
+    const marks = readFileSync(log, 'utf8').trim().split('\n').map((m) => m[0]);
+    assert.deepEqual(marks, ['I', 'F', 'I', 'F']);
+  } finally {
+    for (const a of ['CODEX', 'OPENCLAW']) delete process.env[`TESSERA_${a}_CMD`];
   }
 });

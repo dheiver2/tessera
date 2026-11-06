@@ -296,6 +296,23 @@ export function withRole(prompt, role) {
   return role ? `${prompt}\n\n[Seu foco nesta tarefa] ${role}` : prompt;
 }
 
+// Semáforo simples: no máximo `n` donos ao mesmo tempo, atendidos por ordem de chegada.
+export function createSlots(n) {
+  let free = n;
+  const waiting = [];
+  const release = () => {
+    const next = waiting.shift();
+    if (next) next(once()); else free += 1;
+  };
+  const once = () => { let done = false; return () => { if (!done) { done = true; release(); } }; };
+  return {
+    acquire() {
+      if (free > 0) { free -= 1; return Promise.resolve(once()); }
+      return new Promise((resolveSlot) => waiting.push(resolveSlot));
+    },
+  };
+}
+
 export function capOutput(text, maxChars) {
   if (!maxChars || text.length <= maxChars) return text;
   return `${text.slice(0, maxChars)}\n[… ${text.length - maxChars} caracteres cortados pelo Tessera]`;
@@ -340,12 +357,16 @@ export function commandVerifier(cmd, { timeoutMs = 60_000, cwd } = {}) {
 // - Quando `quorum` ramos terminam bem, os demais têm `graceMs` para chegar e depois são cancelados.
 // - Depois da primeira resposta boa, os demais têm no máximo maxWaitAfterFirstMs.
 // - Cada resposta é cortada em maxCharsPerBranch antes da síntese (menos prefill).
+// - maxConcurrent > 0 limita quantos ramos chamam o provedor ao mesmo tempo, na ordem de
+//   `agents`. Os demais esperam numa fila; se a decisão sair antes, nem começam.
+//   Motivo (06/nov/2026): com 4 agentes juntos no mesmo modelo do roteador, todos travavam
+//   e estouravam o prazo, mesmo em tarefas que cada agente sozinho resolvia em 10 s.
 export async function fanout({
   root, prompt, agents, synthesizer, agentId, provider = null,
   deadlineMs = 120_000, synthTimeoutMs = 180_000,
   quorum = 0, graceMs = 15_000, roles = null, maxCharsPerBranch = 6000,
   maxWaitAfterFirstMs = 30_000,
-  verify = null, vote = voteKey, voteQuorum = 2,
+  verify = null, vote = voteKey, voteQuorum = 2, maxConcurrent = 0,
 }) {
   const started = Date.now();
   const controller = new AbortController();
@@ -356,7 +377,21 @@ export async function fanout({
   let decided = null;
   const votes = new Map();
 
+  const slots = createSlots(maxConcurrent > 0 ? maxConcurrent : agents.length);
+
   const branches = await Promise.all(agents.map(async (agent) => {
+    // A vaga só é devolvida depois da verificação e do voto: se esta resposta decide o
+    // fanout, o próximo da fila não chega a começar.
+    const release = await slots.acquire();
+    try { return await runBranch(agent); } finally { release(); }
+  }));
+  clearTimeout(graceTimer);
+  clearTimeout(firstTimer);
+
+  async function runBranch(agent) {
+    if (controller.signal.aborted) {
+      return { agent, status: 'cancelled', output: '', error: 'dispensado antes de começar', durationMs: 0, queued: true };
+    }
     const t = await delegateAsync({
       root, agent, agentId, provider, timeoutMs: deadlineMs, name: `fanout:${agent}`,
       prompt: withRole(prompt, roles?.[agent]), signal: controller.signal,
@@ -390,9 +425,7 @@ export async function fanout({
       }
     }
     return t;
-  }));
-  clearTimeout(graceTimer);
-  clearTimeout(firstTimer);
+  }
 
   // Ramos cancelados depois de uma decisão não são falha: foram dispensados.
   if (decided) for (const b of branches) if (b !== decided.branch && b.status === 'cancelled') b.dismissed = true;

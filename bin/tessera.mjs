@@ -29,7 +29,7 @@ Uso:
   tessera delegate --agent <claude|codex|openclaw|hermes> --prompt "..." [--root DIR]
   tessera pipeline <arquivo.json> [--root DIR]   encadeia agentes ({{previous}} = saída do passo anterior)
   tessera do --kind <codigo|revisao|resumo|automacao> --prompt "..." [--root DIR]   escolhe o agente mais forte (framework.json > routing)
-  tessera fanout --prompt "..." [--agents ...] [--synth claude] [--deadline 120] [--synth-timeout 180]
+  tessera fanout --prompt "..." [--agents ...] [--synth claude] [--deadline 180] [--max-concurrent 2] [--synth-timeout 180]
                  [--quorum 2] [--grace 15] [--max-wait 30] [--verify "cmd"] [--no-vote] [--roles] [--no-provider] [--root DIR]
                                                  todos ao mesmo tempo; vence a resposta verificada ou a maioria; síntese só no impasse
   tessera tasks [--root DIR]                     histórico do barramento
@@ -120,7 +120,8 @@ try {
       agents: agents.split(',').map((s) => s.trim()).filter(Boolean),
       synthesizer: synth,
       agentId: value('--agent-id'),
-      deadlineMs: Number(value('--deadline') ?? cfg.deadlineSeconds ?? 120) * 1000,
+      deadlineMs: Number(value('--deadline') ?? cfg.branchDeadlineSeconds ?? cfg.deadlineSeconds ?? 120) * 1000,
+      maxConcurrent: Number(value('--max-concurrent') ?? cfg.maxConcurrent ?? 0),
       synthTimeoutMs: Number(value('--synth-timeout') ?? cfg.synthTimeoutSeconds ?? 180) * 1000,
       quorum: Number(value('--quorum') ?? cfg.quorum ?? 0),
       graceMs: Number(value('--grace') ?? cfg.graceSeconds ?? 15) * 1000,
@@ -168,7 +169,8 @@ try {
       soloTimeoutMs: Number(value('--deadline') ?? cfg.deadlineSeconds ?? 120) * 1000,
       fanoutOpts: {
         synthesizer: cfg.synthesizer ?? 'claude',
-        deadlineMs: Number(cfg.deadlineSeconds ?? 120) * 1000,
+        deadlineMs: Number(cfg.branchDeadlineSeconds ?? cfg.deadlineSeconds ?? 120) * 1000,
+        maxConcurrent: Number(value('--max-concurrent') ?? cfg.maxConcurrent ?? 0),
         synthTimeoutMs: Number(cfg.synthTimeoutSeconds ?? 180) * 1000,
         quorum: Number(cfg.quorum ?? 0),
         graceMs: Number(cfg.graceSeconds ?? 15) * 1000,
