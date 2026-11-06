@@ -2,3 +2,6 @@ node_modules/
 .DS_Store
 .tessera-backup/
 .tessera/
+
+# Página pública: fonte do template Cruip (GPL, não redistribuir); só o build vai para gh-pages
+site/
