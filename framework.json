@@ -21,6 +21,9 @@
       "hermes"
     ],
     "synthesizer": "claude",
+    "fast": "openclaw",
+    "fastDeadlineSeconds": 90,
+    "microAgent": "openclaw",
     "deadlineSeconds": 120,
     "branchDeadlineSeconds": 180,
     "maxConcurrent": 2,

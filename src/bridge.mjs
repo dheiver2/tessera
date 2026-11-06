@@ -389,24 +389,53 @@ export async function fanout({
   quorum = 0, graceMs = 15_000, roles = null, maxCharsPerBranch = 6000,
   maxWaitAfterFirstMs = 30_000,
   verify = null, vote = voteKey, voteQuorum = 2, maxConcurrent = 0,
+  // softVerify: a verificação só acelera a escolha. Se nenhuma resposta passar, o fanout
+  // segue como se não houvesse verificador (maioria, síntese), sem pedir reparo.
+  // Usado com testes gerados por microagente, que podem estar errados.
+  softVerify = false,
+  // seed: ramos que já terminaram antes (a primeira etapa da cascata). Contam no voto,
+  // na síntese e no resultado, mas não disparam os prazos de espera.
+  seed = [],
 }) {
   const started = Date.now();
   const controller = new AbortController();
-  const need = quorum > 0 ? Math.min(quorum, agents.length) : agents.length;
+  const total = agents.length + seed.length;
+  const need = quorum > 0 ? Math.min(quorum, total) : total;
   let okCount = 0;
+  let liveOk = 0;
   let graceTimer = null;
   let firstTimer = null;
   let decided = null;
   const votes = new Map();
 
+  const castVote = (t) => {
+    if (!vote) return;
+    const key = vote(t.output);
+    if (!key) return;
+    const list = votes.get(key) ?? [];
+    list.push(t);
+    votes.set(key, list);
+    if (list.length >= Math.min(voteQuorum, total) && total > 1 && !decided) {
+      decided = { by: 'vote', branch: list[0], votes: list.map((b) => b.agent) };
+      controller.abort();
+    }
+  };
+  for (const s of seed) {
+    if (s.status !== 'done' || !s.output) continue;
+    okCount += 1;
+    if (s.verify?.pass && !decided) decided = { by: 'verify', branch: s };
+    else if (!verify || softVerify) castVote(s);
+  }
+
   const slots = createSlots(maxConcurrent > 0 ? maxConcurrent : agents.length);
 
-  const branches = await Promise.all(agents.map(async (agent) => {
+  const live = decided ? [] : await Promise.all(agents.map(async (agent) => {
     // A vaga só é devolvida depois da verificação e do voto: se esta resposta decide o
     // fanout, o próximo da fila não chega a começar.
     const release = await slots.acquire();
     try { return await runBranch(agent); } finally { release(); }
   }));
+  const branches = [...seed, ...live];
   clearTimeout(graceTimer);
   clearTimeout(firstTimer);
 
@@ -422,27 +451,20 @@ export async function fanout({
       if (verify) {
         t.verify = await Promise.resolve(verify(t.output, agent)).catch((e) => ({ pass: false, detail: e.message }));
         if (t.verify.pass && !decided) { decided = { by: 'verify', branch: t }; controller.abort(); }
-      } else if (vote) {
-        const key = vote(t.output);
-        if (key) {
-          const list = votes.get(key) ?? [];
-          list.push(t);
-          votes.set(key, list);
-          if (list.length >= Math.min(voteQuorum, agents.length) && agents.length > 1 && !decided) {
-            decided = { by: 'vote', branch: list[0], votes: list.map((b) => b.agent) };
-            controller.abort();
-          }
-        }
+        else if (softVerify) castVote(t);
+      } else {
+        castVote(t);
       }
     }
     if (t.status === 'done') {
       okCount += 1;
+      liveOk += 1;
       // Primeira resposta boa: os demais têm no máximo maxWaitAfterFirstMs,
       // mesmo que o quórum nunca seja atingido (agente travado não segura o resultado).
-      if (okCount === 1 && maxWaitAfterFirstMs > 0 && agents.length > 1) {
+      if (liveOk === 1 && maxWaitAfterFirstMs > 0 && agents.length > 1) {
         firstTimer = setTimeout(() => controller.abort(), maxWaitAfterFirstMs);
       }
-      if (okCount >= need && need < agents.length && !graceTimer) {
+      if (okCount >= need && need < total && !graceTimer) {
         graceTimer = setTimeout(() => controller.abort(), graceMs);
       }
     }
@@ -461,16 +483,17 @@ export async function fanout({
   }
   if (!synthesizer) return { branches, final: null, branchesMs };
   if (ok.length === 0) return { branches, final: null, branchesMs, error: 'no agent answered in time' };
-  if (ok.length === 1 && !verify) {
+  const hard = Boolean(verify) && !softVerify;
+  if (ok.length === 1 && !hard) {
     // Uma resposta só e nada a corrigir: sintetizar seria latência sem ganho.
     return { branches, final: pick(ok[0], 'single'), branchesMs, totalMs: branchesMs };
   }
 
   const merged = ok.map((t) => {
-    const fail = t.verify && !t.verify.pass ? `\n[Verification failed] ${capOutput(t.verify.detail ?? '', 800)}` : '';
+    const fail = hard && t.verify && !t.verify.pass ? `\n[Verification failed] ${capOutput(t.verify.detail ?? '', 800)}` : '';
     return `### ${t.agent}\n${capOutput(t.output, maxCharsPerBranch)}${fail}`;
   }).join('\n\n');
-  const instructions = verify
+  const instructions = hard
     ? 'None of the answers passed verification; the failures are shown.\n' +
       'Produce ONE corrected final answer that passes verification.\n' +
       '- Carefully keep what is right; do not introduce syntax errors.\n' +
@@ -483,7 +506,7 @@ export async function fanout({
     root, agent: synthesizer, agentId, provider, timeoutMs: synthTimeoutMs, name: 'sintese',
     prompt: `Pergunta original:\n${prompt}\n\nRespostas de diferentes agentes (cada um com um foco):\n\n${merged}\n\n${instructions}`,
   });
-  final.selectedBy = verify ? 'repair' : 'synthesis';
+  final.selectedBy = hard ? 'repair' : 'synthesis';
   if (final.status !== 'done' || !final.output) {
     // Síntese falhou (prazo, roteador fora): uma resposta pronta é melhor do que nenhuma.
     return {
@@ -492,10 +515,42 @@ export async function fanout({
       branchesMs, totalMs: Date.now() - started,
     };
   }
-  if (verify && final.status === 'done' && final.output) {
+  if (hard && final.status === 'done' && final.output) {
     final.verify = await Promise.resolve(verify(final.output, synthesizer)).catch((e) => ({ pass: false, detail: e.message }));
   }
   return { branches, final, branchesMs, totalMs: Date.now() - started };
+}
+
+// Cascata: o agente mais rápido responde sozinho primeiro. Se a resposta dele passar na
+// verificação, ela volta na hora e ninguém mais é chamado. Senão (falhou, não respondeu
+// ou não há verificador), os demais entram num fanout normal, com a resposta dele já
+// contando como um voto: basta um agente concordar para decidir.
+// Motivo (06/nov/2026): o fanout empatava com o melhor agente e levava 3× o p95 dele;
+// a maior parte das tarefas o agente rápido já resolve sozinho.
+export async function cascade({
+  root, prompt, agents, fast = agents[0], fastDeadlineMs = 90_000, agentId, provider = null,
+  verify = null, softVerify = false, ...fanoutOpts
+}) {
+  const started = Date.now();
+  const first = await delegateAsync({
+    root, agent: fast, agentId, provider, timeoutMs: fastDeadlineMs, name: `cascade:${fast}`, prompt,
+  });
+  if (first.status === 'done' && first.output && verify) {
+    first.verify = await Promise.resolve(verify(first.output, fast)).catch((e) => ({ pass: false, detail: e.message }));
+    if (first.verify.pass) {
+      const ms = Date.now() - started;
+      return { branches: [first], final: { ...first, name: 'selecao', synthesized: false, selectedBy: 'fast' }, branchesMs: ms, totalMs: ms, escalated: false };
+    }
+  }
+  const rest = agents.filter((a) => a !== fast);
+  const res = await fanout({
+    root, prompt, agents: rest, agentId, provider, verify, softVerify, ...fanoutOpts,
+    seed: [first],
+  });
+  res.totalMs = Date.now() - started;
+  res.branchesMs = (res.branchesMs ?? 0) + first.durationMs;
+  res.escalated = true;
+  return res;
 }
 
 // ---------------------------------------------------------------------------

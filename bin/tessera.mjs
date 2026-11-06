@@ -6,10 +6,11 @@ import { mkdirSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { loadTasks, runEval, summarize, saveResults, renderMarkdown } from '../src/eval.mjs';
 import {
-  delegate, runPipeline, loadPipeline, listTasks, routeFor, fanout, loadProvider, providerConfig,
+  delegate, runPipeline, loadPipeline, listTasks, routeFor, fanout, cascade, loadProvider, providerConfig,
   commandVerifier, voteKey, DEFAULT_ROLES, availableAgents, agentAvailable,
 } from '../src/bridge.mjs';
 import { readFrameworkConfig, SOURCE_DEFAULT as SRC } from '../src/sync.mjs';
+import { autoVerifier } from '../src/microagents.mjs';
 
 const ALL_AGENTS = ['claude', 'codex', 'openclaw', 'hermes'];
 const args = process.argv.slice(2);
@@ -49,15 +50,18 @@ Usage:
   tessera doctor                                  which agents are installed, which gateway is active
   tessera fanout "prompt" [--agents a,b] [--verify "cmd"] [--synth claude] [--deadline 180] [--max-concurrent 2]
                  [--synth-timeout 180] [--quorum 2] [--grace 15] [--max-wait 30] [--no-vote] [--roles] [--no-provider]
+                 [--cascade [--fast openclaw]] [--auto-verify]
                                                   all agents at once; the verified answer or the majority wins; synthesis only on deadlock
+                 --cascade      the fast agent answers alone first; the others join only if it fails verification
+                 --auto-verify  a micro-agent writes test cases from the prompt (code tasks with no --verify)
   tessera delegate --agent <claude|codex|openclaw|hermes> "prompt"
   tessera do --kind <code|review|summary|automation> "prompt"   picks the agent from framework.json > routing
   tessera pipeline <file.json>                    chains agents ({{previous}} = previous step's output)
   tessera sync [--target claude,codex,openclaw,hermes] [--global] [--root DIR] [--dry-run] [--force]
   tessera tasks                                   run history
   tessera eval [--tasks evals/tasks-dificeis.json] [--limit N] [--kind code,qa,review] [--ids a,b] [--agents ...]
-               [--modes solo,tessera] [--baseline file.json]
-                                                  measures each agent alone vs. Tessera
+               [--modes solo,tessera,cascade] [--auto-verify] [--baseline file.json]
+                                                  measures each agent alone vs. Tessera (fanout and cascade)
 
   Agents that are not installed are skipped automatically (unless you pass --agents).
   --root DIR       project folder (default: current directory)
@@ -142,10 +146,21 @@ try {
     const cfg = CFG.fanout ?? {};
     const agents = pickAgents(value('--agents'), cfg.agents);
     const synth = pickSynth(value('--synth'), cfg.synthesizer, agents);
-    const res = await fanout({
+    const useCascade = flag('--cascade') || cfg.mode === 'cascade';
+    const fast = value('--fast') ?? (agents.includes(cfg.fast) ? cfg.fast : agents[0]);
+    let verify = value('--verify') ? commandVerifier(value('--verify'), { cwd: root() }) : null;
+    let softVerify = false;
+    if (!verify && flag('--auto-verify')) {
+      verify = autoVerifier({ root: root(), prompt, agent: agents.includes(cfg.microAgent) ? cfg.microAgent : fast, provider: PROVIDER, agentId: value('--agent-id') });
+      softVerify = true;
+    }
+    const run = useCascade ? cascade : fanout;
+    const res = await run({
       root: root(),
       prompt,
-      agents,
+      agents: useCascade ? [fast, ...agents.filter((a) => a !== fast)] : agents,
+      fast,
+      fastDeadlineMs: Number(cfg.fastDeadlineSeconds ?? 90) * 1000,
       synthesizer: synth,
       agentId: value('--agent-id'),
       deadlineMs: Number(value('--deadline') ?? cfg.branchDeadlineSeconds ?? cfg.deadlineSeconds ?? 120) * 1000,
@@ -157,7 +172,8 @@ try {
       maxWaitAfterFirstMs: Number(value('--max-wait') ?? cfg.maxWaitAfterFirstSeconds ?? 30) * 1000,
       roles: flag('--roles') ? (cfg.roles ?? DEFAULT_ROLES) : null,
       provider: PROVIDER,
-      verify: value('--verify') ? commandVerifier(value('--verify'), { cwd: root() }) : null,
+      verify,
+      softVerify,
       vote: flag('--no-vote') ? null : voteKey,
     });
     for (const t of res.branches) {
@@ -168,6 +184,7 @@ try {
     console.log(`branches: ${res.branchesMs}ms  gateway: ${gatewayLabel()}`);
     if (res.final?.status === 'done') {
       const who = {
+        fast: `cascade: ${res.final.agent} answered first and passed verification`,
         verify: `${res.final.agent} passed verification, no synthesis`,
         vote: `majority (${res.final.votes?.join(', ')}), no synthesis`,
         single: `only ${res.final.agent} answered, no synthesis`,
@@ -191,9 +208,10 @@ try {
     const evalRoot = resolve(value('--root') ?? join(homedir(), '.tessera', 'eval-work'));
     mkdirSync(evalRoot, { recursive: true });
     const date = new Date().toISOString();
-    console.log(`eval: ${tasks.length} tasks × [${modes.includes('solo') ? agents.join(', ') : ''}${modes.includes('tessera') ? ' + tessera' : ''}]  gateway: ${gatewayLabel()}`);
+    console.log(`eval: ${tasks.length} tasks × [${modes.includes('solo') ? agents.join(', ') : ''}${modes.filter((m) => m !== 'solo').map((m) => ` + ${m}`).join('')}]${flag('--auto-verify') ? ' (auto-verify)' : ''}  gateway: ${gatewayLabel()}`);
     const results = await runEval({
       root: evalRoot, tasks, agents, provider: PROVIDER, modes, parallel: flag('--parallel'),
+      autoVerify: flag('--auto-verify'), microAgent: agents.includes(cfg.microAgent) ? cfg.microAgent : null,
       soloTimeoutMs: Number(value('--deadline') ?? cfg.deadlineSeconds ?? 120) * 1000,
       fanoutOpts: {
         synthesizer: pickSynth(value('--synth'), cfg.synthesizer, agents),
@@ -205,6 +223,8 @@ try {
         maxWaitAfterFirstMs: Number(cfg.maxWaitAfterFirstSeconds ?? 30) * 1000,
         maxCharsPerBranch: Number(cfg.maxCharsPerBranch ?? 6000),
         roles: flag('--roles') ? (cfg.roles ?? DEFAULT_ROLES) : null,
+        fast: agents.includes(cfg.fast) ? cfg.fast : agents[0],
+        fastDeadlineMs: Number(cfg.fastDeadlineSeconds ?? 90) * 1000,
       },
       onResult: (r) => console.log(`  ${r.pass ? '✓' : '✗'} ${r.taskId.padEnd(24)} ${r.mode.padEnd(9)} ${((r.durationMs ?? 0) / 1000).toFixed(1).padStart(6)}s  ${r.detail}${r.status !== 'done' ? `  [${r.status}: ${(r.error ?? '').slice(0, 80)}]` : ''}`),
     });
@@ -214,11 +234,11 @@ try {
     if (baseline) {
       const ids = new Set(tasks.map((t) => t.id));
       const prev = JSON.parse(readFileSync(resolve(baseline), 'utf8')).results
-        .filter((r) => r.mode !== 'tessera' && ids.has(r.taskId) && !results.some((x) => x.mode === r.mode));
+        .filter((r) => !['tessera', 'cascade'].includes(r.mode) && ids.has(r.taskId) && !results.some((x) => x.mode === r.mode));
       results.unshift(...prev);
     }
     const summary = summarize(results);
-    const meta = { date, provider: PROVIDER?.name ?? null, models: PROVIDER ? JSON.stringify(PROVIDER.models ?? PROVIDER.model) : null, agents, modes, parallel: flag('--parallel'), tasks: tasks.map((t) => t.id), baseline: baseline ?? null, taskFile: value('--tasks') ?? 'evals/tasks.json' };
+    const meta = { date, provider: PROVIDER?.name ?? null, models: PROVIDER ? JSON.stringify(PROVIDER.models ?? PROVIDER.model) : null, agents, modes, autoVerify: flag('--auto-verify'), parallel: flag('--parallel'), tasks: tasks.map((t) => t.id), baseline: baseline ?? null, taskFile: value('--tasks') ?? 'evals/tasks.json' };
     const files = saveResults(join(SRC, 'evals', 'resultados'), { results, summary, meta });
     console.log('\n' + renderMarkdown(summary, meta));
     console.log(`results: ${files.md}`);

@@ -8,5 +8,10 @@
   "models": {
     "openclaw": "<openclaw-provider-id>/your-model-name"
   },
-  "hermesProvider": "<hermes-provider-id>"
+  "hermesProvider": "<hermes-provider-id>",
+  "microParams": {
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    }
+  }
 }

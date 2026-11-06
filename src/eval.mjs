@@ -1,11 +1,13 @@
 // Fase 0: medir. Cada tarefa roda em cada agente sozinho e no Tessera (fanout),
 // com o mesmo prompt e o mesmo corretor. O corretor não usa modelo: testes em
 // sandbox para código e padrões para respostas objetivas.
-import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, rmSync, readFileSync, mkdirSync, realpathSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync, readFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { delegateAsync, fanout } from './bridge.mjs';
+import { delegateAsync, fanout, cascade } from './bridge.mjs';
+import { extractCode, runCodeTests } from './sandbox.mjs';
+import { autoVerifier } from './microagents.mjs';
+
+export { extractCode, runCodeTests };
 
 export const CODE_SUFFIX = '\n\nResponda apenas com o código da função em um bloco ```js.';
 
@@ -27,59 +29,6 @@ export function promptFor(task) {
 // Tira marcação que atrapalha os padrões (negrito, crases), sem mudar o conteúdo.
 export function normalize(text) {
   return (text ?? '').replace(/\*\*|__|`/g, '').replace(/\s+/g, ' ').trim();
-}
-
-export function extractCode(text) {
-  const blocks = [...(text ?? '').matchAll(/```[a-zA-Z0-9]*\s*\n([\s\S]*?)```/g)].map((m) => m[1]);
-  const withSolve = blocks.filter((b) => /\bsolve\b/.test(b));
-  let code = withSolve.at(-1) ?? blocks.at(-1) ?? text ?? '';
-  // Remove export para o código rodar como script comum.
-  code = code
-    .replace(/^\s*export\s+default\s+(?=(async\s+)?function|class)/gm, '')
-    .replace(/^\s*export\s+(?=(async\s+)?function|const|let|var|class)/gm, '');
-  return code;
-}
-
-// Roda o código do agente com node --permission: sem leitura/escrita de arquivos
-// (exceto o próprio script), sem processos filhos. Cada teste compara JSON canônico.
-export function runCodeTests(code, tests, { timeoutMs = 5000 } = {}) {
-  if (!/\bsolve\b/.test(code)) return { pass: false, detail: 'function solve not found' };
-  // Caminho real: no macOS /var é link para /private/var, e o --allow-fs-read compara o caminho resolvido.
-  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'tessera-eval-')));
-  const file = join(dir, 'candidato.cjs');
-  const harness = `
-${code}
-;(async () => {
-  const canon = (v) => JSON.stringify(v, (k, x) => (x && typeof x === 'object' && !Array.isArray(x)
-    ? Object.keys(x).sort().reduce((o, key) => { o[key] = x[key]; return o; }, {}) : x));
-  const tests = ${JSON.stringify(tests)};
-  const out = [];
-  for (const [args, expected] of tests) {
-    try {
-      let r = solve(...args);
-      if (r && typeof r.then === 'function') r = await r;
-      out.push(canon(r) === canon(expected));
-    } catch (e) { out.push(false); }
-  }
-  process.stdout.write('__TESSERA__' + JSON.stringify(out));
-})();
-`;
-  try {
-    writeFileSync(file, harness);
-    // Ambiente mínimo: o código do agente não herda variáveis (chaves) do processo.
-    // Fuso fixo para tarefas de data serem determinísticas (e a armadilha de UTC aparecer).
-    const res = spawnSync(process.execPath, ['--permission', `--allow-fs-read=${file}`, file], {
-      encoding: 'utf8', timeout: timeoutMs, cwd: dir, env: { TZ: 'America/Sao_Paulo' },
-    });
-    if (res.error?.code === 'ETIMEDOUT' || res.signal) return { pass: false, detail: 'timed out running the tests' };
-    const m = (res.stdout ?? '').match(/__TESSERA__(\[.*\])/);
-    if (!m) return { pass: false, detail: `code did not run: ${(res.stderr ?? '').split('\n').find((l) => /Error/.test(l)) ?? 'no output'}`.slice(0, 200) };
-    const results = JSON.parse(m[1]);
-    const ok = results.filter(Boolean).length;
-    return { pass: ok === results.length, detail: `${ok}/${results.length} tests` };
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
 }
 
 // Padrões proibidos (ex.: eval numa tarefa de parser) reprovam antes de rodar.
@@ -130,6 +79,7 @@ export function verifierFor(task) {
 export async function runEval({
   root, tasks, agents, provider = null, modes = ['solo', 'tessera'],
   soloTimeoutMs = 120_000, fanoutOpts = {}, onResult = () => {}, parallel = false,
+  autoVerify = false, microAgent = null,
 }) {
   const results = [];
   for (const task of tasks) {
@@ -146,25 +96,38 @@ export async function runEval({
       }
     }
 
-    if (modes.includes('tessera')) {
-      const verify = verifierFor(task);
-      jobs.push(() => fanout({ root, prompt, agents, provider, ...fanoutOpts, ...(verify ? { verify } : {}) })
-        .then((r) => {
-          const text = r.final?.status === 'done' ? r.final.output : '';
-          return {
-            taskId: task.id, kind: task.kind, mode: 'tessera',
-            status: r.final?.status ?? 'failed', error: r.error ?? r.final?.error ?? '',
-            durationMs: r.totalMs ?? r.branchesMs, branchesMs: r.branchesMs, output: text,
-            synthesized: r.final?.synthesized !== false && Boolean(r.final),
-            selectedBy: r.final?.selectedBy ?? null,
-            branches: r.branches.map((b) => ({
-              agent: b.agent, status: b.status, durationMs: b.durationMs, dismissed: Boolean(b.dismissed),
-              output: b.output ?? '', verify: b.verify ?? null,
-              pass: b.status === 'done' ? grade(task, b.output).pass : false,
-            })),
-            ...grade(task, text),
-          };
-        }));
+    // Modos do sistema: 'tessera' (fanout) e 'cascade' (agente rápido primeiro).
+    // autoVerify: nas tarefas de código, troca os testes públicos por testes escritos por
+    // um microagente (mede o caso real, em que o usuário não passa testes).
+    for (const mode of ['tessera', 'cascade'].filter((m) => modes.includes(m))) {
+      jobs.push(() => {
+        let verify = verifierFor(task);
+        let softVerify = false;
+        if (autoVerify && task.kind === 'code') {
+          verify = autoVerifier({ root, prompt, agent: microAgent ?? agents[0], provider });
+          softVerify = true;
+        }
+        const run = mode === 'cascade' ? cascade : fanout;
+        const t0 = Date.now();
+        return run({ root, prompt, agents, provider, ...fanoutOpts, ...(verify ? { verify, softVerify } : {}) })
+          .then((r) => {
+            const text = r.final?.status === 'done' ? r.final.output : '';
+            return {
+              taskId: task.id, kind: task.kind, mode,
+              status: r.final?.status ?? 'failed', error: r.error ?? r.final?.error ?? '',
+              durationMs: r.totalMs ?? (Date.now() - t0), branchesMs: r.branchesMs, output: text,
+              synthesized: r.final?.synthesized !== false && Boolean(r.final),
+              selectedBy: r.final?.selectedBy ?? null,
+              escalated: r.escalated ?? null,
+              branches: r.branches.map((b) => ({
+                agent: b.agent, status: b.status, durationMs: b.durationMs, dismissed: Boolean(b.dismissed),
+                output: b.output ?? '', verify: b.verify ?? null,
+                pass: b.status === 'done' ? grade(task, b.output).pass : false,
+              })),
+              ...grade(task, text),
+            };
+          });
+      });
     }
 
     if (parallel) {
@@ -183,6 +146,38 @@ export function percentile(values, q) {
   const v = values.filter((x) => Number.isFinite(x)).sort((a, b) => a - b);
   if (!v.length) return null;
   return v[Math.min(v.length - 1, Math.max(0, Math.ceil(q * v.length) - 1))];
+}
+
+export const SYSTEM_MODES = ['tessera', 'cascade'];
+
+function compare(byMode, bestSolo, mode, taskIds, passedBy) {
+  const wins = taskIds.filter((id) => passedBy(id, mode) && !passedBy(id, bestSolo));
+  const losses = taskIds.filter((id) => !passedBy(id, mode) && passedBy(id, bestSolo));
+  return {
+    bestSolo,
+    tesseraAccuracy: byMode[mode].accuracy,
+    bestSoloAccuracy: byMode[bestSolo].accuracy,
+    deltaPoints: Math.round((byMode[mode].accuracy - byMode[bestSolo].accuracy) * 1000) / 10,
+    latencyRatioP95: byMode[bestSolo].p95Ms ? byMode[mode].p95Ms / byMode[bestSolo].p95Ms : null,
+    wins,
+    losses,
+    beatsBestSolo: byMode[mode].accuracy > byMode[bestSolo].accuracy,
+    latencyWithinTarget: byMode[bestSolo].p95Ms ? byMode[mode].p95Ms <= 1.5 * byMode[bestSolo].p95Ms : null,
+  };
+}
+
+function decisionsFor(rs) {
+  if (!rs.length) return null;
+  const out = {};
+  for (const r of rs) {
+    const k = r.selectedBy ?? (r.synthesized ? 'synthesis' : 'none');
+    out[k] ??= { total: 0, passed: 0, p50Ms: null, _ms: [] };
+    out[k].total += 1;
+    if (r.pass) out[k].passed += 1;
+    out[k]._ms.push(r.durationMs);
+  }
+  for (const d of Object.values(out)) { d.p50Ms = percentile(d._ms, 0.5); delete d._ms; }
+  return out;
 }
 
 export function summarize(results) {
@@ -208,7 +203,7 @@ export function summarize(results) {
     };
   }
 
-  const solos = modes.filter((m) => m !== 'tessera');
+  const solos = modes.filter((m) => !SYSTEM_MODES.includes(m));
   const bestSolo = solos.length
     ? solos.reduce((best, m) => (byMode[m].accuracy > byMode[best].accuracy
       || (byMode[m].accuracy === byMode[best].accuracy && (byMode[m].p95Ms ?? Infinity) < (byMode[best].p95Ms ?? Infinity)) ? m : best))
@@ -218,43 +213,20 @@ export function summarize(results) {
   const passedBy = (id, m) => results.some((r) => r.taskId === id && r.mode === m && r.pass);
   const oracle = taskIds.filter((id) => solos.some((m) => passedBy(id, m))).length;
 
-  let comparison = null;
-  if (bestSolo && byMode.tessera) {
-    const wins = taskIds.filter((id) => passedBy(id, 'tessera') && !passedBy(id, bestSolo));
-    const losses = taskIds.filter((id) => !passedBy(id, 'tessera') && passedBy(id, bestSolo));
-    comparison = {
-      bestSolo,
-      tesseraAccuracy: byMode.tessera.accuracy,
-      bestSoloAccuracy: byMode[bestSolo].accuracy,
-      deltaPoints: Math.round((byMode.tessera.accuracy - byMode[bestSolo].accuracy) * 1000) / 10,
-      latencyRatioP95: byMode[bestSolo].p95Ms ? byMode.tessera.p95Ms / byMode[bestSolo].p95Ms : null,
-      wins,
-      losses,
-      beatsBestSolo: byMode.tessera.accuracy > byMode[bestSolo].accuracy,
-      latencyWithinTarget: byMode[bestSolo].p95Ms ? byMode.tessera.p95Ms <= 1.5 * byMode[bestSolo].p95Ms : null,
-    };
-  }
+  const comparisons = {};
+  if (bestSolo) for (const m of SYSTEM_MODES) if (byMode[m]) comparisons[m] = compare(byMode, bestSolo, m, taskIds, passedBy);
+  const comparison = comparisons.tessera ?? null;
 
-  // Como o Tessera decidiu cada tarefa, e quanto acertou em cada caminho.
-  let decisions = null;
+  // Como cada modo do sistema decidiu cada tarefa, e quanto acertou em cada caminho.
   const tess = results.filter((r) => r.mode === 'tessera');
-  if (tess.length) {
-    decisions = {};
-    for (const r of tess) {
-      const k = r.selectedBy ?? (r.synthesized ? 'synthesis' : 'none');
-      decisions[k] ??= { total: 0, passed: 0, p50Ms: null, _ms: [] };
-      decisions[k].total += 1;
-      if (r.pass) decisions[k].passed += 1;
-      decisions[k]._ms.push(r.durationMs);
-    }
-    for (const d of Object.values(decisions)) { d.p50Ms = percentile(d._ms, 0.5); delete d._ms; }
-  }
+  const decisions = decisionsFor(tess);
+  const cascadeDecisions = decisionsFor(results.filter((r) => r.mode === 'cascade'));
   // Algum ramo do próprio fanout acertou (teto da seleção dentro do Tessera).
   const branchOracle = tess.filter((r) => r.branches?.some((b) => b.pass)).length;
 
   return {
     tasks: taskIds.length, modes, byMode, bestSolo, oracle, oracleAccuracy: taskIds.length ? oracle / taskIds.length : 0,
-    comparison, decisions, branchOracle: tess.length ? branchOracle : null,
+    comparison, comparisons, decisions, cascadeDecisions, branchOracle: tess.length ? branchOracle : null,
   };
 }
 
@@ -267,30 +239,31 @@ export function renderMarkdown(summary, meta = {}) {
   if (meta.provider) lines.push(`Gateway: ${meta.provider}. Models: ${meta.models ?? '—'}.`, '');
   lines.push(`Tasks: ${summary.tasks}.`, '');
   lines.push('| Mode | Correct | Answered | p50 | p95 | Code | Questions | Review |', '|---|---|---|---|---|---|---|---|');
-  const order = [...summary.modes.filter((m) => m !== 'tessera'), ...summary.modes.filter((m) => m === 'tessera')];
+  const order = [...summary.modes.filter((m) => !SYSTEM_MODES.includes(m)), ...SYSTEM_MODES.filter((m) => summary.modes.includes(m))];
   for (const m of order) {
     const s = summary.byMode[m];
     const k = (name) => (s.byKind[name] ? `${s.byKind[name].passed}/${s.byKind[name].total}` : '—');
-    lines.push(`| ${m === 'tessera' ? '**tessera**' : m} | ${s.passed}/${s.total} (${pct(s.accuracy)}) | ${s.answered}/${s.total} | ${sec(s.p50Ms)} | ${sec(s.p95Ms)} | ${k('code')} | ${k('qa')} | ${k('review')} |`);
+    lines.push(`| ${SYSTEM_MODES.includes(m) ? `**${m}**` : m} | ${s.passed}/${s.total} (${pct(s.accuracy)}) | ${s.answered}/${s.total} | ${sec(s.p50Ms)} | ${sec(s.p95Ms)} | ${k('code')} | ${k('qa')} | ${k('review')} |`);
   }
   lines.push('', `Oracle (at least one agent alone got it right): ${summary.oracle}/${summary.tasks} (${pct(summary.oracleAccuracy)}).`, '');
-  const c = summary.comparison;
-  if (c) {
-    lines.push('## Tessera vs. the best single agent', '');
+  const comparisons = summary.comparisons ?? (summary.comparison ? { tessera: summary.comparison } : {});
+  for (const [mode, c] of Object.entries(comparisons)) {
+    const name = mode === 'tessera' ? 'Tessera' : 'Cascade';
+    lines.push(`## ${name} vs. the best single agent`, '');
     lines.push(`- Best single agent: **${c.bestSolo}** (${pct(c.bestSoloAccuracy)}).`);
-    lines.push(`- Tessera: **${pct(c.tesseraAccuracy)}** (${c.deltaPoints >= 0 ? '+' : ''}${c.deltaPoints} points).`);
+    lines.push(`- ${name}: **${pct(c.tesseraAccuracy)}** (${c.deltaPoints >= 0 ? '+' : ''}${c.deltaPoints} points).`);
     lines.push(`- p95 latency: ${c.latencyRatioP95 == null ? '—' : `${c.latencyRatioP95.toFixed(2)}×`} the best agent's (target: up to 1.5×).`);
-    lines.push(`- Tessera right, ${c.bestSolo} wrong: ${c.wins.length ? c.wins.join(', ') : 'none'}.`);
-    lines.push(`- Tessera wrong, ${c.bestSolo} right: ${c.losses.length ? c.losses.join(', ') : 'none'}.`);
-    lines.push('', `**Success criterion:** more correct than the best agent: ${c.beatsBestSolo ? 'yes' : 'no'}. Latency within target: ${c.latencyWithinTarget == null ? '—' : c.latencyWithinTarget ? 'yes' : 'no'}.`);
+    lines.push(`- ${name} right, ${c.bestSolo} wrong: ${c.wins.length ? c.wins.join(', ') : 'none'}.`);
+    lines.push(`- ${name} wrong, ${c.bestSolo} right: ${c.losses.length ? c.losses.join(', ') : 'none'}.`);
+    lines.push('', `**Success criterion:** more correct than the best agent: ${c.beatsBestSolo ? 'yes' : 'no'}. Latency within target: ${c.latencyWithinTarget == null ? '—' : c.latencyWithinTarget ? 'yes' : 'no'}.`, '');
   }
-  if (summary.decisions) {
-    const label = { verify: 'verification (public tests)', vote: 'majority', single: 'single answer', synthesis: 'synthesis', repair: 'repair by synthesis', fallback: 'finished branch (synthesis failed)', none: 'no answer' };
-    lines.push('', '## How Tessera decided', '', '| Path | Tasks | Correct | p50 |', '|---|---|---|---|');
-    for (const [k, d] of Object.entries(summary.decisions)) {
-      lines.push(`| ${label[k] ?? k} | ${d.total} | ${d.passed}/${d.total} | ${sec(d.p50Ms)} |`);
-    }
-    if (summary.branchOracle != null) lines.push('', `Some fanout branch got it right: ${summary.branchOracle}/${summary.tasks}.`);
+  const label = { verify: 'verification', vote: 'majority', single: 'single answer', synthesis: 'synthesis', repair: 'repair by synthesis', fallback: 'finished branch (synthesis failed)', fast: 'fast agent passed verification', none: 'no answer' };
+  for (const [name, dec] of [['Tessera', summary.decisions], ['Cascade', summary.cascadeDecisions]]) {
+    if (!dec) continue;
+    lines.push(`## How ${name} decided`, '', '| Path | Tasks | Correct | p50 |', '|---|---|---|---|');
+    for (const [k, d] of Object.entries(dec)) lines.push(`| ${label[k] ?? k} | ${d.total} | ${d.passed}/${d.total} | ${sec(d.p50Ms)} |`);
+    if (name === 'Tessera' && summary.branchOracle != null) lines.push('', `Some fanout branch got it right: ${summary.branchOracle}/${summary.tasks}.`);
+    lines.push('');
   }
   return lines.join('\n') + '\n';
 }
