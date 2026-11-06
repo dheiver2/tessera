@@ -2,9 +2,9 @@
 
 # 🧩 Tessera
 
-### One source, many agents, one result.
+### A harness for coding agents.
 
-Runs **Claude Code**, **Codex**, **OpenClaw** and **Hermes** as if they were one:<br>
+One harness over **Claude Code**, **Codex**, **OpenClaw** and **Hermes**:<br>
 same configuration, the same task in parallel, and the answer that **proves itself** instead of the one that sounds best.
 
 <br>
@@ -212,6 +212,18 @@ The `--verify` command receives the answer on **stdin** and the agent name in `T
 | `--quorum n` · `--grace s` | `2` · `15` | with *n* good answers, wait *s* seconds and cancel the rest |
 | `--max-wait s` | `30` | maximum wait after the first answer |
 | `--no-provider` | — | ignore any configured gateway for this run |
+| `--cascade` | off | the fast agent answers alone first; the others run only if it fails verification (its answer counts as a vote) |
+| `--fast name` | `openclaw` | the fast agent for `--cascade` |
+| `--auto-verify` | off | with no tests, a micro-agent writes test cases from the task; passing them speeds the choice, failing them forces nothing |
+
+<details>
+<summary><b>🪶 Cascade and micro-agents</b></summary>
+
+- **Cascade** (`--cascade`, or `"mode": "cascade"` in `framework.json > fanout`): one agent answers first. If it passes verification, that answer returns and no other agent starts. If not, the others run, and the fast answer already counts as a vote, so one agreeing agent decides.
+- **Micro-agent** (`--auto-verify`): a short, single-purpose call straight to the gateway's `/chat/completions`, with no agent harness. It writes `{fn, cases:[{call, expect}]}` from the task, in parallel with the agents; answers run on those cases in the sandbox. Generated tests can be wrong, so they are *soft*: no answer passing them never forces a repair.
+- Model: `models.micro`, else `model`. Extra body fields go in `microParams`, for what your gateway accepts (for example `{"chat_template_kwargs": {"enable_thinking": false}}` turns off reasoning on vLLM/Qwen: about 2 s per call instead of 18 s). With no gateway, the micro-agent falls back to `microAgent` through its CLI.
+- On the 14 hard code tasks, with real answers from earlier rounds, the generated tests passed correct code in 9 of 13 cases and rejected wrong code in 43 of 48 (90%).
+</details>
 
 <details>
 <summary><b>⏱️ How latency is bounded</b></summary>
@@ -310,6 +322,20 @@ tessera eval --limit 5 --kind code --modes openclaw,tessera
 ## 📈 Measured results
 
 > Measured with all four agents on the same model (`mangaba-agente-rapido`) through one gateway (the author's Mangaba Router), so differences come only from each agent's harness. Synthesis by Claude. A one-task difference is within noise.
+
+### 🪶 Hard set · cascade · Nov 6, 2026 · 1 round per variant
+
+Single agents are the queue round below (same day, morning); cascade ran in the afternoon.
+
+| Mode | Correct | Answered | p50 | p95 |
+|:---|:---:|:---:|---:|---:|
+| 🪶 **cascade + generated tests** (`--auto-verify`) | **27/33** | **33/33** | 42.7 s | 223 s |
+| 🪶 cascade + public tests | 26/33 | **33/33** | 38.8 s | 387 s |
+| claude (best single agent) | 26/33 | 29/33 | 10.3 s | 120 s |
+| 🧩 tessera (queue, below) | 26/33 | 31/33 | 38.9 s | 363 s |
+
+> [!IMPORTANT]
+> **Verdict: cascade answers every task and, with generated tests, edges past the best agent (27 vs. 26, within noise), with p95 at 1.85× instead of 3.0×.** The fast path settled 5 to 7 of 33 tasks in about 12 s with no other agent started. With public tests, 2 of the 7 fast answers passed the visible half of the tests and failed the hidden half (`hard-semver`, `hard-atoi`). The losses that remain are mostly on tasks no single agent solves (`hard-expressao`, `hard-semver`) and on syntheses. Still one round each: more rounds before cascade becomes the default. Raw: `evals/resultados/2026-11-06T15-44-38-856Z.json` (public tests) and `2026-11-06T16-17-30-917Z.json` (generated).
 
 ### 🚦 Hard set · fanout queue (at most 2 branches at once) · Nov 6, 2026 · 1 round
 

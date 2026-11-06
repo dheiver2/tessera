@@ -100,6 +100,14 @@ Troca "um modelo escolhe" por "o resultado se prova".
 - Veredito: a fila resolve a trava do roteador, mas não sobe o acerto e piora a latência. Continua como padrão porque os próximos passos precisam de um roteador que responda.
 - Resultado bruto: `evals/resultados/2026-11-06T09-37-14-358Z.json`.
 
+**Cascata e microagente de testes** (06/nov, 1 rodada por variante, tarde; solos da manhã):
+- Cascata: o OpenClaw responde sozinho; se passa na verificação, volta; senão, os demais entram e a resposta dele conta como voto.
+- Microagente: chamada direta ao gateway escreve casos de teste do enunciado; testes gerados são brandos (passar acelera, ninguém passar não força reparo).
+- Com testes públicos: 26/33 (empate com Claude), 33/33 respondidas, p95 387 s (3,2×). 2 das 7 respostas rápidas passaram na metade visível e falharam na oculta.
+- Com testes gerados: 27/33 (+1, dentro do ruído), 33/33 respondidas, p95 223 s (1,85×).
+- Resultado bruto: `evals/resultados/2026-11-06T15-44-38-856Z.json` e `2026-11-06T16-17-30-917Z.json`.
+- Próximo: mais rodadas antes de virar padrão; solos e cascata na mesma rodada.
+
 **Falta:**
 - Diversidade de modelo por agente (`models.<agente>` em `~/.tessera/provider.json`).
 - Maioria mais exigente (3 votos, ou 2 sem divergência).

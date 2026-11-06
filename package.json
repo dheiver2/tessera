@@ -1,7 +1,7 @@
 {
   "name": "tessera",
   "version": "0.1.0",
-  "description": "Run Claude Code, Codex, OpenClaw and Hermes on the same task and keep the answer that passes your tests. Gateway-agnostic, zero dependencies.",
+  "description": "A harness for coding agents: runs Claude Code, Codex, OpenClaw and Hermes on the same task and keep the answer that passes your tests. Gateway-agnostic, zero dependencies.",
   "type": "module",
   "bin": {
     "tessera": "bin/tessera.mjs"
@@ -15,6 +15,8 @@
   },
   "license": "MIT",
   "keywords": [
+    "harness",
+    "agent-harness",
     "agent-skills",
     "ai-agents",
     "claude-code",

@@ -44,7 +44,7 @@ function pickSynth(explicit, configured, agents) {
 }
 
 function help() {
-  console.log(`tessera — one source, many agents, one result
+  console.log(`tessera — a harness for coding agents
 
 Usage:
   tessera doctor                                  which agents are installed, which gateway is active
