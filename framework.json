@@ -21,7 +21,9 @@
       "hermes"
     ],
     "synthesizer": "claude",
+    "mode": "cascade",
     "fast": "openclaw",
+    "autoVerify": true,
     "fastDeadlineSeconds": 90,
     "microAgent": "openclaw",
     "deadlineSeconds": 120,

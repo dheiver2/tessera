@@ -52,8 +52,10 @@ Usage:
                  [--synth-timeout 180] [--quorum 2] [--grace 15] [--max-wait 30] [--no-vote] [--roles] [--no-provider]
                  [--cascade [--fast openclaw]] [--auto-verify]
                                                   all agents at once; the verified answer or the majority wins; synthesis only on deadlock
-                 --cascade      the fast agent answers alone first; the others join only if it fails verification
-                 --auto-verify  a micro-agent writes test cases from the prompt (code tasks with no --verify)
+                 --no-cascade      run every agent at once (default: cascade — the fast agent answers alone
+                                   first; the others join only if it fails verification)
+                 --no-auto-verify  skip generated tests (default on with a gateway: a micro-agent writes
+                                   test cases from the prompt when there is no --verify)
   tessera delegate --agent <claude|codex|openclaw|hermes> "prompt"
   tessera do --kind <code|review|summary|automation> "prompt"   picks the agent from framework.json > routing
   tessera pipeline <file.json>                    chains agents ({{previous}} = previous step's output)
@@ -146,11 +148,15 @@ try {
     const cfg = CFG.fanout ?? {};
     const agents = pickAgents(value('--agents'), cfg.agents);
     const synth = pickSynth(value('--synth'), cfg.synthesizer, agents);
-    const useCascade = flag('--cascade') || cfg.mode === 'cascade';
+    // Cascata é o padrão (framework.json > fanout.mode); --no-cascade roda todos de uma vez.
+    const useCascade = !flag('--no-cascade') && (flag('--cascade') || cfg.mode === 'cascade');
     const fast = value('--fast') ?? (agents.includes(cfg.fast) ? cfg.fast : agents[0]);
     let verify = value('--verify') ? commandVerifier(value('--verify'), { cwd: root() }) : null;
     let softVerify = false;
-    if (!verify && flag('--auto-verify')) {
+    // Testes gerados: ligados por padrão só quando há gateway (o microagente chama o modelo direto);
+    // pelo CLI de um agente ele tende a resolver a tarefa em vez de escrever testes.
+    const wantAuto = !flag('--no-auto-verify') && (flag('--auto-verify') || (cfg.autoVerify && PROVIDER?.baseUrl && PROVIDER?.key));
+    if (!verify && wantAuto) {
       verify = autoVerifier({ root: root(), prompt, agent: agents.includes(cfg.microAgent) ? cfg.microAgent : fast, provider: PROVIDER, agentId: value('--agent-id') });
       softVerify = true;
     }
@@ -177,7 +183,7 @@ try {
       vote: flag('--no-vote') ? null : voteKey,
     });
     for (const t of res.branches) {
-      const v = t.verify ? `  verification: ${t.verify.pass ? 'passed' : 'failed'}` : '';
+      const v = !t.verify ? '' : t.verify.skipped ? '  verification: no tests' : `  verification: ${t.verify.pass ? 'passed' : 'failed'}`;
       const why = t.dismissed ? '  — dismissed (an answer was already chosen)' : t.status !== 'done' ? `  — ${t.error.split('\n')[0]}` : '';
       console.log(`[${t.status}] ${t.agent} ${t.durationMs ?? '?'}ms (${t.id})${v}${why}`);
     }

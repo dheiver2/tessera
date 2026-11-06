@@ -212,15 +212,15 @@ The `--verify` command receives the answer on **stdin** and the agent name in `T
 | `--quorum n` · `--grace s` | `2` · `15` | with *n* good answers, wait *s* seconds and cancel the rest |
 | `--max-wait s` | `30` | maximum wait after the first answer |
 | `--no-provider` | — | ignore any configured gateway for this run |
-| `--cascade` | off | the fast agent answers alone first; the others run only if it fails verification (its answer counts as a vote) |
-| `--fast name` | `openclaw` | the fast agent for `--cascade` |
-| `--auto-verify` | off | with no tests, a micro-agent writes test cases from the task; passing them speeds the choice, failing them forces nothing |
+| `--no-cascade` | cascade on | run every agent at once instead of the fast agent first (its answer counts as a vote if the others are needed) |
+| `--fast name` | `openclaw` | the fast agent for the cascade |
+| `--no-auto-verify` | on with a gateway | skip generated tests; by default, with no `--verify`, a micro-agent writes test cases from the task (passing them speeds the choice, failing them forces nothing) |
 
 <details>
 <summary><b>🪶 Cascade and micro-agents</b></summary>
 
-- **Cascade** (`--cascade`, or `"mode": "cascade"` in `framework.json > fanout`): one agent answers first. If it passes verification, that answer returns and no other agent starts. If not, the others run, and the fast answer already counts as a vote, so one agreeing agent decides.
-- **Micro-agent** (`--auto-verify`): a short, single-purpose call straight to the gateway's `/chat/completions`, with no agent harness. It writes `{fn, cases:[{call, expect}]}` from the task, in parallel with the agents; answers run on those cases in the sandbox. Generated tests can be wrong, so they are *soft*: no answer passing them never forces a repair.
+- **Cascade** (default since Nov 6, 2026: `"mode": "cascade"` in `framework.json > fanout`; `--no-cascade` turns it off): one agent answers first. If it passes verification, that answer returns and no other agent starts. If not, the others run, and the fast answer already counts as a vote, so one agreeing agent decides.
+- **Micro-agent** (on by default when a gateway is configured, `"autoVerify": true`; `--no-auto-verify` turns it off): a short, single-purpose call straight to the gateway's `/chat/completions`, with no agent harness. It writes `{fn, cases:[{call, expect}]}` from the task, in parallel with the agents; answers run on those cases in the sandbox. Generated tests can be wrong, so they are *soft*: no answer passing them never forces a repair.
 - Model: `models.micro`, else `model`. Extra body fields go in `microParams`, for what your gateway accepts (for example `{"chat_template_kwargs": {"enable_thinking": false}}` turns off reasoning on vLLM/Qwen: about 2 s per call instead of 18 s). With no gateway, the micro-agent falls back to `microAgent` through its CLI.
 - On the 14 hard code tasks, with real answers from earlier rounds, the generated tests passed correct code in 9 of 13 cases and rejected wrong code in 43 of 48 (90%).
 </details>
@@ -323,7 +323,20 @@ tessera eval --limit 5 --kind code --modes openclaw,tessera
 
 > Measured with all four agents on the same model (`mangaba-agente-rapido`) through one gateway (the author's Mangaba Router), so differences come only from each agent's harness. Synthesis by Claude. A one-task difference is within noise.
 
-### 🪶 Hard set · cascade · Nov 6, 2026 · 1 round per variant
+### 🪶 Hard set · cascade + generated tests vs. single agents, same round · Nov 6, 2026 · 2 rounds
+
+| Mode | Round 1 | Round 2 | Mean (of 33) | Answered | p95 |
+|:---|:---:|:---:|:---:|:---:|---:|
+| 🪶 **cascade + generated tests** | 26 | **29** | **27.5** | **65/66** | 251–271 s |
+| openclaw | 25 | 27 | 26.0 | 61/66 | 50–66 s |
+| claude | 24 | 28 | 26.0 | 58/66 | 120 s |
+| hermes | **27** | 25 | 26.0 | 60/66 | 122 s |
+| codex | 21 | 22 | 21.5 | 57/66 | 120 s |
+
+> [!IMPORTANT]
+> **Verdict: cascade becomes the default.** Its mean is 1.5 tasks above every single agent's, and it answers 65 of 66 tasks. The best single agent changes every round (Hermes in round 1, Claude in round 2), so no one agent can be picked in advance; per round, cascade is −1 and +3 against that round's winner. p95 is still 2.1–2.2× the round's best agent's, over the 1.5× target: latency stays the open problem. Raw: `evals/resultados/2026-11-06T19-09-06-973Z.json` and `2026-11-06T21-16-26-503Z.json`.
+
+### 🪶 Hard set · cascade, first runs · Nov 6, 2026 · 1 round per variant
 
 Single agents are the queue round below (same day, morning); cascade ran in the afternoon.
 

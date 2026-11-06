@@ -106,12 +106,14 @@ Troca "um modelo escolhe" por "o resultado se prova".
 - Com testes públicos: 26/33 (empate com Claude), 33/33 respondidas, p95 387 s (3,2×). 2 das 7 respostas rápidas passaram na metade visível e falharam na oculta.
 - Com testes gerados: 27/33 (+1, dentro do ruído), 33/33 respondidas, p95 223 s (1,85×).
 - Resultado bruto: `evals/resultados/2026-11-06T15-44-38-856Z.json` e `2026-11-06T16-17-30-917Z.json`.
-- Próximo: mais rodadas antes de virar padrão; solos e cascata na mesma rodada.
+- 2 rodadas com solos e cascata+testes gerados na mesma rodada: cascata 26 e 29 (média 27,5); OpenClaw, Claude e Hermes 26,0; Codex 21,5. Respondeu 65/66. p95 2,1–2,2× o melhor agente da rodada. O melhor agente muda a cada rodada (Hermes, depois Claude).
+- Veredito: cascata com testes gerados vira o padrão (`mode: cascade`, `autoVerify: true` em `framework.json`; testes gerados só com gateway). `--no-cascade` e `--no-auto-verify` desligam.
+- Resultado bruto: `evals/resultados/2026-11-06T19-09-06-973Z.json` e `2026-11-06T21-16-26-503Z.json`.
 
 **Falta:**
 - Diversidade de modelo por agente (`models.<agente>` em `~/.tessera/provider.json`).
 - Maioria mais exigente (3 votos, ou 2 sem divergência).
-- Latência: p95 até 1,5× o do melhor agente.
+- Latência: p95 até 1,5× o do melhor agente (cascata está em 2,1–2,2×).
 - git worktrees para agentes que editam arquivos.
 
 ## Fase 2: crítica cruzada só quando há divergência

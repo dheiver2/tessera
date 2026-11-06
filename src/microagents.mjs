@@ -73,8 +73,9 @@ export function autoVerifier({ root, prompt, agent, provider = null, agentId, ti
     const late = new Promise((r) => { timer = setTimeout(() => r('late'), maxWaitMs); });
     const spec = await Promise.race([tests, late]);
     clearTimeout(timer);
-    if (spec === 'late') return { pass: false, detail: 'generated tests not ready in time' };
-    if (!spec) return { pass: false, detail: 'no generated tests' };
+    // skipped: não houve teste; a resposta não foi reprovada, só não foi checada.
+    if (spec === 'late') return { pass: false, skipped: true, detail: 'generated tests not ready in time' };
+    if (!spec) return { pass: false, skipped: true, detail: 'no generated tests' };
     const r = runCodeTests(extractCode(text), spec.cases, { fn: spec.fn });
     return { ...r, detail: `generated tests: ${r.detail}` };
   };

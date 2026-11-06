@@ -136,6 +136,7 @@ test('autoVerifier sem casos confiáveis reprova sem quebrar', async () => {
     const r = await autoVerifier({ root, prompt: 'p', agent: 'codex' })('function solve(){}');
     assert.equal(r.pass, false);
     assert.match(r.detail, /no generated tests/);
+    assert.equal(r.skipped, true);
   } finally { clear(); }
 });
 
