@@ -45,7 +45,7 @@ O Tessera **não substitui** os agentes: ele chama os CLIs que já estão instal
 ## 🚦 Estado atual
 
 > [!IMPORTANT]
-> **No conjunto difícil, o Tessera empatou com o melhor agente sozinho nas duas rodadas (25/33 e 26/33).** Com o prazo corrigido, o p95 do Tessera caiu de 302 s para 122 s. O melhor agente sozinho mudou de uma rodada para outra (Codex na 1, OpenClaw na 2), então só 3 sementes vão dizer se há vantagem real.
+> **Em 4 rodadas do conjunto difícil, o Tessera empata com o melhor agente sozinho: 26,0 contra 26,3 do OpenClaw (de 33).** Quando decide, acerta 93%; perde nas 14% das tarefas em que nenhum ramo fica pronto no prazo. Esse é o próximo alvo.
 
 | Parte | Situação | Evidência |
 |:---|:---:|:---|
@@ -55,9 +55,9 @@ O Tessera **não substitui** os agentes: ele chama os CLIs que já estão instal
 | Prazo por ramo (mata o grupo de processos) | ✅ | Teste de regressão: um neto que dorme 30 s já não segura o fanout |
 | Mangaba Router como provedor único | ✅ | Os quatro agentes rodam por ele, sem login próprio |
 | Claude Code · Codex · OpenClaw | ✅ | `mangaba-agente-rapido`, respostas em 6 a 36 s |
-| Hermes | ⚠️ | Funciona, mas estourou o prazo de 120 s em 21 de 33 tarefas na rodada 2 |
-| **Tessera melhor que cada agente** | 🟨 **Empate** | 26/33 = OpenClaw (rodada 2). Ver [resultados](#-resultados-medidos) |
-| Latência p95 ≤ 1,5× o melhor agente | ❌ | 2,2× no conjunto difícil (era 3,6× antes da correção do prazo) |
+| Hermes | ⚠️ | O mais instável: de 11 a 27 acertos por rodada |
+| **Tessera melhor que cada agente** | 🟨 **Empate** | 26,0 contra 26,3 do OpenClaw, média de 4 rodadas. Ver [resultados](#-resultados-medidos) |
+| Latência p95 ≤ 1,5× o melhor agente | ❌ | 3,7× (180 s contra 49 s) |
 
 ---
 
@@ -317,9 +317,39 @@ node bin/tessera.mjs eval --limit 5 --kind code --modes openclaw,tessera
 
 ## 📈 Resultados medidos
 
-> Todos os agentes com `mangaba-agente-rapido` pelo Mangaba Router, síntese pelo Claude, uma rodada por conjunto. Diferenças de uma tarefa estão dentro do ruído.
+> Todos os agentes com `mangaba-agente-rapido` pelo Mangaba Router, síntese pelo Claude. Diferenças de uma tarefa estão dentro do ruído.
 
-### 🔥 Conjunto difícil · rodada 2 · prazo corrigido · 05/nov/2026
+### 🎲 Conjunto difícil · 4 rodadas com o prazo corrigido · 05–06/nov/2026
+
+| Modo | Por rodada | Média | Desvio | p95 médio |
+|:---|:---:|:---:|:---:|---:|
+| **openclaw** | 26 · 27 · 25 · 27 | **26,3/33** | **1,0** | **49 s** |
+| 🧩 **tessera** | 26 · 27 · 28 · 23 | **26,0/33** | 2,2 | 180 s |
+| claude | 25 · 25 · 25 · 20 | 23,8/33 | 2,5 | 120 s |
+| codex | 21 · 20 · 21 · 20 | 20,5/33 | 0,6 | 120 s |
+| hermes | 11 · 25 · 27 · 19 | 20,5/33 | 7,2 | 122 s |
+
+> [!IMPORTANT]
+> **Veredito: empate com o OpenClaw.** A diferença de 0,3 tarefa é muito menor que o desvio entre rodadas. O Tessera é melhor que Claude, Codex e Hermes sozinhos, mas não é melhor que o melhor agente, e leva 3,7× mais tempo no p95.
+
+**Onde o Tessera perde, somando as 4 rodadas (132 tarefas):**
+
+| Caminho | Tarefas | Acerto |
+|:---|:---:|:---:|
+| ✅ verificação | 37 | 34/37 |
+| 🧪 síntese | 36 | 34/36 |
+| 🗳️ maioria | 34 | 32/34 |
+| 1️⃣ resposta única | 5 | 4/5 |
+| 🔧 correção pela síntese | 1 | 0/1 |
+| 🛟 ramo pronto (síntese falhou) | 6 | **0/6** |
+| ⛔ sem resposta | 13 | **0/13** |
+
+Quando o Tessera chega a decidir, acerta 104 de 112 (93%). **As derrotas vêm de não responder:** em 19 tarefas (14%) nenhum ramo ficou pronto no prazo ou a síntese estourou o tempo. Com os quatro agentes chamando o roteador ao mesmo tempo, cada um fica mais lento que sozinho. Esse é o próximo alvo: limitar chamadas simultâneas e dar ao fanout um prazo próprio.
+
+As tarefas que pegaram o Mac dormindo (4 de 132) foram refeitas e substituídas. A agregação está em [`evals/agregar.mjs`](evals/agregar.mjs).
+
+<details>
+<summary><b>🔥 Conjunto difícil · rodada 2 em detalhe · prazo corrigido</b></summary>
 
 | Modo | Acerto | Respondeu | p50 | p95 | 💻 Código | ❓ Perguntas | 🔍 Revisão |
 |:---|:---:|:---:|---:|---:|:---:|:---:|:---:|
@@ -367,7 +397,9 @@ Oráculo (pelo menos um agente sozinho acertou): 31/33. Algum ramo do fanout ace
 </table>
 
 > [!NOTE]
-> **Uma rodada não basta.** Entre as rodadas 1 e 2, o Codex caiu de 25 para 21 e o OpenClaw subiu de 21 para 26, com as mesmas tarefas. Esse ruído de 4 a 5 tarefas é maior que qualquer vantagem medida até aqui. Por isso o próximo passo é rodar 3 sementes.
+> **Uma rodada não basta.** Entre as rodadas 1 e 2, o Codex caiu de 25 para 21 e o OpenClaw subiu de 21 para 26, com as mesmas tarefas. Esse ruído de 4 a 5 tarefas é maior que qualquer vantagem medida até aqui. Por isso foram feitas mais 3 rodadas (acima).
+
+</details>
 
 <details>
 <summary><b>🔥 Conjunto difícil · rodada 1 · com o bug do prazo</b></summary>
@@ -547,8 +579,9 @@ node bin/tessera.mjs tasks
 | ✅ | **Fase 0**: medir antes de otimizar (`eval`) | Concluída |
 | ✅ | **Fase 1**: seleção por verificação e maioria | Implementada, sem worktrees |
 | ✅ | Conjunto difícil, rodada 2 com o prazo corrigido | Concluída: empate, 26/33 |
-| ⏭️ | Conjunto difícil com 3 sementes | Próximo |
-| ⏭️ | Maioria mais exigente (não aceitar empate 2 × 2) e checagem da resposta única | Próximo |
+| ✅ | Conjunto difícil, 4 rodadas | Concluída: empate, 26,0 contra 26,3 |
+| ⏭️ | Limite de chamadas simultâneas ao roteador e prazo próprio do fanout (14% sem resposta) | Próximo |
+| ⏭️ | Maioria mais exigente (não aceitar empate 2 × 2) e checagem da resposta única | Depois |
 | ⏭️ | **Fase 2**: concordância em texto livre sem síntese | Planejada |
 | ⏭️ | **Fase 3**: roteamento aprendido com os dados do eval | Planejada |
 | ⏭️ | **Fase 4**: disjuntor por agente e limite de chamadas simultâneas ao roteador | Planejada |

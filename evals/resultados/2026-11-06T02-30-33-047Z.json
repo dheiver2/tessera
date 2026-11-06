@@ -1,0 +1,335 @@
+{
+  "meta": {
+    "date": "2026-11-06T02:30:33.047Z",
+    "provider": "mangaba-router",
+    "models": "{\"claude\":\"mangaba-agente-rapido\",\"codex\":\"mangaba-agente-rapido\",\"openclaw\":\"router/mangaba-agente-rapido\",\"hermes\":\"mangaba-agente-rapido\"}",
+    "agents": [
+      "claude",
+      "codex",
+      "openclaw",
+      "hermes"
+    ],
+    "modes": [
+      "solo",
+      "tessera"
+    ],
+    "parallel": false,
+    "tasks": [
+      "hard-popcount",
+      "hard-ordem-natural"
+    ],
+    "baseline": null,
+    "taskFile": "evals/tasks-dificeis.json"
+  },
+  "summary": {
+    "tasks": 2,
+    "modes": [
+      "claude",
+      "codex",
+      "openclaw",
+      "hermes",
+      "tessera"
+    ],
+    "byMode": {
+      "claude": {
+        "total": 2,
+        "passed": 2,
+        "accuracy": 1,
+        "answered": 2,
+        "p50Ms": 11796,
+        "p95Ms": 29660,
+        "byKind": {
+          "code": {
+            "total": 2,
+            "passed": 2
+          }
+        }
+      },
+      "codex": {
+        "total": 2,
+        "passed": 1,
+        "accuracy": 0.5,
+        "answered": 2,
+        "p50Ms": 19039,
+        "p95Ms": 27096,
+        "byKind": {
+          "code": {
+            "total": 2,
+            "passed": 1
+          }
+        }
+      },
+      "openclaw": {
+        "total": 2,
+        "passed": 2,
+        "accuracy": 1,
+        "answered": 2,
+        "p50Ms": 9051,
+        "p95Ms": 9858,
+        "byKind": {
+          "code": {
+            "total": 2,
+            "passed": 2
+          }
+        }
+      },
+      "hermes": {
+        "total": 2,
+        "passed": 2,
+        "accuracy": 1,
+        "answered": 2,
+        "p50Ms": 31464,
+        "p95Ms": 53717,
+        "byKind": {
+          "code": {
+            "total": 2,
+            "passed": 2
+          }
+        }
+      },
+      "tessera": {
+        "total": 2,
+        "passed": 1,
+        "accuracy": 0.5,
+        "answered": 1,
+        "p50Ms": 32183,
+        "p95Ms": 121784,
+        "byKind": {
+          "code": {
+            "total": 2,
+            "passed": 1
+          }
+        }
+      }
+    },
+    "bestSolo": "openclaw",
+    "oracle": 2,
+    "oracleAccuracy": 1,
+    "comparison": {
+      "bestSolo": "openclaw",
+      "tesseraAccuracy": 0.5,
+      "bestSoloAccuracy": 1,
+      "deltaPoints": -50,
+      "latencyRatioP95": 12.353824305132887,
+      "wins": [],
+      "losses": [
+        "hard-ordem-natural"
+      ],
+      "beatsBestSolo": false,
+      "latencyWithinTarget": false
+    },
+    "decisions": {
+      "verify": {
+        "total": 1,
+        "passed": 1,
+        "p50Ms": 32183
+      },
+      "none": {
+        "total": 1,
+        "passed": 0,
+        "p50Ms": 121784
+      }
+    },
+    "branchOracle": 1
+  },
+  "results": [
+    {
+      "taskId": "hard-popcount",
+      "kind": "code",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 11796,
+      "output": "```js\nfunction solve(n) {\n    let count = 0;\n    for (let i = 0; i < 32; i++) {\n        if ((n >>> i) & 1) {\n            count++;\n        }\n    }\n    return count;\n}\n```",
+      "pass": true,
+      "detail": "6/6 testes"
+    },
+    {
+      "taskId": "hard-popcount",
+      "kind": "code",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 19039,
+      "output": "```js\nfunction solve(n) {\n  let count = 0;\n  let x = n >>> 0;\n  while (x) {\n    count += x & 1;\n    x >>= 1;\n  }\n  return count;\n}\n```",
+      "pass": false,
+      "detail": "tempo esgotado nos testes"
+    },
+    {
+      "taskId": "hard-popcount",
+      "kind": "code",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 9858,
+      "output": "```javascript\nfunction solve(n) {\n  let count = 0;\n  let x = n >>> 0;\n  while (x) {\n    x &= x - 1;\n    count++;\n  }\n  return count;\n}\n```",
+      "pass": true,
+      "detail": "6/6 testes"
+    },
+    {
+      "taskId": "hard-popcount",
+      "kind": "code",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 31464,
+      "output": "```js\nfunction solve(n) {\n    let count = 0;\n    let x = n >>> 0;\n    while (x) {\n        x &= x - 1;\n        count++;\n    }\n    return count;\n}\n```",
+      "pass": true,
+      "detail": "6/6 testes"
+    },
+    {
+      "taskId": "hard-popcount",
+      "kind": "code",
+      "mode": "tessera",
+      "status": "done",
+      "error": "",
+      "durationMs": 32183,
+      "branchesMs": 32183,
+      "output": "```javascript\nfunction solve(n) {\n    // Converte o inteiro para a representação não-signed de 32 bits\n    let unsigned = n >>> 0;\n    let count = 0;\n    while (unsigned) {\n        count += unsigned & 1;\n        unsigned >>>= 1;\n    }\n    return count;\n}\n```",
+      "synthesized": false,
+      "selectedBy": "verify",
+      "branches": [
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 30489,
+          "dismissed": false,
+          "output": "```javascript\nfunction solve(n) {\n    // Converte o inteiro para a representação não-signed de 32 bits\n    let unsigned = n >>> 0;\n    let count = 0;\n    while (unsigned) {\n        count += unsigned & 1;\n        unsigned >>>= 1;\n    }\n    return count;\n}\n```",
+          "verify": {
+            "pass": true,
+            "detail": "3/3 testes"
+          },
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "cancelled",
+          "durationMs": 30538,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 14553,
+          "dismissed": false,
+          "output": "```js\nfunction solve(n) {\n  let count = 0;\n  let x = n >>> 0;\n  while (x) {\n    count += x & 1;\n    x >>= 1;\n  }\n  return count;\n}\n```",
+          "verify": {
+            "pass": false,
+            "detail": "tempo esgotado nos testes"
+          },
+          "pass": false
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 32180,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "detail": "6/6 testes"
+    },
+    {
+      "taskId": "hard-ordem-natural",
+      "kind": "code",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 29660,
+      "output": "```js\nfunction solve(lista) {\n  return lista.slice().sort((a, b) => {\n    const aChunks = a.split(/(\\d+)/);\n    const bChunks = b.split(/(\\d+)/);\n\n    const len = Math.min(aChunks.length, bChunks.length);\n    for (let i = 0; i < len; i++) {\n      const aIsDigit = /^\\d+$/.test(aChunks[i]);\n      const bIsDigit = /^\\d+$/.test(bChunks[i]);\n\n      if (aIsDigit && bIsDigit) {\n        if (aChunks[i] !== bChunks[i]) return Number(aChunks[i]) - Number(bChunks[i]);\n      } else if (aIsDigit) {\n        return -1;\n      } else if (bIsDigit) {\n        return 1;\n      } else {\n        if (aChunks[i] !== bChunks[i]) return aChunks[i].localeCompare(bChunks[i]);\n      }\n    }\n    return aChunks.length - bChunks.length;\n  });\n}\n```",
+      "pass": true,
+      "detail": "4/4 testes"
+    },
+    {
+      "taskId": "hard-ordem-natural",
+      "kind": "code",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 27096,
+      "output": "```js\nfunction solve(lista) {\n  return lista.sort((a, b) => {\n    const aParts = a.match(/(\\d+)|([a-zA-Z]+)/g) || [];\n    const bParts = b.match(/(\\d+)|([a-zA-Z]+)/g) || [];\n\n    for (let i = 0; i < Math.min(aParts.length, bParts.length); i++) {\n      const aPart = aParts[i];\n      const bPart = bParts[i];\n\n      if (/\\d/.test(aPart) && /\\d/.test(bPart)) {\n        const aNum = parseInt(aPart, 10);\n        const bNum = parseInt(bPart, 10);\n        if (aNum !== bNum) return aNum - bNum;\n      } else if (/\\d/.test(aPart)) {\n        return -1;\n      } else if (/\\d/.test(bPart)) {\n        return 1;\n      } else {\n        const cmp = aPart.localeCompare(bPart);\n        if (cmp !== 0) return cmp;\n      }\n    }\n\n    return aParts.length - bParts.length;\n  });\n}\n```",
+      "pass": true,
+      "detail": "4/4 testes"
+    },
+    {
+      "taskId": "hard-ordem-natural",
+      "kind": "code",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 9051,
+      "output": "```js\nfunction solve(lista) {\n  return lista.slice().sort((a, b) => {\n    const aChunks = a.match(/(\\d+)|([^0-9])/g);\n    const bChunks = b.match(/(\\d+)|([^0-9])/g);\n    if (!aChunks || !bChunks) return a.localeCompare(b);\n    for (let i = 0; i < aChunks.length && i < bChunks.length; i++) {\n      const ai = aChunks[i];\n      const bi = bChunks[i];\n      const da = /^\\d+$/.test(ai);\n      const db = /^\\d+$/.test(bi);\n      if (da && db) {\n        if (ai !== bi) return +ai - +bi;\n      } else if (da) {\n        return -1;\n      } else if (db) {\n        return 1;\n      } else {\n        if (ai !== bi) return ai < bi ? -1 : 1;\n      }\n    }\n    return a.length - b.length;\n  });\n}\n```",
+      "pass": true,
+      "detail": "4/4 testes"
+    },
+    {
+      "taskId": "hard-ordem-natural",
+      "kind": "code",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 53717,
+      "output": "```js\nfunction solve(lista) {\n  return lista.sort((a, b) => {\n    const aParts = a.match(/(\\d+)|(.)/g);\n    const bParts = b.match(/(\\d+)|(.)/g);\n    if (!aParts || !bParts) return 0;\n    for (let i = 0; i < Math.min(aParts.length, bParts.length); i++) {\n      const aPart = aParts[i];\n      const bPart = bParts[i];\n      const aIsDigit = /^\\d+$/.test(aPart);\n      const bIsDigit = /^\\d+$/.test(bPart);\n      if (aIsDigit && bIsDigit) {\n        const aNum = parseInt(aPart, 10);\n        const bNum = parseInt(bPart, 10);\n        if (aNum !== bNum) return aNum - bNum;\n      } else if (aIsDigit !== bIsDigit) {\n        return aIsDigit ? -1 : 1;\n      } else {\n        if (aPart !== bPart) return aPart < bPart ? -1 : 1;\n      }\n    }\n    return aParts.length - bParts.length;\n  });\n}\n```",
+      "pass": true,
+      "detail": "4/4 testes"
+    },
+    {
+      "taskId": "hard-ordem-natural",
+      "kind": "code",
+      "mode": "tessera",
+      "status": "failed",
+      "error": "nenhum agente respondeu no prazo",
+      "durationMs": 121784,
+      "branchesMs": 121784,
+      "output": "",
+      "synthesized": false,
+      "selectedBy": null,
+      "branches": [
+        {
+          "agent": "claude",
+          "status": "failed",
+          "durationMs": 120203,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "codex",
+          "status": "failed",
+          "durationMs": 120021,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "openclaw",
+          "status": "failed",
+          "durationMs": 121113,
+          "dismissed": false,
+          "output": "[agents/tool-policy] tool policy removed 5 tool(s) via tools.profile (coding): agents_list, gateway, message, nodes, tts\n[agents/tool-policy] tool policy removed 8 tool(s) via tools.deny: create_goal, cron, get_goal, sessions_spawn, sessions_yield, skill_workshop, subagents, update_goal; matched create_goal, cron, get_goal, sessions_spawn, sessions_yield, skill_workshop, subagents, update_goal\n[provider-transport-fetch] [model-fetch] start provider=router api=openai-completions model=mangaba-agente-rapido method=POST url=https://mangabarouter.store/v1/chat/completions timeoutMs=900000 proxy=none policy=custom",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "hermes",
+          "status": "failed",
+          "durationMs": 121782,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": false,
+      "detail": "sem resposta"
+    }
+  ]
+}

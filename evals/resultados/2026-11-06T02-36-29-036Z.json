@@ -1,0 +1,335 @@
+{
+  "meta": {
+    "date": "2026-11-06T02:36:29.036Z",
+    "provider": "mangaba-router",
+    "models": "{\"claude\":\"mangaba-agente-rapido\",\"codex\":\"mangaba-agente-rapido\",\"openclaw\":\"router/mangaba-agente-rapido\",\"hermes\":\"mangaba-agente-rapido\"}",
+    "agents": [
+      "claude",
+      "codex",
+      "openclaw",
+      "hermes"
+    ],
+    "modes": [
+      "solo",
+      "tessera"
+    ],
+    "parallel": false,
+    "tasks": [
+      "hard-expressao",
+      "hard-intervalos"
+    ],
+    "baseline": null,
+    "taskFile": "evals/tasks-dificeis.json"
+  },
+  "summary": {
+    "tasks": 2,
+    "modes": [
+      "claude",
+      "codex",
+      "openclaw",
+      "hermes",
+      "tessera"
+    ],
+    "byMode": {
+      "claude": {
+        "total": 2,
+        "passed": 1,
+        "accuracy": 0.5,
+        "answered": 1,
+        "p50Ms": 67350,
+        "p95Ms": 120170,
+        "byKind": {
+          "code": {
+            "total": 2,
+            "passed": 1
+          }
+        }
+      },
+      "codex": {
+        "total": 2,
+        "passed": 0,
+        "accuracy": 0,
+        "answered": 0,
+        "p50Ms": 65223,
+        "p95Ms": 120022,
+        "byKind": {
+          "code": {
+            "total": 2,
+            "passed": 0
+          }
+        }
+      },
+      "openclaw": {
+        "total": 2,
+        "passed": 1,
+        "accuracy": 0.5,
+        "answered": 2,
+        "p50Ms": 7294,
+        "p95Ms": 10057,
+        "byKind": {
+          "code": {
+            "total": 2,
+            "passed": 1
+          }
+        }
+      },
+      "hermes": {
+        "total": 2,
+        "passed": 2,
+        "accuracy": 1,
+        "answered": 2,
+        "p50Ms": 18851,
+        "p95Ms": 28339,
+        "byKind": {
+          "code": {
+            "total": 2,
+            "passed": 2
+          }
+        }
+      },
+      "tessera": {
+        "total": 2,
+        "passed": 1,
+        "accuracy": 0.5,
+        "answered": 2,
+        "p50Ms": 10774,
+        "p95Ms": 223403,
+        "byKind": {
+          "code": {
+            "total": 2,
+            "passed": 1
+          }
+        }
+      }
+    },
+    "bestSolo": "hermes",
+    "oracle": 2,
+    "oracleAccuracy": 1,
+    "comparison": {
+      "bestSolo": "hermes",
+      "tesseraAccuracy": 0.5,
+      "bestSoloAccuracy": 1,
+      "deltaPoints": -50,
+      "latencyRatioP95": 7.883235117682346,
+      "wins": [],
+      "losses": [
+        "hard-expressao"
+      ],
+      "beatsBestSolo": false,
+      "latencyWithinTarget": false
+    },
+    "decisions": {
+      "fallback": {
+        "total": 1,
+        "passed": 0,
+        "p50Ms": 223403
+      },
+      "verify": {
+        "total": 1,
+        "passed": 1,
+        "p50Ms": 10774
+      }
+    },
+    "branchOracle": 1
+  },
+  "results": [
+    {
+      "taskId": "hard-expressao",
+      "kind": "code",
+      "mode": "claude",
+      "status": "failed",
+      "error": "tempo esgotado após 120s",
+      "durationMs": 120170,
+      "output": "",
+      "pass": false,
+      "detail": "sem resposta"
+    },
+    {
+      "taskId": "hard-expressao",
+      "kind": "code",
+      "mode": "codex",
+      "status": "failed",
+      "error": "tempo esgotado após 120s",
+      "durationMs": 120022,
+      "output": "",
+      "pass": false,
+      "detail": "sem resposta"
+    },
+    {
+      "taskId": "hard-expressao",
+      "kind": "code",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 10057,
+      "output": "```js\nfunction solve(expr) {\n  let i = 0;\n\n  function skipSpaces() {\n    while (i < expr.length && expr[i] === ' ') i++;\n  }\n\n  function parseExpr() {\n    skipSpaces();\n    let val = parseTerm();\n    while (i < expr.length && expr[i] !== ' ') {\n      const op = expr[i];\n      if (op === '+' || op === '-') {\n        i++;\n        skipSpaces();\n        const right = parseTerm();\n        val = op === '+' ? val + right : val - right;\n      } else break;\n    }\n    return val;\n  }\n\n  function parseTerm() {\n    skipSpaces();\n    let val = parseFactor();\n    while (i < expr.length && expr[i] !== ' ') {\n      const op = expr[i];\n      if (op === '*' || op === '/') {\n        i++;\n        skipSpaces();\n        const right = parseFactor();\n        val = op === '*' ? val * right : val / right;\n      } else break;\n    }\n    return val;\n  }\n\n  function parseFactor() {\n    skipSpaces();\n    if (expr[i] === '(') {\n      i++;\n      skipSpaces();\n      const val = parseExpr();\n      skipSpaces();\n      if (i < expr.length && expr[i] === ')') i++;\n      return val;\n    }\n    return parseNumber();\n  }\n\n  function parseNumber() {\n    skipSpaces();\n    let num = '';\n    let neg = false;\n    if (expr[i] === '-') {\n      neg = true;\n      i++;\n    }\n    while (i < expr.length && /[\\d.]/.test(expr[i])) {\n      num += expr[i];\n      i++;\n    }\n    return neg ? -parseFloat(num) : parseFloat(num);\n  }\n\n  return parseExpr();\n}\n```",
+      "pass": false,
+      "detail": "4/8 testes"
+    },
+    {
+      "taskId": "hard-expressao",
+      "kind": "code",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 28339,
+      "output": "```js\nfunction solve(expr) {\n  let pos = 0;\n\n  function skipSpaces() {\n    while (pos < expr.length && expr[pos] === ' ') pos++;\n  }\n\n  function parseExpr() {\n    let left = parseTerm();\n    while (pos < expr.length) {\n      skipSpaces();\n      const op = expr[pos];\n      if (op === '+' || op === '-' || op === '*' || op === '/') {\n        pos++;\n        skipSpaces();\n        const right = parseTerm();\n        if (op === '+') left = left + right;\n        else if (op === '-') left = left - right;\n        else if (op === '*') left = left * right;\n        else if (op === '/') left = left / right;\n      } else break;\n    }\n    return left;\n  }\n\n  function parseTerm() {\n    let left = parseFactor();\n    while (pos < expr.length) {\n      skipSpaces();\n      const op = expr[pos];\n      if (op === '*' || op === '/') {\n        pos++;\n        skipSpaces();\n        const right = parseFactor();\n        if (op === '*') left = left * right;\n        else if (op === '/') left = left / right;\n      } else break;\n    }\n    return left;\n  }\n\n  function parseFactor() {\n    skipSpaces();\n    if (pos >= expr.length) return 0;\n\n    const ch = expr[pos];\n\n    // Unary minus\n    if (ch === '-') {\n      pos++;\n      return -parseFactor();\n    }\n\n    // Opening parenthesis\n    if (ch === '(') {\n      pos++;\n      const val = parseExpr();\n      skipSpaces();\n      if (pos < expr.length && expr[pos] === ')') pos++;\n      return val;\n    }\n\n    // Number\n    let num = 0;\n    while (pos < expr.length && /[\\d]/.test(expr[pos])) {\n      num = num * 10 + parseInt(expr[pos]);\n      pos++;\n    }\n    return num;\n  }\n\n  return parseExpr();\n}\n```",
+      "pass": true,
+      "detail": "8/8 testes"
+    },
+    {
+      "taskId": "hard-expressao",
+      "kind": "code",
+      "mode": "tessera",
+      "status": "done",
+      "error": "",
+      "durationMs": 223403,
+      "branchesMs": 43206,
+      "output": "```js\nfunction solve(expr) {\n  let i = 0;\n\n  function skipSpaces() {\n    while (i < expr.length && /\\s/.test(expr[i])) i++;\n  }\n\n  function parseExpr() {\n    let result = parseTerm();\n    while (true) {\n      skipSpaces();\n      if (i >= expr.length || expr[i] === '+' || expr[i] === '-') break;\n      const op = expr[i];\n      i++;\n      skipSpaces();\n      const right = parseTerm();\n      if (op === '+') result += right;\n      else result -= right;\n    }\n    return result;\n  }\n\n  function parseTerm() {\n    let result = parseFactor();\n    while (true) {\n      skipSpaces();\n      if (i >= expr.length || expr[i] === '+' || expr[i] === '-' || expr[i] === '*' || expr[i] === '/') break;\n      const op = expr[i];\n      i++;\n      skipSpaces();\n      const right = parseFactor();\n      if (op === '*') result *= right;\n      else result /= right;\n    }\n    return result;\n  }\n\n  function parseFactor() {\n    skipSpaces();\n    if (i >= expr.length) throw new Error('Unexpected end');\n    if (expr[i] === '(') {\n      i++;\n      skipSpaces();\n      const result = parseExpr();\n      skipSpaces();\n      if (i >= expr.length || expr[i] !== ')') throw new Error('Missing )');\n      i++;\n      return result;\n    }\n    if (expr[i] === '-' || expr[i] === '+') {\n      const sign = expr[i] === '-' ? -1 : 1;\n      i++;\n      skipSpaces();\n      const value = parseFactor();\n      return sign * value;\n    }\n    // integer\n    let start = i;\n    while (i < expr.length && /\\d/.test(expr[i])) i++;\n    if (i === start) throw new Error('Unexpected character');\n    return parseInt(expr.slice(start, i));\n  }\n\n  return parseExpr();\n}\n```",
+      "synthesized": false,
+      "selectedBy": "fallback",
+      "branches": [
+        {
+          "agent": "claude",
+          "status": "cancelled",
+          "durationMs": 41770,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "codex",
+          "status": "cancelled",
+          "durationMs": 41579,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 11531,
+          "dismissed": false,
+          "output": "```js\nfunction solve(expr) {\n  let i = 0;\n\n  function skipSpaces() {\n    while (i < expr.length && /\\s/.test(expr[i])) i++;\n  }\n\n  function parseExpr() {\n    let result = parseTerm();\n    while (true) {\n      skipSpaces();\n      if (i >= expr.length || expr[i] === '+' || expr[i] === '-') break;\n      const op = expr[i];\n      i++;\n      skipSpaces();\n      const right = parseTerm();\n      if (op === '+') result += right;\n      else result -= right;\n    }\n    return result;\n  }\n\n  function parseTerm() {\n    let result = parseFactor();\n    while (true) {\n      skipSpaces();\n      if (i >= expr.length || expr[i] === '+' || expr[i] === '-' || expr[i] === '*' || expr[i] === '/') break;\n      const op = expr[i];\n      i++;\n      skipSpaces();\n      const right = parseFactor();\n      if (op === '*') result *= right;\n      else result /= right;\n    }\n    return result;\n  }\n\n  function parseFactor() {\n    skipSpaces();\n    if (i >= expr.length) throw new Error('Unexpected end');\n    if (expr[i] === '(') {\n      i++;\n      skipSpaces();\n      const result = parseExpr();\n      skipSpaces();\n      if (i >= expr.length || expr[i] !== ')') throw new Error('Missing )');\n      i++;\n      return result;\n    }\n    if (expr[i] === '-' || expr[i] === '+') {\n      const sign = expr[i] === '-' ? -1 : 1;\n      i++;\n      skipSpaces();\n      const value = parseFactor();\n      return sign * value;\n    }\n    // integer\n    let start = i;\n    while (i < expr.length && /\\d/.test(expr[i])) i++;\n    if (i === start) throw new Error('Unexpected character');\n    return parseInt(expr.slice(start, i));\n  }\n\n  return parseExpr();\n}\n```",
+          "verify": {
+            "pass": false,
+            "detail": "0/4 testes"
+          },
+          "pass": false
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 43203,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": false,
+      "detail": "0/8 testes"
+    },
+    {
+      "taskId": "hard-intervalos",
+      "kind": "code",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 67350,
+      "output": "```javascript\nfunction solve(intervalos) {\n    if (intervalos.length === 0) return [];\n\n    intervalos.sort((a, b) => a[0] - b[0]);\n\n    const merged = [intervalos[0]];\n\n    for (let i = 1; i < intervalos.length; i++) {\n        const [inicioAtual, fimAtual] = intervalos[i];\n        const [inicioUltimo, fimUltimo] = merged[merged.length - 1];\n\n        if (inicioAtual <= fimUltimo) {\n            merged[merged.length - 1] = [inicioUltimo, Math.max(fimUltimo, fimAtual)];\n        } else {\n            merged.push([inicioAtual, fimAtual]);\n        }\n    }\n\n    return merged;\n}\n```",
+      "pass": true,
+      "detail": "5/5 testes"
+    },
+    {
+      "taskId": "hard-intervalos",
+      "kind": "code",
+      "mode": "codex",
+      "status": "failed",
+      "error": "ERROR: stream disconnected before completion: stream closed before response.completed | ERROR: stream disconnected before completion: stream closed before response.completed",
+      "durationMs": 65223,
+      "output": "",
+      "pass": false,
+      "detail": "sem resposta"
+    },
+    {
+      "taskId": "hard-intervalos",
+      "kind": "code",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 7294,
+      "output": "```js\nfunction solve(intervalos) {\n  if (!intervalos.length) return [];\n\n  const sorted = intervalos.sort((a, b) => a[0] - b[0]);\n\n  const merged = [sorted[0]];\n\n  for (let i = 1; i < sorted.length; i++) {\n    const [inicio, fim] = sorted[i];\n    const [ultInicio, ultFim] = merged[merged.length - 1];\n\n    if (inicio <= ultFim) {\n      merged[merged.length - 1] = [ultInicio, Math.max(ultFim, fim)];\n    } else {\n      merged.push([inicio, fim]);\n    }\n  }\n\n  return merged;\n}\n```",
+      "pass": true,
+      "detail": "5/5 testes"
+    },
+    {
+      "taskId": "hard-intervalos",
+      "kind": "code",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 18851,
+      "output": "```js\nfunction solve(intervalos) {\n  if (!intervalos.length) return [];\n\n  // Ordenar por início\n  const sorted = intervalos.slice().sort((a, b) => a[0] - b[0]);\n\n  const mesclados = [sorted[0]];\n\n  for (let i = 1; i < sorted.length; i++) {\n    const ultimo = mesclados[mesclados.length - 1];\n    const atual = sorted[i];\n\n    if (atual[0] <= ultimo[1]) {\n      // Se tocam ou se sobrepõem, mesclar\n      ultimo[1] = Math.max(ultimo[1], atual[1]);\n    } else {\n      mesclados.push(atual);\n    }\n  }\n\n  return mesclados;\n}\n```",
+      "pass": true,
+      "detail": "5/5 testes"
+    },
+    {
+      "taskId": "hard-intervalos",
+      "kind": "code",
+      "mode": "tessera",
+      "status": "done",
+      "error": "",
+      "durationMs": 10774,
+      "branchesMs": 10774,
+      "output": "```js\nfunction solve(intervalos) {\n  if (!intervalos.length) return [];\n\n  const sorted = intervalos.sort((a, b) => a[0] - b[0]);\n  const result = [sorted[0]];\n\n  for (let i = 1; i < sorted.length; i++) {\n    const last = result[result.length - 1];\n    const cur = sorted[i];\n\n    if (cur[0] <= last[1]) {\n      last[1] = Math.max(last[1], cur[1]);\n    } else {\n      result.push(cur);\n    }\n  }\n\n  return result;\n}\n```",
+      "synthesized": false,
+      "selectedBy": "verify",
+      "branches": [
+        {
+          "agent": "claude",
+          "status": "cancelled",
+          "durationMs": 9448,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "codex",
+          "status": "cancelled",
+          "durationMs": 9127,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 9092,
+          "dismissed": false,
+          "output": "```js\nfunction solve(intervalos) {\n  if (!intervalos.length) return [];\n\n  const sorted = intervalos.sort((a, b) => a[0] - b[0]);\n  const result = [sorted[0]];\n\n  for (let i = 1; i < sorted.length; i++) {\n    const last = result[result.length - 1];\n    const cur = sorted[i];\n\n    if (cur[0] <= last[1]) {\n      last[1] = Math.max(last[1], cur[1]);\n    } else {\n      result.push(cur);\n    }\n  }\n\n  return result;\n}\n```",
+          "verify": {
+            "pass": true,
+            "detail": "3/3 testes"
+          },
+          "pass": true
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 10771,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "detail": "5/5 testes"
+    }
+  ]
+}

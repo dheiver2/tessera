@@ -87,9 +87,14 @@ Troca "um modelo escolhe" por "o resultado se prova".
 - O melhor agente sozinho mudou entre rodadas (Codex 25→21, OpenClaw 21→26): ruído de 4 a 5 tarefas.
 - Resultado bruto: `evals/resultados/2026-11-05T14-24-27-567Z.json`.
 
+**Conjunto difícil, 4 rodadas com o prazo corrigido** (média de 33): OpenClaw 26,3 (desvio 1,0), Tessera 26,0 (2,2), Claude 23,8, Codex 20,5, Hermes 20,5 (7,2). Empate com o melhor agente.
+- Por caminho, somando 132 tarefas: verificação 34/37, síntese 34/36, maioria 32/34, resposta única 4/5. Sem resposta 0/13 e ramo pronto após síntese estourar 0/6.
+- Conclusão: o método decide bem (93% quando decide); o que falta é responder no prazo sob disputa no roteador.
+- 4 tarefas que pegaram o Mac dormindo foram refeitas (`2026-11-06T02-30-33-047Z`, `2026-11-06T02-36-29-036Z`). Agregação: `node evals/agregar.mjs <rodadas> --patch <refeitas>`.
+
 **Falta:**
-- 3 sementes do conjunto difícil.
-- Limitar chamadas simultâneas ao roteador ou dar prazo maior no fanout que no modo solo.
+- Limitar chamadas simultâneas ao roteador e dar ao fanout um prazo próprio, maior que o do modo solo.
+- Medir de novo com 3 rodadas depois disso.
 - git worktrees para agentes que editam arquivos.
 
 ## Fase 2: crítica cruzada só quando há divergência
