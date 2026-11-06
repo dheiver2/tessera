@@ -6,13 +6,13 @@ import { resolve, join } from 'node:path';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { loadTasks, runEval, summarize, saveResults, renderMarkdown } from '../src/eval.mjs';
-import { delegate, runPipeline, loadPipeline, listTasks, routeFor, fanout, loadProvider, commandVerifier, voteKey, DEFAULT_ROLES } from '../src/bridge.mjs';
+import { delegate, runPipeline, loadPipeline, listTasks, routeFor, fanout, loadProvider, providerConfig, commandVerifier, voteKey, DEFAULT_ROLES } from '../src/bridge.mjs';
 import { readFrameworkConfig, SOURCE_DEFAULT as SRC } from '../src/sync.mjs';
 
 const args = process.argv.slice(2);
 const CFG = readFrameworkConfig(SRC);
 // --no-provider ignora o provedor configurado e usa a configuração própria de cada agente.
-const PROVIDER = args.includes('--no-provider') ? null : loadProvider(CFG.provider);
+const PROVIDER = args.includes('--no-provider') ? null : loadProvider(providerConfig(CFG.provider));
 const cmd = args[0] ?? 'help';
 const flag = (name) => args.includes(name);
 const value = (name) => {

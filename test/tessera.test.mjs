@@ -263,11 +263,11 @@ test('fanout: ramo lento estoura o prazo e a síntese segue com as respostas a t
   }
 });
 
-import { buildCommand, loadProvider, capOutput, withRole, extractError, cleanOutput, commandVerifier } from '../src/bridge.mjs';
+import { buildCommand, loadProvider, providerConfig, capOutput, withRole, extractError, cleanOutput, commandVerifier } from '../src/bridge.mjs';
 
 const PROV = {
-  name: 'mangaba-router', baseUrl: 'https://router.test/v1', keyEnv: 'TESSERA_TEST_KEY', key: 'k-123',
-  hermesProvider: 'mangaba-router', contextTokens: 65536,
+  name: 'gw-teste', baseUrl: 'https://router.test/v1', keyEnv: 'TESSERA_TEST_KEY', key: 'k-123',
+  hermesProvider: 'gw-hermes', contextTokens: 65536,
   models: { claude: 'm-claude', codex: 'm-codex', openclaw: 'router/m-oc', hermes: 'm-hermes' },
 };
 
@@ -301,7 +301,7 @@ test('openclaw: sessão própria por chamada e modelo do provedor', () => {
 
 test('hermes: provedor nomeado e modo silencioso', () => {
   const c = buildCommand('hermes', 'oi', { provider: PROV });
-  assert.deepEqual(c.args, ['chat', '-Q', '--provider', 'mangaba-router', '-m', 'm-hermes', '-q', 'oi']);
+  assert.deepEqual(c.args, ['chat', '-Q', '--provider', 'gw-hermes', '-m', 'm-hermes', '-q', 'oi']);
 });
 
 test('sem provedor: comandos próprios de cada agente, sem env extra', () => {
@@ -319,6 +319,35 @@ test('loadProvider: env tem prioridade; arquivo como reserva; null sem chave', (
   process.env.TESSERA_TEST_KEY2 = 'do-env';
   try { assert.equal(loadProvider(cfg).key, 'do-env'); } finally { delete process.env.TESSERA_TEST_KEY2; }
   assert.equal(loadProvider({ baseUrl: 'https://r', keyEnv: 'NADA_AQUI', keyFile: join(dir, 'nao') }), null);
+});
+
+test('providerConfig: arquivo do usuário vence o framework.json; sem nada, sem provedor', () => {
+  const home = fresh();
+  const fw = { baseUrl: 'https://fw/v1', name: 'fw' };
+  assert.equal(providerConfig(null, { env: {}, home }), null);
+  assert.equal(providerConfig(fw, { env: {}, home }).name, 'fw');
+  mkdirSync(join(home, '.tessera'), { recursive: true });
+  writeFileSync(join(home, '.tessera', 'provider.json'), JSON.stringify({ baseUrl: 'https://user/v1', name: 'user' }));
+  assert.equal(providerConfig(fw, { env: {}, home }).name, 'user');
+  const other = join(home, 'outro.json');
+  writeFileSync(other, JSON.stringify({ baseUrl: 'https://env/v1', name: 'env' }));
+  assert.equal(providerConfig(fw, { env: { TESSERA_PROVIDER_FILE: other }, home }).name, 'env');
+});
+
+test('providerConfig: só variáveis de ambiente bastam; model vale para todos os agentes', () => {
+  const home = fresh();
+  const cfg = providerConfig(null, { env: { TESSERA_PROVIDER_BASE_URL: 'https://gw/v1', TESSERA_MODEL: 'm1' }, home });
+  assert.deepEqual(cfg, { name: 'gateway', baseUrl: 'https://gw/v1', model: 'm1' });
+  const prov = { ...cfg, keyEnv: 'K', key: 'k' };
+  assert.ok(buildCommand('codex', 'x', { provider: prov }).args.includes('m1'));
+  assert.deepEqual(buildCommand('hermes', 'x', { provider: prov }).args, ['chat', '-Q', '-m', 'm1', '-q', 'x']);
+  const over = { ...prov, models: { hermes: 'm2' } };
+  assert.deepEqual(buildCommand('hermes', 'x', { provider: over }).args, ['chat', '-Q', '-m', 'm2', '-q', 'x']);
+});
+
+test('framework.json do repositório não traz gateway nenhum', () => {
+  const fw = JSON.parse(readFileSync(resolve('framework.json'), 'utf8'));
+  assert.equal(fw.provider, undefined);
 });
 
 test('quórum: com 2 respostas, o ramo lento é cancelado após a tolerância', async () => {

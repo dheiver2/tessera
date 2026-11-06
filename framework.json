@@ -29,19 +29,5 @@
     "graceSeconds": 15,
     "maxCharsPerBranch": 6000,
     "maxWaitAfterFirstSeconds": 30
-  },
-  "provider": {
-    "name": "mangaba-router",
-    "baseUrl": "https://mangabarouter.store/v1",
-    "keyEnv": "MANGABA_ROUTER_KEY",
-    "keyFile": "~/.tessera/router.key",
-    "hermesProvider": "mangaba-router",
-    "contextTokens": 65536,
-    "models": {
-      "claude": "mangaba-agente-rapido",
-      "codex": "mangaba-agente-rapido",
-      "openclaw": "router/mangaba-agente-rapido",
-      "hermes": "mangaba-agente-rapido"
-    }
   }
 }

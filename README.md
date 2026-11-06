@@ -11,7 +11,7 @@ same configuration, the same task in parallel, and the answer that **proves itse
 
 ![Node](https://img.shields.io/badge/node-%E2%89%A520-339933?logo=nodedotjs&logoColor=white)
 ![Dependencies](https://img.shields.io/badge/dependencies-zero-brightgreen)
-![Tests](https://img.shields.io/badge/tests-60%20passing-success)
+![Tests](https://img.shields.io/badge/tests-66%20passing-success)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Status](https://img.shields.io/badge/status-experimental-orange)
 
@@ -21,7 +21,7 @@ same configuration, the same task in parallel, and the answer that **proves itse
 [How it decides](#-how-tessera-decides) •
 [Commands](#%EF%B8%8F-commands) •
 [Results](#-measured-results) •
-[Configuration](#%EF%B8%8F-configuration) •
+[Gateway](#-gateway-optional) •
 [Troubleshooting](#-troubleshooting) •
 [Roadmap](#%EF%B8%8F-roadmap)
 
@@ -58,8 +58,8 @@ Tessera **does not replace** your agents: it calls the CLIs you already have ins
 | `pipeline`, `do`, task bus | ✅ | Tests with a fake agent (`test/fake-agent.mjs`) |
 | `fanout`: verification, majority, synthesis, fallback | ✅ | Unit tests + real runs with the four agents |
 | Per-branch deadline (kills the process group) | ✅ | Regression test: a grandchild sleeping 30 s no longer holds the fanout |
-| Single shared provider (Mangaba Router) | ✅ | All four agents run through it, no per-agent login |
-| Claude Code · Codex · OpenClaw | ✅ | `mangaba-agente-rapido`, answers in 6 to 36 s |
+| Gateway-agnostic | ✅ | No gateway by default; any gateway via `~/.tessera/provider.json` or env vars |
+| Claude Code · Codex · OpenClaw | ✅ | Answers in 6 to 36 s in the measured setup |
 | Hermes | ⚠️ | The least stable: 11 to 27 correct per round |
 | **Tessera better than each agent** | 🟨 **Tie** | 26.0 vs. 26.3 for OpenClaw, average of 4 rounds. See [results](#-measured-results) |
 | p95 latency ≤ 1.5× the best agent | ❌ | 3.7× (180 s vs. 49 s) |
@@ -81,7 +81,7 @@ node bin/tessera.mjs doctor
 ```
 
 ```bash
-node bin/tessera.mjs fanout --no-provider --prompt "What is the time complexity of binary search? Answer in 1 line."
+node bin/tessera.mjs fanout --prompt "What is the time complexity of binary search? Answer in 1 line."
 ```
 
 <details>
@@ -94,24 +94,8 @@ npm link
 After that, `tessera fanout ...` works from any folder.
 </details>
 
-<details>
-<summary><b>Use one OpenAI-compatible router as the provider for all four agents</b></summary>
-
-By default the repo points the four agents at the Mangaba Router (`framework.json > provider`). To use each agent's own login and configuration instead, pass `--no-provider` or remove the `provider` block. To use another OpenAI-compatible router, change `baseUrl` and the model names.
-
-The key comes from `MANGABA_ROUTER_KEY` or, if unset, from `~/.tessera/router.key`. The file lives outside the repository, with mode 600.
-
-```bash
-mkdir -p ~/.tessera && chmod 700 ~/.tessera
-```
-
-```bash
-read -rs MANGABA_ROUTER_KEY && printf %s "$MANGABA_ROUTER_KEY" > ~/.tessera/router.key && chmod 600 ~/.tessera/router.key
-```
-
-> [!CAUTION]
-> The key **never** goes into the repository.
-</details>
+> [!TIP]
+> **No gateway needed.** By default each agent uses its own login and configuration. Pointing all four at one gateway is optional: see [Gateway (optional)](#-gateway-optional).
 
 ---
 
@@ -226,7 +210,7 @@ The `--verify` command receives the answer on **stdin** and the agent name in `T
 | `--synth-timeout s` | `180` | synthesis deadline |
 | `--quorum n` · `--grace s` | `2` · `15` | with *n* good answers, wait *s* seconds and cancel the rest |
 | `--max-wait s` | `30` | maximum wait after the first answer |
-| `--no-provider` | — | use each agent's own configuration |
+| `--no-provider` | — | ignore any configured gateway for this run |
 
 <details>
 <summary><b>⏱️ How latency is bounded</b></summary>
@@ -326,7 +310,7 @@ node bin/tessera.mjs eval --limit 5 --kind code --modes openclaw,tessera
 
 ## 📈 Measured results
 
-> All agents use `mangaba-agente-rapido` through the Mangaba Router; synthesis by Claude. A one-task difference is within noise.
+> Measured with all four agents on the same model (`mangaba-agente-rapido`) through one gateway (the author's Mangaba Router), so differences come only from each agent's harness. Synthesis by Claude. A one-task difference is within noise.
 
 ### 🎲 Hard set · 4 rounds with the deadline fix · Nov 5–6, 2026
 
@@ -518,19 +502,51 @@ Raw results in [`evals/resultados/`](evals/resultados/).
 
 ## ⚙️ Configuration
 
-### 🌐 Shared provider (Mangaba Router)
+### 🌐 Gateway (optional)
 
-With `provider` in `framework.json`, the four agents use the same router, **with no per-agent login** and **without changing each agent's global configuration**:
+Tessera is gateway-agnostic. With no configuration, each agent runs with **its own login and settings**. To run all four through one gateway (LiteLLM, OpenRouter, a self-hosted router...), Tessera looks for the configuration in this order:
 
-| Agent | How it is pointed at the router |
+| Order | Source | Tracked in git? |
+|:---:|:---|:---:|
+| 1 | the file in `TESSERA_PROVIDER_FILE` | no |
+| 2 | `~/.tessera/provider.json` | no |
+| 3 | `"provider"` in `framework.json` | yes (empty by default) |
+| 4 | only env vars: `TESSERA_PROVIDER_BASE_URL` + `TESSERA_PROVIDER_KEY` (+ `TESSERA_MODEL`) | no |
+
+The fastest way:
+
+```bash
+export TESSERA_PROVIDER_BASE_URL="https://your-gateway/v1"
+export TESSERA_PROVIDER_KEY="..."
+export TESSERA_MODEL="your-model"
+```
+
+For per-agent models and options, copy [`examples/provider.example.json`](examples/provider.example.json) to `~/.tessera/provider.json`:
+
+| Field | Purpose |
+|:---|:---|
+| `baseUrl` | OpenAI-compatible endpoint, used by Codex, OpenClaw and Hermes |
+| `anthropicBaseUrl` | Anthropic-compatible endpoint for Claude Code (default: `baseUrl` without `/v1`) |
+| `keyEnv` · `keyFile` | where the key comes from (default `TESSERA_PROVIDER_KEY`, then `~/.tessera/provider.key`) |
+| `model` · `models.<agent>` | one model for all, or one per agent |
+| `codexWireApi` | `responses` (default) or what your Codex version and gateway support |
+| `hermesProvider` | id of the provider entry in Hermes' `config.yaml` |
+| `contextTokens` | context limit passed to Claude Code |
+
+How each agent is pointed at the gateway, without changing its global configuration:
+
+| Agent | Mechanism |
 |:---|:---|
 | **Claude Code** | `--bare`; `ANTHROPIC_BASE_URL` and `ANTHROPIC_API_KEY` only in the child process; prompt via stdin; `--tools ""` |
 | **Codex** | `-c model_provider=tessera` and `-c model_providers.tessera.*` on the command line |
-| **OpenClaw** | `--model router/<model>` and a new `--session-id` per call |
-| **Hermes** | `--provider mangaba-router`, which reads the key from `MANGABA_ROUTER_KEY` |
+| **OpenClaw** | `--model <provider>/<model>` and a new `--session-id` per call |
+| **Hermes** | `--provider <hermesProvider>` and `-m <model>` |
 
 > [!NOTE]
-> OpenClaw and Hermes need the provider in their own configuration once: allowed models in `openclaw.json` and the `providers.mangaba-router` block in Hermes' `config.yaml`.
+> Claude Code needs a gateway that speaks the Anthropic Messages API; the other three use the OpenAI format. OpenClaw and Hermes also need the gateway registered once in their own config (`openclaw.json`, Hermes' `config.yaml`). `--no-provider` ignores any gateway for one run.
+
+> [!CAUTION]
+> Keys **never** go into the repository. `~/.tessera/` lives outside it; keep key files at mode 600.
 
 ### 🔧 Change an agent's command
 
@@ -547,12 +563,12 @@ export TESSERA_CLAUDE_CMD='["claude", "-p", "--tools", ""]'
 <details>
 <summary><b>Default command for each agent</b></summary>
 
-| Agent | Without provider | With provider |
+| Agent | Without gateway | With gateway |
 |:---|:---|:---|
 | claude | `claude -p --tools ""` (stdin) | `claude --bare -p --tools ""` (stdin) |
 | codex | `codex exec --skip-git-repo-check <prompt>` | same + `-c model_provider=tessera ...` and `-m <model>` |
 | openclaw | `openclaw agent --local --agent main --session-id <new> --thinking off --message <prompt>` | same + `--model <model>` |
-| hermes | `hermes chat -Q -q <prompt>` | same + `--provider mangaba-router -m <model>` |
+| hermes | `hermes chat -Q -q <prompt>` | same + `--provider <hermesProvider> -m <model>` |
 
 - **Claude without tools:** with the default tools, the initial prompt is large and dominates the time. For tasks that need tools, change the command.
 - **OpenClaw needs an agent:** pass `--agent-id main` (or your id) to any command.
@@ -564,8 +580,8 @@ export TESSERA_CLAUDE_CMD='["claude", "-p", "--tools", ""]'
 
 | Symptom | Likely cause | What to do |
 |:---|:---|:---|
-| `OAuth session expired` in Claude | expired login | run `claude` and sign in again, or use the provider |
-| `401 chave inválida ou revogada` | revoked key | create a new key and rewrite `~/.tessera/router.key` |
+| `OAuth session expired` in Claude | expired login | run `claude` and sign in again, or use a gateway |
+| `401` from the gateway | invalid or revoked key | update `TESSERA_PROVIDER_KEY` or your `keyFile` |
 | `Not inside a trusted directory` in Codex | folder outside a git repository | already handled: the adapter passes `--skip-git-repo-check` |
 | `Pass --to ... or --agent` in OpenClaw | missing agent id | pass `--agent-id main` |
 | `Agent couldn't generate a response` | OpenClaw got no answer from the model | treated as a failure; the fanout continues with the others |
@@ -615,8 +631,9 @@ tessera/
 │   ├── tasks-dificeis.json  33 tasks with traps (hard set)
 │   └── resultados/          .json and .md report for each round
 ├── pipelines/               pipeline examples
+├── examples/                gateway configuration example
 ├── docs/PLANO.md            phased plan
-└── test/                    60 tests (node:test)
+└── test/                    66 tests (node:test)
 ```
 
 ---

@@ -1,0 +1,12 @@
+{
+  "name": "my-gateway",
+  "baseUrl": "https://gateway.example.com/v1",
+  "anthropicBaseUrl": "https://gateway.example.com",
+  "keyEnv": "TESSERA_PROVIDER_KEY",
+  "keyFile": "~/.tessera/provider.key",
+  "model": "your-model-name",
+  "models": {
+    "openclaw": "<openclaw-provider-id>/your-model-name"
+  },
+  "hermesProvider": "<hermes-provider-id>"
+}

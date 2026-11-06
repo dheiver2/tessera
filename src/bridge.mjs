@@ -11,23 +11,42 @@ const newId = () => `${Date.now().toString(36)}-${randomBytes(3).toString('hex')
 const expandHome = (p) => (p?.startsWith('~/') ? join(homedir(), p.slice(2)) : p);
 
 // ---------------------------------------------------------------------------
-// Provedor compartilhado (ex.: Mangaba Router). A chave nunca vem do repositório:
-// lê a variável keyEnv ou, se ausente, o arquivo keyFile (fora do repo, modo 600).
+// Provedor compartilhado: qualquer gateway (LiteLLM, OpenRouter, um roteador próprio...).
+// Opcional. Sem provedor, cada agente usa o próprio login e a própria configuração.
+// A configuração vem, nesta ordem, de:
+//   1. o arquivo em TESSERA_PROVIDER_FILE;
+//   2. ~/.tessera/provider.json (fora do repositório);
+//   3. "provider" no framework.json;
+//   4. só variáveis: TESSERA_PROVIDER_BASE_URL + TESSERA_PROVIDER_KEY (+ TESSERA_MODEL).
+// A chave nunca vem do repositório: lê a variável keyEnv ou, se ausente, o arquivo keyFile.
+export function providerConfig(frameworkProvider, { env = process.env, home = homedir() } = {}) {
+  const files = [env.TESSERA_PROVIDER_FILE, join(home, '.tessera', 'provider.json')].filter(Boolean);
+  for (const f of files) {
+    const path = expandHome(f);
+    if (existsSync(path)) return JSON.parse(readFileSync(path, 'utf8'));
+  }
+  if (frameworkProvider?.baseUrl) return frameworkProvider;
+  if (env.TESSERA_PROVIDER_BASE_URL) {
+    return { name: 'gateway', baseUrl: env.TESSERA_PROVIDER_BASE_URL, ...(env.TESSERA_MODEL ? { model: env.TESSERA_MODEL } : {}) };
+  }
+  return null;
+}
+
 export function loadProvider(cfg) {
   if (!cfg?.baseUrl) return null;
   const keyEnv = cfg.keyEnv ?? 'TESSERA_PROVIDER_KEY';
   let key = process.env[keyEnv];
-  const file = expandHome(cfg.keyFile);
+  const file = expandHome(cfg.keyFile ?? '~/.tessera/provider.key');
   if (!key && file && existsSync(file)) key = readFileSync(file, 'utf8').trim();
   if (!key) return null;
-  return { ...cfg, keyEnv, key, baseUrl: cfg.baseUrl.replace(/\/$/, '') };
+  return { name: 'gateway', ...cfg, keyEnv, key, baseUrl: cfg.baseUrl.replace(/\/$/, '') };
 }
 
 // ---------------------------------------------------------------------------
 // Comando headless de cada agente: { bin, args, env, input }.
 // Com provedor, cada agente é apontado para ele sem alterar a configuração global.
 export function buildCommand(agent, prompt, { provider = null, agentId, timeoutMs = 120_000, taskId = newId() } = {}) {
-  const model = provider?.models?.[agent];
+  const model = provider?.models?.[agent] ?? provider?.model;
   const env = {};
   if (provider) env[provider.keyEnv] = provider.key;
 
