@@ -119,6 +119,7 @@ export async function runEval({
               synthesized: r.final?.synthesized !== false && Boolean(r.final),
               selectedBy: r.final?.selectedBy ?? null,
               escalated: r.escalated ?? null,
+              hedged: r.hedged ?? null,
               branches: r.branches.map((b) => ({
                 agent: b.agent, status: b.status, durationMs: b.durationMs, dismissed: Boolean(b.dismissed),
                 output: b.output ?? '', verify: b.verify ?? null,
@@ -257,7 +258,7 @@ export function renderMarkdown(summary, meta = {}) {
     lines.push(`- ${name} wrong, ${c.bestSolo} right: ${c.losses.length ? c.losses.join(', ') : 'none'}.`);
     lines.push('', `**Success criterion:** more correct than the best agent: ${c.beatsBestSolo ? 'yes' : 'no'}. Latency within target: ${c.latencyWithinTarget == null ? '—' : c.latencyWithinTarget ? 'yes' : 'no'}.`, '');
   }
-  const label = { verify: 'verification', vote: 'majority', single: 'single answer', synthesis: 'synthesis', repair: 'repair by synthesis', fallback: 'finished branch (synthesis failed)', fast: 'fast agent passed verification', none: 'no answer' };
+  const label = { verify: 'verification', vote: 'majority', single: 'single answer', synthesis: 'synthesis', repair: 'repair by synthesis', fallback: 'finished branch (synthesis failed)', fast: 'fast agent passed verification', budget: 'time budget reached (best ready answer)', none: 'no answer' };
   for (const [name, dec] of [['Tessera', summary.decisions], ['Cascade', summary.cascadeDecisions]]) {
     if (!dec) continue;
     lines.push(`## How ${name} decided`, '', '| Path | Tasks | Correct | p50 |', '|---|---|---|---|');

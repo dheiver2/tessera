@@ -396,10 +396,24 @@ export async function fanout({
   // seed: ramos que já terminaram antes (a primeira etapa da cascata). Contam no voto,
   // na síntese e no resultado, mas não disparam os prazos de espera.
   seed = [],
+  // running: ramos que já estão rodando (o agente rápido da cascata, depois do hedge).
+  // Cada item é { agent, promise, abort }. Entra na verificação e no voto como qualquer ramo
+  // e ocupa uma vaga da fila até terminar, para o roteador não receber mais agentes do que
+  // maxConcurrent. Não dispara o prazo de espera depois da primeira resposta: os demais
+  // começaram depois dele.
+  running = [],
+  // budgetMs: prazo total da tarefa, contado de `startedAt`. Os ramos são cortados quando ele
+  // acaba, e a síntese só usa o que sobra; sem tempo, volta a melhor resposta pronta.
+  // Motivo (06/nov/2026): prazos de ramo e de síntese se somavam e o p95 passava de 2× o do
+  // melhor agente, quase sempre em tarefas que terminavam erradas mesmo assim.
+  budgetMs = 0, startedAt = Date.now(), minSynthMs = 20_000,
 }) {
   const started = Date.now();
   const controller = new AbortController();
-  const total = agents.length + seed.length;
+  const left = () => (budgetMs > 0 ? budgetMs - (Date.now() - startedAt) : Infinity);
+  for (const r of running) controller.signal.addEventListener('abort', () => r.abort?.(), { once: true });
+  const budgetTimer = budgetMs > 0 ? setTimeout(() => controller.abort(), Math.max(0, left())) : null;
+  const total = agents.length + seed.length + running.length;
   const need = quorum > 0 ? Math.min(quorum, total) : total;
   let okCount = 0;
   let liveOk = 0;
@@ -427,29 +441,44 @@ export async function fanout({
     else if (!verify || softVerify) castVote(s);
   }
 
-  const slots = createSlots(maxConcurrent > 0 ? maxConcurrent : agents.length);
+  const slots = createSlots(maxConcurrent > 0 ? maxConcurrent : agents.length + running.length);
 
-  const live = decided ? [] : await Promise.all(agents.map(async (agent) => {
-    // A vaga só é devolvida depois da verificação e do voto: se esta resposta decide o
-    // fanout, o próximo da fila não chega a começar.
-    const release = await slots.acquire();
-    try { return await runBranch(agent); } finally { release(); }
-  }));
+  if (decided) for (const r of running) r.abort?.();
+  const live = decided ? await Promise.all(running.map((r) => r.promise)) : await Promise.all([
+    // Os ramos que já rodam pegam vaga primeiro (a fila atende por ordem de chegada).
+    ...running.map(async (r) => {
+      const release = await slots.acquire();
+      try { return await settle(await r.promise, { startsTimers: false }); } finally { release(); }
+    }),
+    ...agents.map(async (agent) => {
+      // A vaga só é devolvida depois da verificação e do voto: se esta resposta decide o
+      // fanout, o próximo da fila não chega a começar.
+      const release = await slots.acquire();
+      try { return await runBranch(agent); } finally { release(); }
+    }),
+  ]);
   const branches = [...seed, ...live];
   clearTimeout(graceTimer);
   clearTimeout(firstTimer);
+  clearTimeout(budgetTimer);
 
   async function runBranch(agent) {
     if (controller.signal.aborted) {
       return { agent, status: 'cancelled', output: '', error: 'dismissed before starting', durationMs: 0, queued: true };
     }
     const t = await delegateAsync({
-      root, agent, agentId, provider, timeoutMs: deadlineMs, name: `fanout:${agent}`,
+      root, agent, agentId, provider, timeoutMs: Math.max(1000, Math.min(deadlineMs, left())), name: `fanout:${agent}`,
       prompt: withRole(prompt, roles?.[agent]), signal: controller.signal,
     });
+    return settle(t);
+  }
+
+  // Verifica, vota e dispara os prazos de espera para um ramo que terminou.
+  async function settle(t, { startsTimers = true } = {}) {
+    const agent = t.agent;
     if (t.status === 'done' && t.output) {
       if (verify) {
-        t.verify = await Promise.resolve(verify(t.output, agent)).catch((e) => ({ pass: false, detail: e.message }));
+        t.verify ??= await Promise.resolve(verify(t.output, agent)).catch((e) => ({ pass: false, detail: e.message }));
         if (t.verify.pass && !decided) { decided = { by: 'verify', branch: t }; controller.abort(); }
         else if (softVerify) castVote(t);
       } else {
@@ -458,10 +487,10 @@ export async function fanout({
     }
     if (t.status === 'done') {
       okCount += 1;
-      liveOk += 1;
+      if (startsTimers) liveOk += 1;
       // Primeira resposta boa: os demais têm no máximo maxWaitAfterFirstMs,
       // mesmo que o quórum nunca seja atingido (agente travado não segura o resultado).
-      if (liveOk === 1 && maxWaitAfterFirstMs > 0 && agents.length > 1) {
+      if (startsTimers && liveOk === 1 && maxWaitAfterFirstMs > 0 && agents.length > 1) {
         firstTimer = setTimeout(() => controller.abort(), maxWaitAfterFirstMs);
       }
       if (okCount >= need && need < total && !graceTimer) {
@@ -488,6 +517,15 @@ export async function fanout({
     // Uma resposta só e nada a corrigir: sintetizar seria latência sem ganho.
     return { branches, final: pick(ok[0], 'single'), branchesMs, totalMs: branchesMs };
   }
+  // Melhor resposta pronta, para quando não há tempo ou a síntese falha: a que mais agentes
+  // deram (voto); no empate, a que passou em mais testes; depois, a primeira da lista.
+  const groupSize = (t) => { const k = vote?.(t.output); return k ? (votes.get(k)?.length ?? 1) : 1; };
+  const testScore = (t) => (t.verify?.total ? t.verify.passed / t.verify.total : t.verify?.pass ? 1 : 0);
+  const bestReady = () => ok.map((t, i) => ({ t, i }))
+    .sort((x, y) => groupSize(y.t) - groupSize(x.t) || testScore(y.t) - testScore(x.t) || x.i - y.i)[0].t;
+  if (left() < minSynthMs) {
+    return { branches, final: pick(bestReady(), 'budget'), branchesMs, totalMs: Date.now() - started };
+  }
 
   const merged = ok.map((t) => {
     const fail = hard && t.verify && !t.verify.pass ? `\n[Verification failed] ${capOutput(t.verify.detail ?? '', 800)}` : '';
@@ -503,7 +541,7 @@ export async function fanout({
       '- Respeite o formato e o tamanho pedidos na pergunta original.\n' +
       '- If the answers disagree on something relevant, say in one line which one you chose and why. If they agree, do not comment.';
   const final = await delegateAsync({
-    root, agent: synthesizer, agentId, provider, timeoutMs: synthTimeoutMs, name: 'sintese',
+    root, agent: synthesizer, agentId, provider, timeoutMs: Math.min(synthTimeoutMs, left()), name: 'sintese',
     prompt: `Pergunta original:\n${prompt}\n\nRespostas de diferentes agentes (cada um com um foco):\n\n${merged}\n\n${instructions}`,
   });
   final.selectedBy = hard ? 'repair' : 'synthesis';
@@ -511,7 +549,7 @@ export async function fanout({
     // Síntese falhou (prazo, roteador fora): uma resposta pronta é melhor do que nenhuma.
     return {
       branches,
-      final: pick(ok[0], 'fallback', { synthesisError: final.error ?? final.status }),
+      final: pick(bestReady(), 'fallback', { synthesisError: final.error ?? final.status }),
       branchesMs, totalMs: Date.now() - started,
     };
   }
@@ -529,27 +567,52 @@ export async function fanout({
 // a maior parte das tarefas o agente rápido já resolve sozinho.
 export async function cascade({
   root, prompt, agents, fast = agents[0], fastDeadlineMs = 90_000, agentId, provider = null,
-  verify = null, softVerify = false, ...fanoutOpts
+  verify = null, softVerify = false,
+  // hedgeMs: quanto o agente rápido tem sozinho. Se não responder nesse tempo, os demais
+  // começam e ele segue como mais um ramo. 0 = esperar ele terminar (comportamento antigo).
+  hedgeMs = 0, budgetMs = 0,
+  ...fanoutOpts
 }) {
   const started = Date.now();
-  const first = await delegateAsync({
-    root, agent: fast, agentId, provider, timeoutMs: fastDeadlineMs, name: `cascade:${fast}`, prompt,
-  });
-  if (first.status === 'done' && first.output && verify) {
-    first.verify = await Promise.resolve(verify(first.output, fast)).catch((e) => ({ pass: false, detail: e.message }));
-    if (first.verify.pass) {
-      const ms = Date.now() - started;
-      return { branches: [first], final: { ...first, name: 'selecao', synthesized: false, selectedBy: 'fast' }, branchesMs: ms, totalMs: ms, escalated: false };
+  const fastCtl = new AbortController();
+  const firstP = delegateAsync({
+    root, agent: fast, agentId, provider, name: `cascade:${fast}`, prompt, signal: fastCtl.signal,
+    timeoutMs: budgetMs > 0 ? Math.min(fastDeadlineMs, budgetMs) : fastDeadlineMs,
+  }).then(async (t) => {
+    if (t.status === 'done' && t.output && verify) {
+      t.verify = await Promise.resolve(verify(t.output, fast)).catch((e) => ({ pass: false, detail: e.message }));
     }
+    return t;
+  });
+  let hedgeTimer;
+  const hedge = hedgeMs > 0 ? new Promise((r) => { hedgeTimer = setTimeout(() => r(null), hedgeMs); }) : null;
+  // Sem como verificar a resposta rápida (sem verificador, ou o microagente não achou testes
+  // confiáveis), ela nunca volta sozinha: só conta como voto. Esperar por ela seria só
+  // latência, então os demais começam já, e o rápido segue como ramo, ocupando uma vaga.
+  // Perguntas e revisões caem aqui. Motivo (06/nov/2026): 19 das 33 tarefas do conjunto
+  // difícil não têm como ser verificadas, e a cascata esperava o rápido terminar em todas.
+  const never = new Promise(() => {});
+  const unverifiable = Promise.resolve(verify ? (verify.ready ?? true) : false)
+    .catch(() => false).then((can) => (can ? never : null));
+  const first = await Promise.race([firstP, unverifiable, ...(hedge ? [hedge] : [])]);
+  clearTimeout(hedgeTimer);
+  if (first?.verify?.pass) {
+    const ms = Date.now() - started;
+    return { branches: [first], final: { ...first, name: 'selecao', synthesized: false, selectedBy: 'fast' }, branchesMs: ms, totalMs: ms, escalated: false };
   }
   const rest = agents.filter((a) => a !== fast);
+  const escalatedAt = Date.now();
   const res = await fanout({
     root, prompt, agents: rest, agentId, provider, verify, softVerify, ...fanoutOpts,
-    seed: [first],
+    budgetMs, startedAt: started,
+    // Já terminou (falhou na verificação ou sem verificador): entra como voto pronto.
+    // Ainda rodando (hedge): entra como ramo vivo.
+    ...(first ? { seed: [first] } : { running: [{ agent: fast, promise: firstP, abort: () => fastCtl.abort() }] }),
   });
   res.totalMs = Date.now() - started;
-  res.branchesMs = (res.branchesMs ?? 0) + first.durationMs;
+  res.branchesMs = (res.branchesMs ?? 0) + (escalatedAt - started);
   res.escalated = true;
+  res.hedged = !first;
   return res;
 }
 

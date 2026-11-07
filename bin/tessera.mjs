@@ -54,6 +54,8 @@ Usage:
                                                   all agents at once; the verified answer or the majority wins; synthesis only on deadlock
                  --no-cascade      run every agent at once (default: cascade — the fast agent answers alone
                                    first; the others join only if it fails verification)
+                 --hedge s         seconds the fast agent has alone before the others start (default 20)
+                 --budget s        total time per task; when it runs out, the best ready answer returns
                  --no-auto-verify  skip generated tests (default on with a gateway: a micro-agent writes
                                    test cases from the prompt when there is no --verify)
   tessera delegate --agent <claude|codex|openclaw|hermes> "prompt"
@@ -166,7 +168,9 @@ try {
       prompt,
       agents: useCascade ? [fast, ...agents.filter((a) => a !== fast)] : agents,
       fast,
-      fastDeadlineMs: Number(cfg.fastDeadlineSeconds ?? 90) * 1000,
+      fastDeadlineMs: Number(cfg.fastDeadlineSeconds ?? 120) * 1000,
+      hedgeMs: Number(value('--hedge') ?? cfg.hedgeSeconds ?? 20) * 1000,
+      budgetMs: Number(value('--budget') ?? cfg.budgetSeconds ?? 0) * 1000,
       synthesizer: synth,
       agentId: value('--agent-id'),
       deadlineMs: Number(value('--deadline') ?? cfg.branchDeadlineSeconds ?? cfg.deadlineSeconds ?? 120) * 1000,
@@ -197,6 +201,7 @@ try {
         repair: `repair by ${synth}${res.final.verify ? `; verification ${res.final.verify.pass ? 'passed' : 'failed'}` : ''}`,
         synthesis: `synthesis by ${synth}`,
         fallback: `synthesis failed; answer from ${res.final.agent}`,
+        budget: `time budget reached; best ready answer, from ${res.final.agent}`,
       }[res.final.selectedBy] ?? `synthesis by ${synth}`;
       console.log(`\n=== final answer (${who}, ${res.totalMs}ms total) ===\n` + res.final.output);
       if (res.final.verify && !res.final.verify.pass) process.exitCode = 2;
@@ -230,7 +235,9 @@ try {
         maxCharsPerBranch: Number(cfg.maxCharsPerBranch ?? 6000),
         roles: flag('--roles') ? (cfg.roles ?? DEFAULT_ROLES) : null,
         fast: agents.includes(cfg.fast) ? cfg.fast : agents[0],
-        fastDeadlineMs: Number(cfg.fastDeadlineSeconds ?? 90) * 1000,
+        fastDeadlineMs: Number(cfg.fastDeadlineSeconds ?? 120) * 1000,
+        hedgeMs: Number(value('--hedge') ?? cfg.hedgeSeconds ?? 20) * 1000,
+        budgetMs: Number(value('--budget') ?? cfg.budgetSeconds ?? 0) * 1000,
       },
       onResult: (r) => console.log(`  ${r.pass ? '✓' : '✗'} ${r.taskId.padEnd(24)} ${r.mode.padEnd(9)} ${((r.durationMs ?? 0) / 1000).toFixed(1).padStart(6)}s  ${r.detail}${r.status !== 'done' ? `  [${r.status}: ${(r.error ?? '').slice(0, 80)}]` : ''}`),
     });

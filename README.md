@@ -50,7 +50,7 @@ Tessera **does not replace** your agents: it calls the CLIs you already have ins
 ## 🚦 Current status
 
 > [!IMPORTANT]
-> **Over 4 rounds of the hard task set, Tessera ties the best single agent: 26.0 vs. 26.3 for OpenClaw (out of 33).** When it reaches a decision, it is right 93% of the time; it loses on the 14% of tasks where no branch finishes in time. That is the next target.
+> **On the hard set (33 tasks), the cascade beat the best single agent in both of the latest rounds and stayed within the latency target: 25 vs. 23 and 29 vs. 27, with p95 at 1.41× and 1.25× that agent's (target: up to 1.5×).** Two rounds only, so a one-task difference is still noise; the lead was 2 tasks in both.
 
 | Part | Status | Evidence |
 |:---|:---:|:---|
@@ -61,8 +61,8 @@ Tessera **does not replace** your agents: it calls the CLIs you already have ins
 | Gateway-agnostic | ✅ | No gateway by default; any gateway via `~/.tessera/provider.json` or env vars |
 | Claude Code · Codex · OpenClaw | ✅ | Answers in 6 to 36 s in the measured setup |
 | Hermes | ⚠️ | The least stable: 11 to 27 correct per round |
-| **Tessera better than each agent** | 🟨 **Tie** | 26.0 vs. 26.3 for OpenClaw, average of 4 rounds. See [results](#-measured-results) |
-| p95 latency ≤ 1.5× the best agent | ❌ | 3.7× (180 s vs. 49 s) |
+| **Tessera better than each agent** | ✅ | Cascade 25 and 29 vs. 23 and 27 for each round's best agent, Nov 6–7, 2026. See [results](#-measured-results) |
+| p95 latency ≤ 1.5× the best agent | ✅ | 1.41× and 1.25× (150 s, the time budget, vs. 107 s and 120 s) |
 
 ---
 
@@ -214,21 +214,33 @@ The `--verify` command receives the answer on **stdin** and the agent name in `T
 | `--no-provider` | — | ignore any configured gateway for this run |
 | `--no-cascade` | cascade on | run every agent at once instead of the fast agent first (its answer counts as a vote if the others are needed) |
 | `--fast name` | `openclaw` | the fast agent for the cascade |
+| `--hedge s` | `20` | how long the fast agent runs alone; after that the others start and it keeps running as one more branch |
+| `--budget s` | `150` (`framework.json`) | total time per task, synthesis included; when it runs out, the best ready answer returns |
 | `--no-auto-verify` | on with a gateway | skip generated tests; by default, with no `--verify`, a micro-agent writes test cases from the task (passing them speeds the choice, failing them forces nothing) |
 
 <details>
 <summary><b>🪶 Cascade and micro-agents</b></summary>
 
 - **Cascade** (default since Nov 6, 2026: `"mode": "cascade"` in `framework.json > fanout`; `--no-cascade` turns it off): one agent answers first. If it passes verification, that answer returns and no other agent starts. If not, the others run, and the fast answer already counts as a vote, so one agreeing agent decides.
+- **Hedge** (`hedgeSeconds`, 20 s; `--hedge`): if the fast agent has not answered by then, the others start and it keeps running as one more branch, holding one of the `maxConcurrent` slots. 20 s comes from the data: alone, OpenClaw answered 83% of the hard tasks within 20 s, and most of its later answers were wrong.
+- **No wait when there is nothing to check:** with no verifier, or when the micro-agent found no reliable tests (questions and reviews, 19 of the 33 hard tasks), the fast answer can only be a vote, so the others start right away.
+- **Time budget** (`budgetSeconds`, 150 s; `--budget`): counted from the start of the task. Branches are cut when it runs out, and the synthesis only gets the time left. With less than 20 s left, there is no synthesis: the best ready answer returns, the one most agents gave and, on a tie, the one that passed the most generated tests.
 - **Micro-agent** (on by default when a gateway is configured, `"autoVerify": true`; `--no-auto-verify` turns it off): a short, single-purpose call straight to the gateway's `/chat/completions`, with no agent harness. It writes `{fn, cases:[{call, expect}]}` from the task, in parallel with the agents; answers run on those cases in the sandbox. Generated tests can be wrong, so they are *soft*: no answer passing them never forces a repair.
-- Model: `models.micro`, else `model`. Extra body fields go in `microParams`, for what your gateway accepts (for example `{"chat_template_kwargs": {"enable_thinking": false}}` turns off reasoning on vLLM/Qwen: about 2 s per call instead of 18 s). With no gateway, the micro-agent falls back to `microAgent` through its CLI.
-- On the 14 hard code tasks, with real answers from earlier rounds, the generated tests passed correct code in 9 of 13 cases and rejected wrong code in 43 of 48 (90%).
+- **Three samples, kept only where they agree:** the micro-agent asks three times in parallel (temperature 0, 0.8 and 0.8) and keeps only the cases at least two samples wrote with the same expected value. With fewer than 3 such cases there is no reliable test.
+- Model: `models.micro`, else `model`. Extra body fields go in `microParams`, for what your gateway accepts (for example `{"chat_template_kwargs": {"enable_thinking": false}}` turns off reasoning on vLLM/Qwen: about 2 s per call instead of 18 s). With no gateway, the micro-agent falls back to `microAgent` through its CLI, with one sample.
+
+| Micro-agent (14 hard code tasks, real answers from earlier rounds) | Correct code passes | Wrong code rejected | Ready in (p50) |
+|:---|:---:|:---:|:---:|
+| One sample | 68% | 87% | 0.3 s |
+| **Three samples, cases where two agree** | **79%** | **91%** | 3.6 s |
+| Asking for edge cases (discarded) | 32% | 84% | — |
+| Reasoning on (discarded) | — | — | 50 s, half with no tests |
 </details>
 
 <details>
 <summary><b>⏱️ How latency is bounded</b></summary>
 
-- **Worst case:** `deadline + synth-timeout`, even with a stuck agent.
+- **Worst case:** the time budget (`budgetSeconds`, 150 s in `framework.json`), synthesis included, even with a stuck agent. With no budget, `deadline + synth-timeout`.
 - Each branch runs in **its own process group**. On timeout or cancellation, the whole group gets SIGTERM and, 3 s later, SIGKILL. An agent's child processes can no longer hold the fanout open.
 - A branch that times out becomes a failure, and the fanout continues with the others. The fanout only fails if **none** of them answer.
 - Each answer is truncated to `maxCharsPerBranch` (6000) before synthesis.
@@ -322,6 +334,21 @@ tessera eval --limit 5 --kind code --modes openclaw,tessera
 ## 📈 Measured results
 
 > Measured with all four agents on the same model (`mangaba-agente-rapido`) through one gateway (the author's Mangaba Router), so differences come only from each agent's harness. Synthesis by Claude. A one-task difference is within noise.
+
+### ⏱️ Hard set · cascade with hedge and time budget vs. single agents, same round · Nov 6–7, 2026 · 2 rounds
+
+What changed since the two rounds below: the fast agent gets 20 s alone (hedge), the others start at once when there is nothing to check, each task has a 150 s budget with the best ready answer as the fallback, and the micro-agent combines three samples (see [Cascade and micro-agents](#-fanout-everyone-at-once)).
+
+| Mode | Round 3 | Round 4 | Mean (of 33) | Answered | p95 |
+|:---|:---:|:---:|:---:|:---:|---:|
+| 🪶 **cascade** | **25** | **29** | **27.0** | 61/66 | 150 s |
+| claude | 23 | 27 | 25.0 | 59/66 | 120 s |
+| openclaw | 23 | 25 | 24.0 | 61/66 | 66–107 s |
+| codex | 21 | 24 | 22.5 | 53/66 | 120 s |
+| hermes | 19 | 17 | 18.0 | 44/66 | 122 s |
+
+> [!IMPORTANT]
+> **Verdict: both criteria met in both rounds.** The cascade is 2 tasks ahead of each round's best agent, and its p95 is 1.41× and 1.25× that agent's, down from 2.1–2.2× in the two rounds below, with about the same accuracy (27.0 vs. 27.5 of 33). Over both rounds, majority decided 17 tasks (16 right, p50 under 10 s), the fast agent 6 (all right, about 10 s) and synthesis 30 (27 right). It missed 6 tasks that some agent alone got right and got 1 that none did (`hard-semver`). Two of the misses are code tasks where, after two wrong answers, the 15 s grace cut the agents that would have been right (`hard-popcount`, `hard-ordem-natural`); one is a task where the router stalled and no branch answered in 150 s (`hard-csv-linha`). Raw: `evals/resultados/2026-11-06T23-44-22-578Z.json` and `2026-11-07T01-52-45-762Z.json`.
 
 ### 🪶 Hard set · cascade + generated tests vs. single agents, same round · Nov 6, 2026 · 2 rounds
 
@@ -658,13 +685,15 @@ tessera tasks
 |:---:|:---|:---|
 | ✅ | **Phase 0**: measure before optimizing (`eval`) | Done |
 | ✅ | **Phase 1**: selection by verification and majority | Implemented, without worktrees |
-| ✅ | Hard set, round 2 with the deadline fix | Done: tie, 26/33 |
-| ✅ | Hard set, 4 rounds | Done: tie, 26.0 vs. 26.3 |
-| ⏭️ | Limit concurrent router calls and give the fanout its own deadline (14% no answer) | Next |
+| ✅ | Hard set, 4 rounds with the deadline fix | Done: tie, 26.0 vs. 26.3 |
+| ✅ | Fanout queue (at most 2 branches at once) and per-branch deadline | Done: no answer 10% → 6% |
+| ✅ | Cascade with generated tests as the default | Done: 27.5 of 33, above every agent's mean |
+| ✅ | Latency: hedge, time budget, three-sample tests | Done: ahead of the best agent in 2 of 2 rounds, p95 1.25–1.41× |
+| ⏭️ | Compare code answers by behavior on the generated tests | Next: being measured |
 | ⏭️ | Stricter majority (no 2 × 2 ties) and a check on single answers | Later |
 | ⏭️ | **Phase 2**: free-text agreement without synthesis | Planned |
 | ⏭️ | **Phase 3**: routing learned from eval data | Planned |
-| ⏭️ | **Phase 4**: per-agent circuit breaker and router concurrency limit | Planned |
+| ⏭️ | **Phase 4**: per-agent circuit breaker | Planned |
 | ⏭️ | git worktrees for agents that edit files; CI | Planned |
 
 The full plan, with done criteria, is in [`docs/PLANO.md`](docs/PLANO.md) (in Portuguese).

@@ -56,7 +56,7 @@ ${code}
     if (!m) return { pass: false, detail: `code did not run: ${(res.stderr ?? '').split('\n').find((l) => /Error/.test(l)) ?? 'no output'}`.slice(0, 200) };
     const results = JSON.parse(m[1]);
     const ok = results.filter(Boolean).length;
-    return { pass: ok === results.length, detail: `${ok}/${results.length} tests` };
+    return { pass: ok === results.length, passed: ok, total: results.length, detail: `${ok}/${results.length} tests` };
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

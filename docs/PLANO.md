@@ -110,10 +110,20 @@ Troca "um modelo escolhe" por "o resultado se prova".
 - Veredito: cascata com testes gerados vira o padrão (`mode: cascade`, `autoVerify: true` em `framework.json`; testes gerados só com gateway). `--no-cascade` e `--no-auto-verify` desligam.
 - Resultado bruto: `evals/resultados/2026-11-06T19-09-06-973Z.json` e `2026-11-06T21-16-26-503Z.json`.
 
+**Latência da cascata** (06–07/nov, 2 rodadas com solos na mesma rodada):
+- Hedge de 20 s: se o rápido não responde nesse tempo, os demais começam e ele segue como ramo, ocupando uma vaga. Sozinho, o OpenClaw respondeu 83% das tarefas em até 20 s.
+- Sem como verificar (perguntas, revisões, código sem teste confiável; 19 das 33 tarefas são perguntas ou revisões), os demais começam junto com o rápido.
+- Orçamento de 150 s por tarefa: os ramos são cortados quando ele acaba, e a síntese só usa o que sobra. Com menos de 20 s, volta a melhor resposta pronta (mais votos; no empate, mais testes gerados aprovados).
+- Microagente com 3 amostras (temperaturas 0, 0,8 e 0,8), só com os casos em que 2 concordam: código certo passa 79% (era 68%), errado é rejeitado 91% (era 87%), pronto em 3,6 s. Descartados: pedir casos de borda (32% do código certo passava) e raciocínio ligado (p50 de 50 s, metade sem teste).
+- Rodada 3: cascata 25/33 contra 23/33 do OpenClaw e do Claude; p95 1,41×. Rodada 4: 29/33 contra 27/33 do Claude; p95 1,25×.
+- Veredito: os dois critérios atingidos nas duas rodadas. Hedge, orçamento e 3 amostras viram padrão (`hedgeSeconds: 20`, `budgetSeconds: 150` em `framework.json`; `--hedge`, `--budget`).
+- O que sobrou: em 2 tarefas de código, depois de duas respostas erradas, a tolerância de 15 s cortou os agentes que acertariam (`hard-popcount`, `hard-ordem-natural`).
+- Resultado bruto: `evals/resultados/2026-11-06T23-44-22-578Z.json` e `2026-11-07T01-52-45-762Z.json`.
+
 **Falta:**
+- Código: comparar as respostas pelo comportamento nos testes gerados, em vez do texto (em medição).
 - Diversidade de modelo por agente (`models.<agente>` em `~/.tessera/provider.json`).
 - Maioria mais exigente (3 votos, ou 2 sem divergência).
-- Latência: p95 até 1,5× o do melhor agente (cascata está em 2,1–2,2×).
 - git worktrees para agentes que editam arquivos.
 
 ## Fase 2: crítica cruzada só quando há divergência
