@@ -1,0 +1,3650 @@
+{
+  "meta": {
+    "date": "2026-11-07T13:09:35.343Z",
+    "provider": "mangaba-router",
+    "models": "{\"claude\":\"mangaba-agente-rapido\",\"codex\":\"mangaba-agente-rapido\",\"openclaw\":\"router/mangaba-agente-rapido\",\"hermes\":\"mangaba-agente-rapido\"}",
+    "agents": [
+      "openclaw",
+      "claude",
+      "codex",
+      "hermes"
+    ],
+    "modes": [
+      "solo",
+      "cascade"
+    ],
+    "autoVerify": true,
+    "parallel": false,
+    "tasks": [
+      "hard-excel-coluna",
+      "hard-arredondar",
+      "hard-csv-linha",
+      "hard-semver",
+      "hard-expressao",
+      "hard-intervalos",
+      "hard-atoi",
+      "hard-popcount",
+      "hard-ordem-natural",
+      "hard-dia-semana",
+      "hard-levenshtein",
+      "hard-topo-lexico",
+      "hard-lucro-2",
+      "hard-inverter-grafemas",
+      "hard-qa-strawberry",
+      "hard-qa-decimal",
+      "hard-qa-sort-js",
+      "hard-qa-bola",
+      "hard-qa-maquinas",
+      "hard-qa-coercao",
+      "hard-qa-round-py",
+      "hard-qa-floordiv",
+      "hard-qa-parseint",
+      "hard-qa-sextas-13",
+      "hard-qa-fev-1900",
+      "hard-review-sort-numeros",
+      "hard-review-var-closure",
+      "hard-review-map-parseint",
+      "hard-review-remove-iterando",
+      "hard-review-async-foreach",
+      "hard-review-mes-date",
+      "hard-review-sql-null",
+      "hard-review-regex-global"
+    ],
+    "baseline": null,
+    "taskFile": "evals/tasks-dificeis.json",
+    "variant": "cascade v1: hedge, budget, 3-sample tests",
+    "abRound": "2"
+  },
+  "summary": {
+    "tasks": 33,
+    "modes": [
+      "openclaw",
+      "claude",
+      "codex",
+      "hermes",
+      "cascade"
+    ],
+    "byMode": {
+      "openclaw": {
+        "total": 33,
+        "passed": 26,
+        "accuracy": 0.7878787878787878,
+        "answered": 31,
+        "p50Ms": 7974,
+        "p95Ms": 49658,
+        "byKind": {
+          "code": {
+            "total": 14,
+            "passed": 9
+          },
+          "qa": {
+            "total": 11,
+            "passed": 9
+          },
+          "review": {
+            "total": 8,
+            "passed": 8
+          }
+        }
+      },
+      "claude": {
+        "total": 33,
+        "passed": 25,
+        "accuracy": 0.7575757575757576,
+        "answered": 31,
+        "p50Ms": 9490,
+        "p95Ms": 120205,
+        "byKind": {
+          "code": {
+            "total": 14,
+            "passed": 10
+          },
+          "qa": {
+            "total": 11,
+            "passed": 9
+          },
+          "review": {
+            "total": 8,
+            "passed": 6
+          }
+        }
+      },
+      "codex": {
+        "total": 33,
+        "passed": 18,
+        "accuracy": 0.5454545454545454,
+        "answered": 28,
+        "p50Ms": 13106,
+        "p95Ms": 120027,
+        "byKind": {
+          "code": {
+            "total": 14,
+            "passed": 3
+          },
+          "qa": {
+            "total": 11,
+            "passed": 7
+          },
+          "review": {
+            "total": 8,
+            "passed": 8
+          }
+        }
+      },
+      "hermes": {
+        "total": 33,
+        "passed": 18,
+        "accuracy": 0.5454545454545454,
+        "answered": 26,
+        "p50Ms": 38570,
+        "p95Ms": 121665,
+        "byKind": {
+          "code": {
+            "total": 14,
+            "passed": 4
+          },
+          "qa": {
+            "total": 11,
+            "passed": 6
+          },
+          "review": {
+            "total": 8,
+            "passed": 8
+          }
+        }
+      },
+      "cascade": {
+        "total": 33,
+        "passed": 27,
+        "accuracy": 0.8181818181818182,
+        "answered": 32,
+        "p50Ms": 33187,
+        "p95Ms": 130025,
+        "byKind": {
+          "code": {
+            "total": 14,
+            "passed": 11
+          },
+          "qa": {
+            "total": 11,
+            "passed": 8
+          },
+          "review": {
+            "total": 8,
+            "passed": 8
+          }
+        }
+      }
+    },
+    "bestSolo": "openclaw",
+    "oracle": 30,
+    "oracleAccuracy": 0.9090909090909091,
+    "comparison": null,
+    "comparisons": {
+      "cascade": {
+        "bestSolo": "openclaw",
+        "tesseraAccuracy": 0.8181818181818182,
+        "bestSoloAccuracy": 0.7878787878787878,
+        "deltaPoints": 3,
+        "latencyRatioP95": 2.6184099238793346,
+        "wins": [
+          "hard-expressao",
+          "hard-atoi",
+          "hard-ordem-natural",
+          "hard-qa-sort-js"
+        ],
+        "losses": [
+          "hard-csv-linha",
+          "hard-qa-parseint",
+          "hard-qa-sextas-13"
+        ],
+        "beatsBestSolo": true,
+        "latencyWithinTarget": false
+      }
+    },
+    "decisions": null,
+    "cascadeDecisions": {
+      "vote": {
+        "total": 10,
+        "passed": 8,
+        "p50Ms": 9338
+      },
+      "none": {
+        "total": 1,
+        "passed": 0,
+        "p50Ms": 150231
+      },
+      "synthesis": {
+        "total": 14,
+        "passed": 13,
+        "p50Ms": 38713
+      },
+      "verify": {
+        "total": 4,
+        "passed": 3,
+        "p50Ms": 36407
+      },
+      "fast": {
+        "total": 2,
+        "passed": 2,
+        "p50Ms": 7483
+      },
+      "budget": {
+        "total": 1,
+        "passed": 1,
+        "p50Ms": 130025
+      },
+      "single": {
+        "total": 1,
+        "passed": 0,
+        "p50Ms": 94086
+      }
+    },
+    "branchOracle": null
+  },
+  "results": [
+    {
+      "taskId": "hard-excel-coluna",
+      "kind": "code",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 7073,
+      "output": "```js\nfunction solve(n) {\n  let result = '';\n  while (n > 0) {\n    n--;\n    result = String.fromCharCode(65 + (n % 26)) + result;\n    n = Math.floor(n / 26);\n  }\n  return result;\n}\n```",
+      "pass": true,
+      "passed": 7,
+      "total": 7,
+      "detail": "7/7 tests"
+    },
+    {
+      "taskId": "hard-excel-coluna",
+      "kind": "code",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 7002,
+      "output": "```js\nfunction solve(n) {\n    let result = '';\n    while (n > 0) {\n        n--;\n        result = String.fromCharCode(65 + (n % 26)) + result;\n        n = Math.floor(n / 26);\n    }\n    return result;\n}\n```",
+      "pass": true,
+      "passed": 7,
+      "total": 7,
+      "detail": "7/7 tests"
+    },
+    {
+      "taskId": "hard-excel-coluna",
+      "kind": "code",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 9308,
+      "output": "```js\nfunction solve(n) {\n  let result = '';\n  while (n > 0) {\n    n--;\n    const remainder = n % 26;\n    result = String.fromCharCode(65 + remainder) + result;\n    n = Math.floor(n / 26);\n  }\n  return result;\n}\n```",
+      "pass": true,
+      "passed": 7,
+      "total": 7,
+      "detail": "7/7 tests"
+    },
+    {
+      "taskId": "hard-excel-coluna",
+      "kind": "code",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 29183,
+      "output": "```js\nfunction solve(n) {\n  let result = '';\n  while (n > 0) {\n    n--;\n    const remainder = n % 26;\n    result = String.fromCharCode(65 + remainder) + result;\n    n = Math.floor(n / 26);\n  }\n  return result;\n}\n```",
+      "pass": true,
+      "passed": 7,
+      "total": 7,
+      "detail": "7/7 tests"
+    },
+    {
+      "taskId": "hard-arredondar",
+      "kind": "code",
+      "mode": "openclaw",
+      "status": "failed",
+      "error": "agent gave no answer: ⚠️ Agent couldn't generate a response. Please try again.",
+      "durationMs": 66190,
+      "output": "⚠️ Agent couldn't generate a response. Please try again.",
+      "pass": false,
+      "detail": "sem resposta"
+    },
+    {
+      "taskId": "hard-arredondar",
+      "kind": "code",
+      "mode": "claude",
+      "status": "failed",
+      "error": "timed out after 120s",
+      "durationMs": 120205,
+      "output": "",
+      "pass": false,
+      "detail": "sem resposta"
+    },
+    {
+      "taskId": "hard-arredondar",
+      "kind": "code",
+      "mode": "codex",
+      "status": "failed",
+      "error": "timed out after 120s",
+      "durationMs": 120032,
+      "output": "",
+      "pass": false,
+      "detail": "sem resposta"
+    },
+    {
+      "taskId": "hard-arredondar",
+      "kind": "code",
+      "mode": "hermes",
+      "status": "failed",
+      "error": "timed out after 120s",
+      "durationMs": 121665,
+      "output": "",
+      "pass": false,
+      "detail": "sem resposta"
+    },
+    {
+      "taskId": "hard-csv-linha",
+      "kind": "code",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 41521,
+      "output": "```js\nfunction solve(linha) {\n  const resultados = [];\n  let i = 0;\n  let campo = '';\n  let quoteado = false;\n\n  while (i < linha.length) {\n    const ch = linha[i];\n\n    if (quoteado) {\n      if (ch === '\"') {\n        if (i + 1 < linha.length && linha[i + 1] === '\"') {\n          campo += '\"';\n          i += 2;\n          continue;\n        }\n        quoteado = false;\n        i++;\n        continue;\n      }\n      campo += ch;\n      i++;\n      continue;\n    }\n\n    if (ch === '\"') {\n      quoteado = true;\n      i++;\n      continue;\n    }\n\n    if (ch === ',') {\n      resultados.push(campo);\n      campo = '';\n      i++;\n      continue;\n    }\n\n    campo += ch;\n    i++;\n  }\n\n  resultados.push(campo);\n  return resultados;\n}\n```",
+      "pass": true,
+      "passed": 6,
+      "total": 6,
+      "detail": "6/6 tests"
+    },
+    {
+      "taskId": "hard-csv-linha",
+      "kind": "code",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 113412,
+      "output": "```javascript\nfunction solve(linha) {\n  const result = [];\n  let i = 0;\n  let current = '';\n  let inQuotes = false;\n\n  while (i < linha.length) {\n    const ch = linha[i];\n\n    if (inQuotes) {\n      if (ch === '\"') {\n        if (i + 1 < linha.length && linha[i + 1] === '\"') {\n          current += '\"';\n          i += 2;\n        } else {\n          inQuotes = false;\n          i++;\n        }\n      } else {\n        current += ch;\n        i++;\n      }\n    } else {\n      if (ch === '\"') {\n        inQuotes = true;\n        i++;\n      } else if (ch === ',') {\n        result.push(current);\n        current = '';\n        i++;\n      } else {\n        current += ch;\n        i++;\n      }\n    }\n  }\n\n  result.push(current);\n  return result;\n}\n```",
+      "pass": true,
+      "passed": 6,
+      "total": 6,
+      "detail": "6/6 tests"
+    },
+    {
+      "taskId": "hard-csv-linha",
+      "kind": "code",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 101205,
+      "output": "The file has the wrong function. Let me try using `sed` to replace it.",
+      "pass": false,
+      "detail": "function solve not found"
+    },
+    {
+      "taskId": "hard-csv-linha",
+      "kind": "code",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 19811,
+      "output": "```js\nfunction solve(linha) {\n  const resultado = [];\n  let i = 0;\n\n  while (i < linha.length) {\n    // Pula espaços em branco iniciais\n    while (i < linha.length && linha[i] === ' ') i++;\n    if (i >= linha.length) break;\n\n    // Campo entre aspas duplas\n    if (linha[i] === '\"') {\n      let campo = '';\n      i++; // pula o \"\n      while (i < linha.length) {\n        if (linha[i] === '\"') {\n          if (i + 1 < linha.length && linha[i + 1] === '\"') {\n            // \" literal dentro de campo\n            campo += '\"';\n            i += 2;\n          } else {\n            // fim do campo\n            i++; // pula o final \"\n            break;\n          }\n        } else {\n          campo += linha[i];\n          i++;\n        }\n      }\n      resultado.push(campo);\n    } else {\n      // Campo sem aspas\n      let campo = '';\n      while (i < linha.length && linha[i] !== ',') {\n        campo += linha[i];\n        i++;\n      }\n      resultado.push(campo);\n      if (i < linha.length && linha[i] === ',') i++; // pula a vírgula\n    }\n  }\n\n  return resultado;\n}\n```",
+      "pass": false,
+      "passed": 1,
+      "total": 6,
+      "detail": "1/6 tests"
+    },
+    {
+      "taskId": "hard-semver",
+      "kind": "code",
+      "mode": "openclaw",
+      "status": "failed",
+      "error": "agent gave no answer: ⚠️ Agent couldn't generate a response. Please try again.",
+      "durationMs": 49658,
+      "output": "⚠️ Agent couldn't generate a response. Please try again.",
+      "pass": false,
+      "detail": "sem resposta"
+    },
+    {
+      "taskId": "hard-semver",
+      "kind": "code",
+      "mode": "claude",
+      "status": "failed",
+      "error": "timed out after 120s",
+      "durationMs": 120244,
+      "output": "",
+      "pass": false,
+      "detail": "sem resposta"
+    },
+    {
+      "taskId": "hard-semver",
+      "kind": "code",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 13858,
+      "output": "```js\nfunction solve(a, b) {\n  function parse(s) {\n    const parts = s.trim().split(/[-+]/);\n    const core = parts[0].split('.').map(Number);\n    let preRelease = null;\n    let build = null;\n    if (parts.length > 1) {\n      const rest = parts.slice(1).join('');\n      if (rest.includes('-')) {\n        const [pre, buildStr] = rest.split('-');\n        preRelease = pre.split('.');\n        build = buildStr ? buildStr.split('.') : null;\n      } else if (rest.includes('+')) {\n        const [pre, buildStr] = rest.split('+');\n        preRelease = pre.split('.');\n        build = buildStr ? buildStr.split('.') : null;\n      }\n    }\n    return {\n      core: core,\n      preRelease,\n      build\n    };\n  }\n\n  const p1 = parse(a);\n  const p2 = parse(b);\n\n  for (let i = 0; i < 3; i++) {\n    if (p1.core[i] > p2.core[i]) return 1;\n    if (p1.core[i] < p2.core[i]) return -1;\n  }\n\n  if (!p1.preRelease && !p2.preRelease) return 0;\n  if (!p1.preRelease) return 1;\n  if (!p2.preRelease) return -1;\n\n  for (let i = 0; i < Math.max(p1.preRelease.length, p2.preRelease.length); i++) {\n    const a = p1.preRelease[i] || 0;\n    const b = p2.preRelease[i] || 0;\n    const na = a.replace(/^0+/, '') || '0';\n    const nb = b.replace(/^0+/, '') || '0';\n    if (na > nb) return 1;\n    if (na < nb) return -1;\n  }\n\n  return 0;\n}\n```",
+      "pass": false,
+      "passed": 3,
+      "total": 8,
+      "detail": "3/8 tests"
+    },
+    {
+      "taskId": "hard-semver",
+      "kind": "code",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 35528,
+      "output": "```js\nfunction solve(a, b) {\n  const parse = (s) => {\n    const m = s.match(/^(\\d+)\\.(\\d+)\\.(\\d+)(?:-([^\\+]+))?(?:\\+([^\\+]+))?$/);\n    if (!m) return null;\n    return {\n      major: parseInt(m[1], 10),\n      minor: parseInt(m[2], 10),\n      patch: parseInt(m[3], 10),\n      prerelease: m[4] || null,\n      build: m[5] || null,\n    };\n  };\n\n  const pa = parse(a);\n  const pb = parse(b);\n  if (!pa || !pb) return 0;\n\n  if (pa.major !== pb.major) return pa.major < pb.major ? -1 : 1;\n  if (pa.minor !== pb.minor) return pa.minor < pb.minor ? -1 : 1;\n  if (pa.patch !== pb.patch) return pa.patch < pb.patch ? -1 : 1;\n\n  if (pa.prerelease === null && pb.prerelease === null) return 0;\n  if (pa.prerelease === null) return 1;\n  if (pb.prerelease === null) return -1;\n\n  const paParts = pa.prerelease.split('.');\n  const pbParts = pb.prerelease.split('.');\n  const len = Math.max(paParts.length, pbParts.length);\n  for (let i = 0; i < len; i++) {\n    const paPart = paParts[i] || '';\n    const pbPart = pbParts[i] || '';\n    const paNum = parseInt(paPart, 10);\n    const pbNum = parseInt(pbPart, 10);\n    const paIsNum = !isNaN(paNum) && paPart.length === paPart.replace(/\\d/, '').length;\n    const pbIsNum = !isNaN(pbNum) && pbPart.length === pbPart.replace(/\\d/, '').length;\n\n    if (paIsNum && pbIsNum) {\n      if (paNum !== pbNum) return paNum < pbNum ? -1 : 1;\n    } else if (paIsNum) {\n      return -1;\n    } else if (pbIsNum) {\n      return 1;\n    } else {\n      if (paPart !== pbPart) return paPart < pbPart ? -1 : 1;\n    }\n  }\n\n  return 0;\n}\n```",
+      "pass": false,
+      "passed": 7,
+      "total": 8,
+      "detail": "7/8 tests"
+    },
+    {
+      "taskId": "hard-expressao",
+      "kind": "code",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 10046,
+      "output": "```js\nfunction solve(expr) {\n  let i = 0;\n\n  function parse() {\n    skipSpaces();\n    if (i >= expr.length) throw new Error(\"Unexpected end\");\n    let val = parseFactor();\n    while (i < expr.length) {\n      const ch = expr[i];\n      if (ch === ' ' || ch === '\\t' || ch === '\\n' || ch === '\\r') {\n        i++;\n        continue;\n      }\n      if (ch === '+') {\n        i++; skipSpaces();\n        val += parseFactor();\n      } else if (ch === '-') {\n        i++; skipSpaces();\n        val -= parseFactor();\n      } else if (ch === '*') {\n        i++; skipSpaces();\n        val *= parseFactor();\n      } else if (ch === '/') {\n        i++; skipSpaces();\n        const divisor = parseFactor();\n        if (divisor === 0) throw new Error(\"Division by zero\");\n        val /= divisor;\n      } else {\n        break;\n      }\n    }\n    return val;\n  }\n\n  function parseFactor() {\n    skipSpaces();\n    if (i >= expr.length) throw new Error(\"Unexpected end\");\n    const ch = expr[i];\n    if (ch === '(') {\n      i++; skipSpaces();\n      const val = parse();\n      if (i >= expr.length || expr[i] !== ')') throw new Error(\"Missing closing parenthesis\");\n      i++; skipSpaces();\n      return val;\n    }\n    // unary minus\n    if (ch === '-') {\n      i++;\n      return -parseFactor();\n    }\n    let val = 0;\n    while (i < expr.length && expr[i] >= '0' && expr[i] <= '9') {\n      val = val * 10 + parseInt(expr[i], 10);\n      i++;\n    }\n    return val;\n  }\n\n  return parse();\n}\n```",
+      "pass": false,
+      "passed": 0,
+      "total": 8,
+      "detail": "0/8 tests"
+    },
+    {
+      "taskId": "hard-expressao",
+      "kind": "code",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 39467,
+      "output": "```javascript\nfunction solve(expr) {\n    let pos = 0;\n\n    function skipWhitespace() {\n        while (pos < expr.length && expr[pos] === ' ') pos++;\n    }\n\n    function parseExpr() {\n        let left = parseTerm();\n        while (pos < expr.length) {\n            skipWhitespace();\n            const c = expr[pos];\n            if (c === '+' || c === '-') {\n                pos++;\n                const right = parseTerm();\n                left = c === '+' ? left + right : left - right;\n            } else break;\n        }\n        return left;\n    }\n\n    function parseTerm() {\n        let left = parseFactor();\n        while (pos < expr.length) {\n            skipWhitespace();\n            const c = expr[pos];\n            if (c === '*' || c === '/') {\n                pos++;\n                const right = parseFactor();\n                left = c === '*' ? left * right : left / right;\n            } else break;\n        }\n        return left;\n    }\n\n    function parseFactor() {\n        skipWhitespace();\n        const c = expr[pos];\n        if (c === '(') {\n            pos++;\n            const val = parseExpr();\n            pos++; // skip ')'\n            return val;\n        }\n        if (c === '-') {\n            pos++;\n            return -parseFactor();\n        }\n        let num = 0;\n        while (pos < expr.length && /d/.test(expr[pos])) {\n            num = num * 10 + parseInt(expr[pos], 10);\n            pos++;\n        }\n        return num;\n    }\n\n    return parseExpr();\n}\n```",
+      "pass": false,
+      "passed": 0,
+      "total": 8,
+      "detail": "0/8 tests"
+    },
+    {
+      "taskId": "hard-expressao",
+      "kind": "code",
+      "mode": "codex",
+      "status": "failed",
+      "error": "timed out after 120s",
+      "durationMs": 120024,
+      "output": "",
+      "pass": false,
+      "detail": "sem resposta"
+    },
+    {
+      "taskId": "hard-expressao",
+      "kind": "code",
+      "mode": "hermes",
+      "status": "failed",
+      "error": "timed out after 120s",
+      "durationMs": 121658,
+      "output": "",
+      "pass": false,
+      "detail": "sem resposta"
+    },
+    {
+      "taskId": "hard-intervalos",
+      "kind": "code",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 11948,
+      "output": "```js\nfunction solve(intervalos) {\n  if (!intervalos.length) return [];\n\n  const sorted = intervalos.slice().sort((a, b) => a[0] - b[0]);\n\n  const merged = [sorted[0]];\n\n  for (let i = 1; i < sorted.length; i++) {\n    const last = merged[merged.length - 1];\n    const curr = sorted[i];\n\n    if (curr[0] <= last[1]) {\n      last[1] = Math.max(last[1], curr[1]);\n    } else {\n      merged.push(curr);\n    }\n  }\n\n  return merged;\n}\n```",
+      "pass": true,
+      "passed": 5,
+      "total": 5,
+      "detail": "5/5 tests"
+    },
+    {
+      "taskId": "hard-intervalos",
+      "kind": "code",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 33956,
+      "output": "```javascript\nfunction solve(intervalos) {\n    if (intervalos.length === 0) return [];\n\n    intervalos.sort((a, b) => a[0] - b[0]);\n\n    const merged = [intervalos[0]];\n\n    for (let i = 1; i < intervalos.length; i++) {\n        const last = merged[merged.length - 1];\n        const current = intervalos[i];\n\n        if (current[0] <= last[1]) {\n            last[1] = Math.max(last[1], current[1]);\n        } else {\n            merged.push(current);\n        }\n    }\n\n    return merged;\n}\n```",
+      "pass": true,
+      "passed": 5,
+      "total": 5,
+      "detail": "5/5 tests"
+    },
+    {
+      "taskId": "hard-intervalos",
+      "kind": "code",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 34720,
+      "output": "The file is read-only. Since the task says \"Responda apenas com o código da função em um bloco ```js\", I should just output the code directly. The user asked for the function code, not to save it to the repo. Let me provide it:\n\n```js\nfunction solve(intervalos) {\n  if (!intervalos.length) return [];\n\n  const sorted = intervalos.sort((a, b) => a[0] - b[0]);\n\n  const result = [sorted[0]];\n\n  for (let i = 1; i < sorted.length; i++) {\n    const [start, end] = sorted[i];\n    const last = result[result.length - 1];\n\n    if (start <= last[1]) {\n      last[1] = Math.max(last[1], end);\n    } else {\n      result.push([start, end]);\n    }\n  }\n\n  return result;\n}\n```\n\n**How it works:**\n1. **Sort** intervals by start time.\n2. **Iterate** — if the current interval's start ≤ the last merged interval's end, merge (extend end if needed). Otherwise, add it as a new interval.\n3. Returns merged intervals in increasing order.\n\nThe `sort` mutates the input array in-place — if you need to preserve the original, clone it first.",
+      "pass": true,
+      "passed": 5,
+      "total": 5,
+      "detail": "5/5 tests"
+    },
+    {
+      "taskId": "hard-intervalos",
+      "kind": "code",
+      "mode": "hermes",
+      "status": "failed",
+      "error": "timed out after 120s",
+      "durationMs": 121654,
+      "output": "",
+      "pass": false,
+      "detail": "sem resposta"
+    },
+    {
+      "taskId": "hard-atoi",
+      "kind": "code",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 7890,
+      "output": "```js\nfunction solve(s) {\n  let i = 0;\n  const n = s.length;\n\n  // Skip leading spaces\n  while (i < n && s[i] === ' ') i++;\n\n  if (i >= n) return 0;\n\n  let sign = 1;\n  if (s[i] === '+') {\n    sign = 1;\n    i++;\n  } else if (s[i] === '-') {\n    sign = -1;\n    i++;\n  }\n\n  let result = 0;\n  while (i < n && /\\d/.test(s[i])) {\n    const digit = parseInt(s[i], 10);\n    // Check for overflow before multiplying\n    if (result > (Math.PI32_MAX - digit) / 10) {\n      return sign === 1 ? 2147483647 : -2147483648;\n    }\n    result = result * 10 + digit;\n    i++;\n  }\n\n  return sign * result;\n}\n```",
+      "pass": false,
+      "passed": 6,
+      "total": 8,
+      "detail": "6/8 tests"
+    },
+    {
+      "taskId": "hard-atoi",
+      "kind": "code",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 10698,
+      "output": "```javascript\nfunction solve(s) {\n  let i = 0;\n  const n = s.length;\n\n  while (i < n && s[i] === ' ') i++;\n\n  let sign = 1;\n  if (i < n && (s[i] === '+' || s[i] === '-')) {\n    sign = s[i] === '+' ? 1 : -1;\n    i++;\n  }\n\n  let num = 0;\n  while (i < n && s[i] >= '0' && s[i] <= '9') {\n    num = num * 10 + (s[i].charCodeAt(0) - 48);\n    i++;\n  }\n\n  num *= sign;\n\n  if (num < -2147483648) num = -2147483648;\n  if (num > 2147483647) num = 2147483647;\n\n  return num;\n}\n```",
+      "pass": true,
+      "passed": 8,
+      "total": 8,
+      "detail": "8/8 tests"
+    },
+    {
+      "taskId": "hard-atoi",
+      "kind": "code",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 23253,
+      "output": "```js\nfunction solve(s) {\n  let i = 0;\n  const n = s.length;\n\n  // Ignore leading spaces\n  while (i < n && s[i] === ' ') i++;\n\n  if (i >= n) return 0;\n\n  // Parse sign\n  let sign = 1;\n  if (s[i] === '+') {\n    i++;\n  } else if (s[i] === '-') {\n    sign = -1;\n    i++;\n  }\n\n  if (i >= n) return 0;\n\n  // Read digits\n  let num = 0;\n  while (i < n && s[i] >= '0' && s[i] <= '9') {\n    const d = parseInt(s[i]);\n    // Check for overflow before multiplying\n    if (num > (Math.PI) || (num === (Math.PI) && d > 7)) return sign === 1 ? 2147483647 : -2147483648;\n    num = num * 10 + d;\n    i++;\n  }\n\n  return sign * num;\n}\n```\n\nWait, the overflow check is wrong — I used `Math.PI` instead of `2147483647`. Let me fix that.\n\n```js\nfunction solve(s) {\n  let i = 0;\n  const n = s.length;\n\n  // Ignore leading spaces\n  while (i < n && s[i] === ' ') i++;\n\n  if (i >= n) return 0;\n\n  // Parse sign\n  let sign = 1;\n  if (s[i] === '+') {\n    i++;\n  } else if (s[i] === '-') {\n    sign = -1;\n    i++;\n  }\n\n  if (i >= n) return 0;\n\n  // Read digits\n  let num = 0;\n  const INT32_MAX = 2147483647;\n  const INT32_MIN = -2147483648;\n\n  while (i < n && s[i] >= '0' && s[i] <= '9') {\n    const d = parseInt(s[i]);\n    // Check for overflow before multiplying\n    if (num > (INT32_MAX - d) / 10) {\n      return sign === 1 ? INT32_MAX : INT32_MIN;\n    }\n    num = num * 10 + d;\n    i++;\n  }\n\n  return sign * num;\n}\n```\n\nHmm, let me think about this more carefully. The overflow check `num > (INT32_MAX - d) / 10` should work. When `num` is already beyond the limit, or when `num * 10 + d` would exceed the max, we clamp. Let me simplify to a cleaner version.\n\nActually, the standard approach for `atoi` overflow check is:\n- If `num > INT_MAX / 10` or (`num == INT_MAX / 10` and `d > 7`), then overflow.\n- If `num > INT_MIN / 10` or (`num == INT_MIN / 10` and `d > 8`), then overflow.\n\nBut since we're parsing a positive number and then applying the sign, we only need to check the positive side. The cleanest approach:\n\n```js\nfunction solve(s) {\n  let i = 0;\n  const n = s.length;\n\n  while (i < n && s[i] === ' ') i++;\n  if (i >= n) return 0;\n\n  let sign = 1;\n  if (s[i] === '+') i++;\n  else if (s[i] === '-') { sign = -1; i++; }\n\n  if (i >= n) return 0;\n\n  let num = 0;\n  while (i < n && s[i] >= '0' && s[i] <= '9') {\n    const d = parseInt(s[i]);\n    if (num > (2147483647 - d) / 10) return 2147483647;\n    num = num * 10 + d;\n    i++;\n  }\n\n  return sign * num;\n}\n```\n\nThis is correct. When `num > (2147483647 - d) / 10`, it means `num * 10 + d > 2147483647`, so we return the max value. If the number is negative (sign = -1), we return -2147483648. But wait, the `solve` function doesn't handle negative overflow for the input string — it just reads digits and applies the sign. If the input is `-2147483648`, it would read all digits and return -2147483648, which is correct.\n\nBut what if the input is `-2147483649`? The `num` would be 2147483649, which overflows. We'd return 2147483647 (max) instead of -2147483648. That's the standard behavior.\n\nActually, the standard `atoi` behavior is: if the number exceeds INT32_MAX, return INT32_MAX; if it's below INT32_MIN, return INT32_MIN.\n\nSo for a negative input, we need to check against INT32_MIN as well. But since we read the absolute value of the number, and then apply the sign, we only need to check the positive side. If the number is `-2147483649`, the absolute value `2147483649` exceeds INT32_MAX, so we return INT32_MAX (positive) with sign -1, giving -2147483647, which is wrong.\n\nHmm, this is a subtlety. Let me think...\n\nFor the positive side, the check is:\n- If `num > INT32_MAX / 10`, overflow → return INT32_MAX\n- If `num == INT32_MAX / 10` and `d > 7`, overflow → return INT32_MAX\n\nFor the negative side:\n- If `num > INT32_MIN / 10`, overflow → return INT32_MIN (wait, this is the same as the positive case since INT32_MIN = -2147483648)\n- If `num == INT32_MIN / 10` and `d > 8`, overflow → return INT32_MIN\n\nBut actually, the standard `atoi` just checks against INT32_MAX and returns INT32_MAX on overflow, regardless of sign. Let me just check the positive overflow since we're building the positive number.\n\nLet me write the simplest correct version:\n\n```js\nfunction solve(s) {\n  let i = 0;\n  const n = s.length;\n\n  while (i < n && s[i] === ' ') i++;\n  if (i >= n) return 0;\n\n  let sign = 1;\n  if (s[i] === '+') i++;\n  else if (s[i] === '-') { sign = -1; i++; }\n  if (i >= n) return 0;\n\n  let num = 0;\n  const INT32_MAX = 2147483647;\n  const INT32_MIN = -2147483648;\n\n  while (i < n && s[i] >= '0' && s[i] <= '9') {\n    const d = parseInt(s[i]);\n    if (num > (INT32_MAX - d) / 10) return INT32_MAX;\n    num = num * 10 + d;\n    i++;\n  }\n\n  return sign * num;\n}\n```\n\nThis handles the positive overflow case correctly. For negative overflows, the behavior is to clamp to INT32_MAX, which is the standard C `atoi` behavior.\n\nActually, I just realized: when `num > (INT32_MAX - d) / 10`, that means `num * 10 + d > INT32_MAX`, so it's an overflow. Returning INT32_MAX is correct.\n\nLet me also handle the case where the input is all spaces or has no digits — that's already handled by the early `return 0`.\n\nOne more thing: what about the case where the string is something like \"   -0012a4\"? The leading spaces are ignored, the `-` is parsed, then digits are read until a non-digit is found. That should work.\n\nI think the solution is correct. Let me finalize it.</think>```js\nfunction solve(s) {\n  let i = 0;\n  const n = s.length;\n\n  while (i < n && s[i] === ' ') i++;\n  if (i >= n) return 0;\n\n  let sign = 1;\n  if (s[i] === '+') i++;\n  else if (s[i] === '-') { sign = -1; i++; }\n  if (i >= n) return 0;\n\n  let num = 0;\n  while (i < n && s[i] >= '0' && s[i] <= '9') {\n    const d = parseInt(s[i]);\n    if (num > (2147483647 - d) / 10) return 2147483647;\n    num = num * 10 + d;\n    i++;\n  }\n\n  return sign * num;\n}\n```",
+      "pass": false,
+      "passed": 7,
+      "total": 8,
+      "detail": "7/8 tests"
+    },
+    {
+      "taskId": "hard-atoi",
+      "kind": "code",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 81956,
+      "output": "```js\nfunction solve(s) {\n  let i = 0;\n  const n = s.length;\n\n  // Skip leading spaces\n  while (i < n && s[i] === ' ') i++;\n  if (i >= n) return 0;\n\n  // Optional sign\n  let sign = 1;\n  if (s[i] === '+') {\n    i++;\n  } else if (s[i] === '-') {\n    sign = -1;\n    i++;\n  }\n\n  // Read digits\n  let result = 0;\n  while (i < n && s[i] >= '0' && s[i] <= '9') {\n    const digit = s[i].charCodeAt(0) - 48;\n    // Check overflow before multiplying by 10\n    if (result > (2147483647 - digit) / 10) {\n      return sign === 1 ? 2147483647 : -2147483648;\n    }\n    result = result * 10 + digit;\n    i++;\n  }\n\n  return sign * result;\n}\n```",
+      "pass": true,
+      "passed": 8,
+      "total": 8,
+      "detail": "8/8 tests"
+    },
+    {
+      "taskId": "hard-popcount",
+      "kind": "code",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 6463,
+      "output": "```js\nfunction solve(n) {\n  let count = 0;\n  for (let i = 0; i < 32; i++) {\n    if (n & (1 << i)) count++;\n  }\n  return count;\n}\n```",
+      "pass": true,
+      "passed": 6,
+      "total": 6,
+      "detail": "6/6 tests"
+    },
+    {
+      "taskId": "hard-popcount",
+      "kind": "code",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 15569,
+      "output": "```js\nfunction solve(n) {\n    let count = 0;\n    let val = n >>> 0;\n    while (val) {\n        count += val & 1;\n        val >>= 1;\n    }\n    return count;\n}\n```",
+      "pass": false,
+      "detail": "timed out running the tests"
+    },
+    {
+      "taskId": "hard-popcount",
+      "kind": "code",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 10758,
+      "output": "```javascript\nfunction solve(n) {\n    let count = 0;\n    let x = n >>> 0;\n    while (x) {\n        count += x & 1;\n        x >>= 1;\n    }\n    return count;\n}\n```",
+      "pass": false,
+      "detail": "timed out running the tests"
+    },
+    {
+      "taskId": "hard-popcount",
+      "kind": "code",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 60753,
+      "output": "```js\nfunction solve(n) {\n  let val = n | 0;\n  let count = 0;\n  while (val) {\n    val &= val - 1;\n    count++;\n  }\n  return count;\n}\n```",
+      "pass": true,
+      "passed": 6,
+      "total": 6,
+      "detail": "6/6 tests"
+    },
+    {
+      "taskId": "hard-ordem-natural",
+      "kind": "code",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 7051,
+      "output": "```js\nfunction solve(lista) {\n  return lista.sort((a, b) => {\n    const regex = /(\\d+)|(.)/g;\n    const aParts = [...a.matchAll(regex)].map(m => m[1] ? parseInt(m[1]) : m[2]);\n    const bParts = [...b.matchAll(regex)].map(m => m[1] ? parseInt(m[1]) : m[2]);\n    for (let i = 0; i < Math.min(aParts.length, bParts.length); i++) {\n      if (aParts[i] !== bParts[i]) return aParts[i] - bParts[i];\n    }\n    return aParts.length - bParts.length;\n  });\n}\n```",
+      "pass": false,
+      "passed": 3,
+      "total": 4,
+      "detail": "3/4 tests"
+    },
+    {
+      "taskId": "hard-ordem-natural",
+      "kind": "code",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 25544,
+      "output": "```js\nfunction solve(lista) {\n  return lista.slice().sort((a, b) => {\n    const aParts = a.match(/(\\d+|\\D+)/g);\n    const bParts = b.match(/(\\d+|\\D+)/g);\n\n    for (let i = 0; i < Math.min(aParts.length, bParts.length); i++) {\n      const aPart = aParts[i];\n      const bPart = bParts[i];\n\n      if (!isNaN(aPart) && !isNaN(bPart)) {\n        const aNum = parseInt(aPart, 10);\n        const bNum = parseInt(bPart, 10);\n        if (aNum !== bNum) return aNum - bNum;\n      } else {\n        if (aPart < bPart) return -1;\n        if (aPart > bPart) return 1;\n      }\n    }\n\n    return aParts.length - bParts.length;\n  });\n}\n```",
+      "pass": true,
+      "passed": 4,
+      "total": 4,
+      "detail": "4/4 tests"
+    },
+    {
+      "taskId": "hard-ordem-natural",
+      "kind": "code",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 28789,
+      "output": "A função JavaScript `solve` está pronta no arquivo `~/.tessera/eval-work/solve.js`. Funciona assim:\n\n- **Ordem natural**: trechos de dígitos são comparados como números (ex: `\"12\"` < `\"2\"`, pois 12 > 2), enquanto o restante é comparado caractere a caractere.\n- **Algoritmo**: itera posição a posição, detectando quando cada caractere é algarismo. Quando há dígitos em ambos, compara como `parseInt`. Quando há mix (um é digito, outro não), o digito vem primeiro. Quando são iguais, usa `localeCompare`.\n- **Anexo**: se uma string passa por todo o loop sem diferença, compara o comprimento.\n\n**Resultados verificados:**\n- `solve(['12', '2', '20', '1', '3'])` → `['1', '12', '2', '20', '3']`\n- `solve(['abc', '12', 'a1', 'a12', 'b'])` → `['12', 'a1', 'a12', 'abc', 'b']`\n- `solve(['1a', 'a1', 'a', '1'])` → `['1', '1a', 'a', 'a1']`\n\nO código está disponível no arquivo `solve.js` dentro do diretório de trabalho.",
+      "pass": false,
+      "detail": "code did not run: SyntaxError: Unexpected identifier 'função'"
+    },
+    {
+      "taskId": "hard-ordem-natural",
+      "kind": "code",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 25373,
+      "output": "```js\nfunction solve(lista) {\n  const str = String(lista).trim();\n  if (str === '') return 0;\n\n  const sign = str[0] === '-' ? -1 : 1;\n  let result = 0;\n  const max = Math.pow(2, 31) - 1;\n  const min = -Math.pow(2, 31);\n\n  for (let i = 0; i < str.length; i++) {\n    const ch = str[i];\n    if (ch === '-') {\n      result = sign * (result * 10 + 1);\n      continue;\n    }\n    if (ch === '+') {\n      result = sign * (result * 10 + 0);\n      continue;\n    }\n    if (ch < '0' || ch > '9') break;\n    result = result * 10 + parseInt(ch);\n    if (result < 0) result = min;\n    if (result > max) result = max;\n  }\n\n  return result;\n}\n```",
+      "pass": false,
+      "passed": 0,
+      "total": 4,
+      "detail": "0/4 tests"
+    },
+    {
+      "taskId": "hard-dia-semana",
+      "kind": "code",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 7803,
+      "output": "```js\nfunction solve(data) {\n  const [year, month, day] = data.split('-').map(Number);\n  const date = new Date(year, month - 1, day);\n  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];\n  return days[date.getDay()];\n}\n```",
+      "pass": true,
+      "passed": 4,
+      "total": 4,
+      "detail": "4/4 tests"
+    },
+    {
+      "taskId": "hard-dia-semana",
+      "kind": "code",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 7280,
+      "output": "```js\nfunction solve(data) {\n  const [year, month, day] = data.split('-').map(Number);\n  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];\n  const date = new Date(year, month - 1, day);\n  return days[date.getDay()];\n}\n```",
+      "pass": true,
+      "passed": 4,
+      "total": 4,
+      "detail": "4/4 tests"
+    },
+    {
+      "taskId": "hard-dia-semana",
+      "kind": "code",
+      "mode": "codex",
+      "status": "failed",
+      "error": "timed out after 120s",
+      "durationMs": 120027,
+      "output": "",
+      "pass": false,
+      "detail": "sem resposta"
+    },
+    {
+      "taskId": "hard-dia-semana",
+      "kind": "code",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 113373,
+      "output": "```js\nfunction solve(data) {\n  const diasSemana = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];\n  const [ano, mes, dia] = data.split('-').map(Number);\n  const date = new Date(ano, mes - 1, dia);\n  return diasSemana[date.getDay()];\n}\n```",
+      "pass": true,
+      "passed": 4,
+      "total": 4,
+      "detail": "4/4 tests"
+    },
+    {
+      "taskId": "hard-levenshtein",
+      "kind": "code",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 6852,
+      "output": "```js\nfunction solve(a, b) {\n  const m = a.length, n = b.length;\n  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));\n\n  for (let i = 0; i <= m; i++) dp[i][0] = i;\n  for (let j = 0; j <= n; j++) dp[0][j] = j;\n\n  for (let i = 1; i <= m; i++) {\n    for (let j = 1; j <= n; j++) {\n      const cost = a[i - 1] === b[j - 1] ? 0 : 1;\n      dp[i][j] = Math.min(\n        dp[i - 1][j] + 1,\n        dp[i][j - 1] + 1,\n        dp[i - 1][j - 1] + cost\n      );\n    }\n  }\n\n  return dp[m][n];\n}\n```",
+      "pass": true,
+      "passed": 5,
+      "total": 5,
+      "detail": "5/5 tests"
+    },
+    {
+      "taskId": "hard-levenshtein",
+      "kind": "code",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 7771,
+      "output": "```js\nfunction solve(a, b) {\n  const m = a.length;\n  const n = b.length;\n  const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));\n\n  for (let i = 0; i <= m; i++) dp[i][0] = i;\n  for (let j = 0; j <= n; j++) dp[0][j] = j;\n\n  for (let i = 1; i <= m; i++) {\n    for (let j = 1; j <= n; j++) {\n      const cost = a[i - 1] === b[j - 1] ? 0 : 1;\n      dp[i][j] = Math.min(\n        dp[i - 1][j] + 1,\n        dp[i][j - 1] + 1,\n        dp[i - 1][j - 1] + cost\n      );\n    }\n  }\n\n  return dp[m][n];\n}\n```",
+      "pass": true,
+      "passed": 5,
+      "total": 5,
+      "detail": "5/5 tests"
+    },
+    {
+      "taskId": "hard-levenshtein",
+      "kind": "code",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 11066,
+      "output": "```javascript\nfunction solve(a, b) {\n  const m = a.length;\n  const n = b.length;\n  const dp = Array(n + 1).fill(0);\n\n  for (let j = 0; j <= n; j++) {\n    dp[j] = j;\n  }\n\n  for (let i = 1; i <= m; i++) {\n    const prev = dp[0];\n    dp[0] = i;\n    for (let j = 1; j <= n; j++) {\n      const temp = dp[j];\n      dp[j] = Math.min(\n        dp[j] + 1,\n        dp[j - 1] + 1,\n        prev + (a[i - 1] === b[j - 1] ? 0 : 1)\n      );\n      prev = temp;\n    }\n  }\n\n  return dp[n];\n}\n```",
+      "pass": false,
+      "passed": 1,
+      "total": 5,
+      "detail": "1/5 tests"
+    },
+    {
+      "taskId": "hard-levenshtein",
+      "kind": "code",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 29813,
+      "output": "```js\nfunction solve(a, b) {\n  const m = a.length, n = b.length;\n  const dp = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));\n  for (let i = 0; i <= m; i++) dp[i][0] = i;\n  for (let j = 0; j <= n; j++) dp[0][j] = j;\n  for (let i = 1; i <= m; i++) {\n    for (let j = 1; j <= n; j++) {\n      const sub = str[i - 1] === str[j - 1] ? 0 : 1;\n      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + sub);\n    }\n  }\n  return dp[m][n];\n}\n```",
+      "pass": false,
+      "passed": 1,
+      "total": 5,
+      "detail": "1/5 tests"
+    },
+    {
+      "taskId": "hard-topo-lexico",
+      "kind": "code",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 11792,
+      "output": "```js\nfunction solve(n, arestas) {\n  const adj = Array.from({ length: n }, () => []);\n  const inDeg = new Array(n).fill(0);\n\n  for (const [a, b] of arestas) {\n    adj[a].push(b);\n    inDeg[b]++;\n  }\n\n  const available = [];\n  for (let i = 0; i < n; i++) {\n    if (inDeg[i] === 0) available.push(i);\n  }\n\n  const result = [];\n\n  while (available.length > 0) {\n    const u = available.shift();\n    result.push(u);\n\n    for (const v of adj[u]) {\n      inDeg[v]--;\n      if (inDeg[v] === 0) available.push(v);\n    }\n\n    available.sort((a, b) => a - b);\n  }\n\n  return result.length === n ? result : null;\n}\n```",
+      "pass": true,
+      "passed": 5,
+      "total": 5,
+      "detail": "5/5 tests"
+    },
+    {
+      "taskId": "hard-topo-lexico",
+      "kind": "code",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 26672,
+      "output": "```javascript\nfunction solve(n, arestas) {\n  const adj = Array.from({ length: n }, () => []);\n  const inDegree = new Array(n).fill(0);\n\n  for (const [a, b] of arestas) {\n    adj[a].push(b);\n    inDegree[b]++;\n  }\n\n  const minHeap = [];\n  for (let i = 0; i < n; i++) {\n    if (inDegree[i] === 0) {\n      minHeap.push(i);\n    }\n  }\n\n  const result = [];\n  while (minHeap.length > 0) {\n    minHeap.sort((a, b) => a - b);\n    const u = minHeap.shift();\n    result.push(u);\n\n    for (const v of adj[u]) {\n      inDegree[v]--;\n      if (inDegree[v] === 0) {\n        minHeap.push(v);\n        minHeap.sort((a, b) => a - b);\n      }\n    }\n  }\n\n  return result.length === n ? result : null;\n}\n```",
+      "pass": true,
+      "passed": 5,
+      "total": 5,
+      "detail": "5/5 tests"
+    },
+    {
+      "taskId": "hard-topo-lexico",
+      "kind": "code",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 13106,
+      "output": "```js\nfunction solve(n, arestas) {\n  const adj = Array.from({ length: n }, () => []);\n  const indeg = new Array(n).fill(0);\n  for (const [a, b] of arestas) {\n    adj[a].push(b);\n    indeg[b]++;\n  }\n  const heap = [];\n  for (let i = 0; i < n; i++) {\n    if (indeg[i] === 0) heap.push(i);\n  }\n  heap.sort((x, y) => x - y);\n  const result = [];\n  while (heap.length > 0) {\n    const u = heap.shift();\n    result.push(u);\n    for (const v of adj[u]) {\n      indeg[v]--;\n      if (indeg[v] === 0) {\n        heap.push(v);\n        heap.sort((x, y) => x - y);\n      }\n    }\n  }\n  return result.length === n ? result : null;\n}\n```",
+      "pass": true,
+      "passed": 5,
+      "total": 5,
+      "detail": "5/5 tests"
+    },
+    {
+      "taskId": "hard-topo-lexico",
+      "kind": "code",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 38570,
+      "output": "```js\nfunction solve(n, arestas) {\n  const adj = Array.from({ length: n }, () => []);\n  for (const [a, b] of arestas) {\n    if (a >= 0 && a < n && b >= 0 && b < n) adj[a].push(b);\n  }\n\n  const inDegree = new Array(n).fill(0);\n  for (let a = 0; a < n; a++) {\n    for (const b of adj[a]) {\n      if (b >= 0 && b < n) inDegree[b]++;\n    }\n  }\n\n  // Min-heap for lexicographically smallest topological order\n  const heap = new MinHeap();\n  for (let i = 0; i < n; i++) {\n    if (inDegree[i] === 0) heap.push(i);\n  }\n\n  const order = [];\n  while (heap.size() > 0) {\n    const u = heap.pop();\n    order.push(u);\n    for (const v of adj[u]) {\n      if (v >= 0 && v < n) {\n        inDegree[v]--;\n        if (inDegree[v] === 0) heap.push(v);\n      }\n    }\n  }\n\n  return order.length === n ? order : null;\n}\n\nclass MinHeap {\n  constructor() {\n    this.arr = [];\n  }\n  push(val) {\n    this.arr.push(val);\n    this._bubbleUp(this.arr.length - 1);\n  }\n  pop() {\n    const top = this.arr[0];\n    const last = this.arr.pop();\n    if (this.arr.length > 0) this._bubbleDown(0);\n    return top;\n  }\n  _bubbleUp(i) {\n    while (i > 0) {\n      const p = (i - 1) >> 1;\n      if (this.arr[p] > this.arr[i]) {\n        [this.arr[p], this.arr[i]] = [this.arr[i], this.arr[p]];\n        i = p;\n      } else break;\n    }\n  }\n  _bubbleDown(i) {\n    const n = this.arr.length;\n    while (true) {\n      let smallest = i;\n      const l = 2 * i + 1, r = 2 * i + 2;\n      if (l < n && this.arr[l] < this.arr[smallest]) smallest = l;\n      if (r < n && this.arr[r] < this.arr[smallest]) smallest = r;\n      if (smallest !== i) {\n        [this.arr[smallest], this.arr[i]] = [this.arr[i], this.arr[smallest]];\n        i = smallest;\n      } else break;\n    }\n  }\n  size() {\n    return this.arr.length;\n  }\n}\n```",
+      "pass": false,
+      "passed": 2,
+      "total": 5,
+      "detail": "2/5 tests"
+    },
+    {
+      "taskId": "hard-lucro-2",
+      "kind": "code",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 10220,
+      "output": "```js\nfunction solve(precos) {\n  let buy1 = Infinity, buy2 = Infinity;\n  let profit1 = 0, profit2 = 0;\n\n  for (const p of precos) {\n    buy1 = Math.min(buy1, p);\n    profit1 = Math.max(profit1, p - buy1);\n    buy2 = Math.min(buy2, p - profit1);\n    profit2 = Math.max(profit2, p - buy2);\n  }\n\n  return profit2;\n}\n```",
+      "pass": true,
+      "passed": 5,
+      "total": 5,
+      "detail": "5/5 tests"
+    },
+    {
+      "taskId": "hard-lucro-2",
+      "kind": "code",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 18588,
+      "output": "```js\nfunction solve(precos) {\n  const n = precos.length;\n  if (n <= 1) return 0;\n\n  // Máximo de lucro com no máximo 2 transações até o dia i\n  let minPreco = precos[0];\n  const maxLucroAte = new Array(n);\n  let maxLucro = 0;\n  for (let i = 0; i < n; i++) {\n    minPreco = Math.min(minPreco, precos[i]);\n    maxLucro = Math.max(maxLucro, precos[i] - minPreco);\n    maxLucroAte[i] = maxLucro;\n  }\n\n  // Máximo de lucro com no máximo 2 transações a partir do dia i\n  let maxPreco = precos[n - 1];\n  const maxLucroDe = new Array(n);\n  maxLucroDe[n - 1] = 0;\n  let maxLucroFrom = 0;\n  for (let i = n - 2; i >= 0; i--) {\n    maxPreco = Math.max(maxPreco, precos[i]);\n    maxLucroFrom = Math.max(maxLucroFrom, maxPreco - precos[i]);\n    maxLucroDe[i] = maxLucroFrom;\n  }\n\n  // Maximizar a soma das duas partes\n  let lucroMax = 0;\n  for (let i = 0; i < n; i++) {\n    lucroMax = Math.max(lucroMax, maxLucroAte[i] + maxLucroDe[i]);\n  }\n\n  return lucroMax;\n}\n```",
+      "pass": true,
+      "passed": 5,
+      "total": 5,
+      "detail": "5/5 tests"
+    },
+    {
+      "taskId": "hard-lucro-2",
+      "kind": "code",
+      "mode": "codex",
+      "status": "failed",
+      "error": "timed out after 120s",
+      "durationMs": 120023,
+      "output": "",
+      "pass": false,
+      "detail": "sem resposta"
+    },
+    {
+      "taskId": "hard-lucro-2",
+      "kind": "code",
+      "mode": "hermes",
+      "status": "failed",
+      "error": "timed out after 120s",
+      "durationMs": 121668,
+      "output": "",
+      "pass": false,
+      "detail": "sem resposta"
+    },
+    {
+      "taskId": "hard-inverter-grafemas",
+      "kind": "code",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 37088,
+      "output": "```javascript\nfunction solve(s) {\n  const segmenter = new Intl.Segmenter();\n  const clusters = [...segmenter.segment(s)].map(seg => seg.segment);\n  return clusters.reverse().join('');\n}\n```",
+      "pass": true,
+      "passed": 5,
+      "total": 5,
+      "detail": "5/5 tests"
+    },
+    {
+      "taskId": "hard-inverter-grafemas",
+      "kind": "code",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 39303,
+      "output": "```javascript\nfunction solve(s) {\n  const segmenter = new Intl.Segmenter();\n  const segments = [...segmenter.segment(s)];\n  return segments.reverse().map(seg => seg.segment).join('');\n}\n```",
+      "pass": true,
+      "passed": 5,
+      "total": 5,
+      "detail": "5/5 tests"
+    },
+    {
+      "taskId": "hard-inverter-grafemas",
+      "kind": "code",
+      "mode": "codex",
+      "status": "failed",
+      "error": "timed out after 120s",
+      "durationMs": 120016,
+      "output": "",
+      "pass": false,
+      "detail": "sem resposta"
+    },
+    {
+      "taskId": "hard-inverter-grafemas",
+      "kind": "code",
+      "mode": "hermes",
+      "status": "failed",
+      "error": "timed out after 120s",
+      "durationMs": 121662,
+      "output": "",
+      "pass": false,
+      "detail": "sem resposta"
+    },
+    {
+      "taskId": "hard-qa-strawberry",
+      "kind": "qa",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 5861,
+      "output": "2",
+      "pass": false,
+      "detail": "faltou: \\b3\\b|\\btr[eê]s\\b"
+    },
+    {
+      "taskId": "hard-qa-strawberry",
+      "kind": "qa",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 9490,
+      "output": "3",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-strawberry",
+      "kind": "qa",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 7567,
+      "output": "3",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-strawberry",
+      "kind": "qa",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 19941,
+      "output": "2",
+      "pass": false,
+      "detail": "faltou: \\b3\\b|\\btr[eê]s\\b"
+    },
+    {
+      "taskId": "hard-qa-decimal",
+      "kind": "qa",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 6166,
+      "output": "9.9",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-decimal",
+      "kind": "qa",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 3465,
+      "output": "9.9",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-decimal",
+      "kind": "qa",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 6325,
+      "output": "9.9",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-decimal",
+      "kind": "qa",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 17119,
+      "output": "9.9",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-sort-js",
+      "kind": "qa",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 5983,
+      "output": "[\"10\", \"1\", \"3\"]",
+      "pass": false,
+      "detail": "faltou: \\[\\s*1\\s*,\\s*10\\s*,\\s*3\\s*\\]"
+    },
+    {
+      "taskId": "hard-qa-sort-js",
+      "kind": "qa",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 4031,
+      "output": "[1, 10, 3]",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-sort-js",
+      "kind": "qa",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 7956,
+      "output": "`[10, 1, 3].sort()` retorna `[\"1\", \"10\", \"3\"]`.\n\nO `.sort()` por padrão converte os elementos para strings e faz uma ordenação lexicográfica (alfabética), não numérica.",
+      "pass": false,
+      "detail": "faltou: \\[\\s*1\\s*,\\s*10\\s*,\\s*3\\s*\\]"
+    },
+    {
+      "taskId": "hard-qa-sort-js",
+      "kind": "qa",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 72714,
+      "output": "`[1, 3, 10]`",
+      "pass": false,
+      "detail": "faltou: \\[\\s*1\\s*,\\s*10\\s*,\\s*3\\s*\\]"
+    },
+    {
+      "taskId": "hard-qa-bola",
+      "kind": "qa",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 7501,
+      "output": "5",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-bola",
+      "kind": "qa",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 5872,
+      "output": "5",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-bola",
+      "kind": "qa",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 12510,
+      "output": "A bola custa **5** centavos.",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-bola",
+      "kind": "qa",
+      "mode": "hermes",
+      "status": "failed",
+      "error": "timed out after 120s",
+      "durationMs": 121653,
+      "output": "",
+      "pass": false,
+      "detail": "sem resposta"
+    },
+    {
+      "taskId": "hard-qa-maquinas",
+      "kind": "qa",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 8215,
+      "output": "5",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-maquinas",
+      "kind": "qa",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 4781,
+      "output": "5",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-maquinas",
+      "kind": "qa",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 13299,
+      "output": "5 minutos.\n\nA análise é direta: 5 máquinas fazem 5 peças em 5 minutos, então cada máquina produz 1 peça a cada 5 minutos. Com 100 máquinas, a produção é 100/5 = 20 peças por minuto. Para 100 peças: 100 / 20 = 5 minutos.",
+      "pass": false,
+      "detail": "contains forbidden: \\b100\\b"
+    },
+    {
+      "taskId": "hard-qa-maquinas",
+      "kind": "qa",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 38414,
+      "output": "5 minutos.",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-coercao",
+      "kind": "qa",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 7974,
+      "output": "`'24'`",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-coercao",
+      "kind": "qa",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 8375,
+      "output": "'24'",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-coercao",
+      "kind": "qa",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 13586,
+      "output": "`6`",
+      "pass": false,
+      "detail": "faltou: \\b24\\b"
+    },
+    {
+      "taskId": "hard-qa-coercao",
+      "kind": "qa",
+      "mode": "hermes",
+      "status": "failed",
+      "error": "timed out after 120s",
+      "durationMs": 121652,
+      "output": "",
+      "pass": false,
+      "detail": "sem resposta"
+    },
+    {
+      "taskId": "hard-qa-round-py",
+      "kind": "qa",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 6270,
+      "output": "2",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-round-py",
+      "kind": "qa",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 6629,
+      "output": "2",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-round-py",
+      "kind": "qa",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 11221,
+      "output": "2",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-round-py",
+      "kind": "qa",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 14757,
+      "output": "2",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-floordiv",
+      "kind": "qa",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 5929,
+      "output": "-4",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-floordiv",
+      "kind": "qa",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 5341,
+      "output": "-4",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-floordiv",
+      "kind": "qa",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 11092,
+      "output": "-4",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-floordiv",
+      "kind": "qa",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 13327,
+      "output": "-4",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-parseint",
+      "kind": "qa",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 7383,
+      "output": "5",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-parseint",
+      "kind": "qa",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 4901,
+      "output": "0",
+      "pass": false,
+      "detail": "faltou: ^\\W*5\\b"
+    },
+    {
+      "taskId": "hard-qa-parseint",
+      "kind": "qa",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 9955,
+      "output": "O valor é **5**.\n\n`parseInt(0.0000005)` converte o número decimal para octal (base 8), resultando em `5`.",
+      "pass": false,
+      "detail": "faltou: ^\\W*5\\b"
+    },
+    {
+      "taskId": "hard-qa-parseint",
+      "kind": "qa",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 48631,
+      "output": "0",
+      "pass": false,
+      "detail": "faltou: ^\\W*5\\b"
+    },
+    {
+      "taskId": "hard-qa-sextas-13",
+      "kind": "qa",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 8638,
+      "output": "3",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-sextas-13",
+      "kind": "qa",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 51991,
+      "output": "1",
+      "pass": false,
+      "detail": "faltou: ^\\W*3\\b|\\btr[eê]s\\b"
+    },
+    {
+      "taskId": "hard-qa-sextas-13",
+      "kind": "qa",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 23660,
+      "output": "3",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-sextas-13",
+      "kind": "qa",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 115421,
+      "output": "3",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-fev-1900",
+      "kind": "qa",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 6735,
+      "output": "28",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-fev-1900",
+      "kind": "qa",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 4103,
+      "output": "28",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-fev-1900",
+      "kind": "qa",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 7530,
+      "output": "28",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-fev-1900",
+      "kind": "qa",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 12771,
+      "output": "28",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-review-sort-numeros",
+      "kind": "review",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 8295,
+      "output": "O bug é que `Array.sort()` ordena **como strings** (lexicograficamente), não numericamente. Então `[100, 25, 9, 87, 3].sort()` retorna `[\"100\", \"25\", \"3\", \"87\", \"9\"]`, e `slice(-3)` dá `[\"87\", \"9\", \"25\"]` em vez das 3 maiores notas reais.\n\n**Correção:** use `.sort((a, b) => b - a)` para ordenação decrescente numérica:\n\n```js\nconst maiores = notas.sort((a, b) => b - a);\n```",
+      "pass": true,
+      "detail": "pointed out: lexicogr"
+    },
+    {
+      "taskId": "hard-review-sort-numeros",
+      "kind": "review",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 10305,
+      "output": "O bug é que `.sort()` ordena os números como texto (alfabeticamente), fazendo com que 100 fique antes de 25. Para corrigir, use `.sort((a, b) => b - a)`.",
+      "pass": true,
+      "detail": "pointed out: como texto"
+    },
+    {
+      "taskId": "hard-review-sort-numeros",
+      "kind": "review",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 8372,
+      "output": "O bug é que `sort()` ordena por **string** por padrão, não numérico. `[\"100\", \"25\", \"3\", \"87\", \"9\"]` — depois de `slice(-3)` você teria `[\"87\", \"9\", \"100\"]`, que são textos, não números.\n\nPara corrigir, use o comparador numérico:\n\n```js\nnotas.sort((a, b) => a - b);\n```",
+      "pass": true,
+      "detail": "pointed out: \\(a,\\s*b\\)\\s*=>\\s*(a\\s*-\\s*b|b\\s*-\\s*a)"
+    },
+    {
+      "taskId": "hard-review-sort-numeros",
+      "kind": "review",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 36085,
+      "output": "O bug é que `.sort()` sem comparator ordena **lexicograficamente** (como strings), não numericamente. Então `[100, 25, 9, 87, 3].sort()` ordena como `[\"100\", \"25\", \"3\", \"87\", \"9\"]`, e `.slice(-3)` retorna `[\"87\", \"9\", \"3\"]` — ordem errada.\n\n**Correção:** adicione um comparator numérico: `.sort((a, b) => a - b)`.",
+      "pass": true,
+      "detail": "pointed out: lexicogr"
+    },
+    {
+      "taskId": "hard-review-var-closure",
+      "kind": "review",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 8544,
+      "output": "O bug é que `var` é hoisted para o topo do escopo, então todos os 3 callbacks referenciam a mesma variável `i`, que já vale `3` quando os `setTimeout`s executam. O resultado é que a saída será `3, 3, 3`. Para corrigir, use `let` (que tem um novo binding a cada iteração do loop) ou uma closure com um parâmetro extra.",
+      "pass": true,
+      "detail": "pointed out: \\blet\\b"
+    },
+    {
+      "taskId": "hard-review-var-closure",
+      "kind": "review",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 14488,
+      "output": "O bug ocorre porque o `var` tem escopo de função, fazendo com que `i` assuma o valor `3` (fim do loop) quando os callbacks do `setTimeout` são executados.",
+      "pass": true,
+      "detail": "pointed out: escopo"
+    },
+    {
+      "taskId": "hard-review-var-closure",
+      "kind": "review",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 9917,
+      "output": "O bug é que `var` tem escopo de função (hoisting), então todasas três callbacks compartilham a mesma variável `i`. Quando os `setTimeout` executam, o loop já terminou e `i` vale `3`, logo todos imprimem `3` em vez de `0`, `1` e `2`.\n\n**Solução:** troque `var` por `let`, que tem escopo de bloco, criando uma variável nova a cada iteração.\n\n```js\nfor (let i = 0; i < 3; i++) {\n  setTimeout(() => console.log(i), 0);\n}\n```",
+      "pass": true,
+      "detail": "pointed out: \\blet\\b"
+    },
+    {
+      "taskId": "hard-review-var-closure",
+      "kind": "review",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 34850,
+      "output": "O bug é que `var` tem escopo de função, então os três callbacks compartilham a mesma variável `i`. Ao final do loop, `i` vale 3, e cada callback imprime 3 em vez de 0, 1 e 2. Use `let` em vez de `var` para resolver.",
+      "pass": true,
+      "detail": "pointed out: \\blet\\b"
+    },
+    {
+      "taskId": "hard-review-map-parseint",
+      "kind": "review",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 20915,
+      "output": "O bug é que `Array.map()` passa três argumentos para `parseInt`: o valor, o **índice** e o **array inteiro**. A assinatura `parseInt(value, radix, currentPart)` faz com que:\n\n- Índice 0 → radix 0 → 10\n- Índice 1 → radix 1 → NaN (radix inválido)\n- Índice 2 → radix 2 → 2\n\nResultado: `[10, NaN, 2]`, não `[10, 10, 10]`.",
+      "pass": true,
+      "detail": "pointed out: radix"
+    },
+    {
+      "taskId": "hard-review-map-parseint",
+      "kind": "review",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 58616,
+      "output": "O bug é que `.map()` passa o **índice** como segundo argumento para `parseInt`, então ele é chamado como `parseInt('10', 0)`, `parseInt('10', 1)` e `parseInt('10', 2)` — em vez dos intencionais `parseInt('10', 10)` — gerando `[10, 1, 2]` em vez de `[10, 10, 10]`.\n\nPara resolver, use a terceira forma: `['10', '10', '10'].map(s => parseInt(s, 10))`.",
+      "pass": true,
+      "detail": "pointed out: [ií]ndice"
+    },
+    {
+      "taskId": "hard-review-map-parseint",
+      "kind": "review",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 80441,
+      "output": "O bug ocorre porque `Array.prototype.map()` passa o índice (0, 1, 2) como segundo argumento para `parseInt`, que espera o **radix** (base). Assim:\n- `parseInt('10', 0)` → 10 (base 10 por padrão)\n- `parseInt('10', 1)` → 10 (base 10, pois 1 é fora do intervalo [2,36])\n- `parseInt('10', 2)` → **2** (binary)\n\nResultado esperado: `[10, 10, 10]`. Resultado real: `[10, 10, 2]`. O terceiro elemento é interpretado como binário em vez de decimal porque o índice 2 é passado como radix.",
+      "pass": true,
+      "detail": "pointed out: radix"
+    },
+    {
+      "taskId": "hard-review-map-parseint",
+      "kind": "review",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 59663,
+      "output": "┊ review diff\na/test.js → b/test.js\n@@ -0,0 +1,2 @@\n+const nums = ['10', '10', '10'].map(parseInt);\n+console.log(nums);\nO bug é que `.map(parseInt)` passa o índice de cada elemento como segundo argumento (o radix), alterando a base de conversão. O `'10'.map(parseInt)` retorna `[10, 1, 1]` em vez de `[10, 10, 10]`.\n\n**Por que:** `parseInt` recebe `(valor, radix)`, mas `.map()` chama `parseInt(elemento, índice)`. Então:\n- índice 0 → `parseInt('10', 0)` → 10 (radix 0 = decimal)\n- índice 1 → `parseInt('10', 1)` → 1 (radix 1 é sempre 1)\n- índice 2 → `parseInt('10', 2)` → 1 (radix 2 = 1)\n\n**Solução:** use uma arrow function com radix explícito: `[10, 10, 10].map((x, i) => parseInt(x, i))` ou passe o radix fixo: `.map(x => parseInt(x, 10))`.",
+      "pass": true,
+      "detail": "pointed out: radix"
+    },
+    {
+      "taskId": "hard-review-remove-iterando",
+      "kind": "review",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 8305,
+      "output": "O bug é que modificar a lista (`nums.remove(n)`) durante a iteração causa a **pula de elementos**, pois o índice shifta. A solução é usar compreensão de lista:\n\n```python\ndef remover_pares(nums):\n    return [n for n in nums if n % 2 != 0]\n```",
+      "pass": true,
+      "detail": "pointed out: durante a itera"
+    },
+    {
+      "taskId": "hard-review-remove-iterando",
+      "kind": "review",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 5713,
+      "output": "O bug é que modificar uma lista enquanto ela está sendo iterada causa comportamento indefinido: ao remover um elemento, todos os elementos seguintes deslocam para a esquerda, fazendo com que a função passe por um elemento de mais e não remova alguns.",
+      "pass": false,
+      "detail": "did not point out the bug"
+    },
+    {
+      "taskId": "hard-review-remove-iterando",
+      "kind": "review",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 13290,
+      "output": "O bug é que você está modificando a lista (`nums.remove(n)`) enquanto itera sobre ela, o que causa a **omissão de elementos**. Ao remover o elemento atual, o iterador passa para o próximo índice, que agora contém o elemento *seguinte* (na verdade o que veio depois da remoção), pulando um elemento.\n\nExemplo: com `[1, 2, 3, 4]`, a saída correta seria `[1]`, mas o código retorna `[1, 3]`, pois o `4` pula de passar.\n\nA solução é iterar sobre uma **cópia** da lista ou reconstruir a lista com uma lista comprehension.\n\n```python\ndef remover_pares(nums):\n    return [n for n in nums if n % 2 != 0]\n```",
+      "pass": true,
+      "detail": "pointed out: enquanto (itera|percorre)"
+    },
+    {
+      "taskId": "hard-review-remove-iterando",
+      "kind": "review",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 68011,
+      "output": "Modificando a lista durante a iteração causa **salto de elementos**: quando você remove `n`, o próximo elemento desloca para a posição atual e é pular. Isso gera valores omitidos e resultado incompleto.",
+      "pass": true,
+      "detail": "pointed out: durante a itera"
+    },
+    {
+      "taskId": "hard-review-async-foreach",
+      "kind": "review",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 8481,
+      "output": "O bug é que o `forEach` não espera pelas callbacks assíncronos. Ele chama `salvar(item)` dentro de uma função anônima, mas **não a retém** — `console.log('todos salvos')` roda imediatamente antes dos itens serem processados.\n\nCorreção: use `await Promise.all(itens.map(item => salvar(item)))` para garantir que todos terminem antes do log.",
+      "pass": true,
+      "detail": "pointed out: Promise\\.all"
+    },
+    {
+      "taskId": "hard-review-async-foreach",
+      "kind": "review",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 6187,
+      "output": "O `forEach` executa as funções assíncronas em paralelo, sem aguardar a conclusão. O `console.log` roda imediatamente, antes que todos os `salvar(item)` terminem.",
+      "pass": false,
+      "detail": "did not point out the bug"
+    },
+    {
+      "taskId": "hard-review-async-foreach",
+      "kind": "review",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 8251,
+      "output": "O bug é que `forEach` é síncrono e não espera pelas promessas `await salvar(item)` resolverem. O `console.log` roda imediatamente, sem aguardar a conclusão de todos os itens.\n\nPara resolver, use `await Promise.all(itens.map(item => salvar(item)))` no lugar do `forEach`.",
+      "pass": true,
+      "detail": "pointed out: Promise\\.all"
+    },
+    {
+      "taskId": "hard-review-async-foreach",
+      "kind": "review",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 21824,
+      "output": "O bug é uma **race condition (anti-pattern de async/await)**. O `forEach` executa os callbacks assíncronos em paralelo e não os espera, então `console.log('todos salvos')` pode imprimir antes de todos os `salvar(item)` terminarem. A correção é usar `await` no `forEach` ou trocar para `for...of`:\n\n```js\nasync function salvarTodos(itens) {\n  for (const item of itens) { await salvar(item); }\n  console.log('todos salvos');\n}\n```",
+      "pass": true,
+      "detail": "pointed out: for\\s*\\(?\\s*const\\s+\\w+\\s+of"
+    },
+    {
+      "taskId": "hard-review-mes-date",
+      "kind": "review",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 10179,
+      "output": "O bug é que o `Date` do JavaScript usa meses 0-indexados. Ao passar `12`, você não obtém dezembro — obtém **Janeiro de 2027** (o mês 12 é tratado como 0, e o ano incrementa). Deve-se usar `11` em vez de `12`.",
+      "pass": true,
+      "detail": "pointed out: \\b11\\b"
+    },
+    {
+      "taskId": "hard-review-mes-date",
+      "kind": "review",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 5593,
+      "output": "O bug é que meses no JavaScript são indexados a partir de 0, então `12` equivale a janeiro (`0`). O correto é usar `11` para dezembro.",
+      "pass": true,
+      "detail": "pointed out: \\b11\\b"
+    },
+    {
+      "taskId": "hard-review-mes-date",
+      "kind": "review",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 7807,
+      "output": "O bug é que os meses no `Date` são **zero-based**: mês 0 = janeiro, 1 = fevereiro, ..., 11 = dezembro. Usar `12` equivale a **janeiro de 2027**, não a dezembro de 2026.\n\nCorreto seria: `new Date(2026, 11, 25)`.",
+      "pass": true,
+      "detail": "pointed out: zero[- ]based"
+    },
+    {
+      "taskId": "hard-review-mes-date",
+      "kind": "review",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 43078,
+      "output": "O bug é que os meses no JavaScript são **0-indexed**: 0 = Janeiro, 11 = Dezembro. O mês 12 (dezembro) é tratado como **janeiro do ano seguinte** (2027).\n\n```\nnew Date(2026, 12, 25) → 25 de janeiro de 2027 (não 25 de dezembro de 2026)\n```\n\nSe você quer o Natal de 2026, use `new Date(2026, 11, 25)` (mês 11 = dezembro).",
+      "pass": true,
+      "detail": "pointed out: \\b11\\b"
+    },
+    {
+      "taskId": "hard-review-sql-null",
+      "kind": "review",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 6020,
+      "output": "Bug: `= NULL` nunca retorna verdadeiro no SQL. Use `IS NULL` para verificar valores nulos.",
+      "pass": true,
+      "detail": "pointed out: IS NULL"
+    },
+    {
+      "taskId": "hard-review-sql-null",
+      "kind": "review",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 4428,
+      "output": "A consulta `WHERE email = NULL` nunca retorna resultados porque em SQL `NULL = NULL` é avaliado como `UNKNOWN`, não como `TRUE`. Para verificar valores nulos, use `WHERE email IS NULL`.",
+      "pass": true,
+      "detail": "pointed out: IS NULL"
+    },
+    {
+      "taskId": "hard-review-sql-null",
+      "kind": "review",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 7959,
+      "output": "O bug é que `NULL = NULL` retorna `FALSE` em SQL, pois NULL significa \"valor desconhecido\" e nenhuma comparação com `=` é verdadeira. Use `IS NULL` em vez de `= NULL`.\n\n**Correto:**\n```sql\nSELECT * FROM clientes WHERE email IS NULL;\n```",
+      "pass": true,
+      "detail": "pointed out: IS NULL"
+    },
+    {
+      "taskId": "hard-review-sql-null",
+      "kind": "review",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 15336,
+      "output": "O bug é que `email = NULL` nunca retorna verdadeiro — em SQL, NULL é a própria incerteza, não um valor. O correto é usar `email IS NULL`.",
+      "pass": true,
+      "detail": "pointed out: IS NULL"
+    },
+    {
+      "taskId": "hard-review-regex-global",
+      "kind": "review",
+      "mode": "openclaw",
+      "status": "done",
+      "error": "",
+      "durationMs": 7330,
+      "output": "O bug é o uso do flag `g` (global) no regex `/^\\d+$/g`. A função `.test()` com o flag `g` modifica o `.lastIndex` a cada chamada. Na primeira chamada, `lastIndex` vira 3; na segunda, o `.test()` não encontra mais nada porque `lastIndex` já passou do fim da string, então retorna `false`.\n\nPara corrigir, remova o `g` do regex:\n```js\nconst soDigitos = /^\\d+$/;\n```",
+      "pass": true,
+      "detail": "pointed out: lastIndex"
+    },
+    {
+      "taskId": "hard-review-regex-global",
+      "kind": "review",
+      "mode": "claude",
+      "status": "done",
+      "error": "",
+      "durationMs": 9969,
+      "output": "O bug é o flag `g` (global) do regex, que altera o estado interno do regex (`lastIndex`), fazendo a segunda chamada falhar. Remova o `g` para resolver.",
+      "pass": true,
+      "detail": "pointed out: lastIndex"
+    },
+    {
+      "taskId": "hard-review-regex-global",
+      "kind": "review",
+      "mode": "codex",
+      "status": "done",
+      "error": "",
+      "durationMs": 46739,
+      "output": "O bug é que a flag `g` (global) do regex `^\\d+$` faz com que `test()` mude o `lastIndex`. Na primeira chamada, \"123\" é encontrado e `lastIndex` passa a 3. Na segunda chamada, o test começa na posição 3 — não há mais nada para encontrar — e retorna `false`.\n\nPara corrigir, remova a flag `g`:\n\n```js\nconst soDigitos = /^\\d+$/;\n```",
+      "pass": true,
+      "detail": "pointed out: lastIndex"
+    },
+    {
+      "taskId": "hard-review-regex-global",
+      "kind": "review",
+      "mode": "hermes",
+      "status": "done",
+      "error": "",
+      "durationMs": 21102,
+      "output": "O bug é que o regex usa o flag `g` (global), o que seta o `lastIndex` após cada sucesso. Na segunda chamada, `test()` começa no `lastIndex` (3), não no início, então falha.\n\nCorreção: remova o `g` da regex ou resete `lastIndex = 0` antes de cada teste.",
+      "pass": true,
+      "detail": "pointed out: lastIndex"
+    },
+    {
+      "taskId": "hard-excel-coluna",
+      "kind": "code",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 22532,
+      "branchesMs": 22531,
+      "output": "```js\nfunction solve(n) {\n    let result = '';\n    while (n > 0) {\n        n--;\n        const remainder = n % 26;\n        result = String.fromCharCode(65 + remainder) + result;\n        n = Math.floor(n / 26);\n    }\n    return result;\n}\n```",
+      "synthesized": false,
+      "selectedBy": "vote",
+      "escalated": true,
+      "hedged": false,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 10421,
+          "dismissed": false,
+          "output": "```js\nfunction solve(n) {\n  let result = '';\n  while (n > 0) {\n    n--;\n    result = String.fromCharCode(65 + (n % 26)) + result;\n    n = Math.floor(n / 26);\n  }\n  return result;\n}\n```",
+          "verify": {
+            "pass": false,
+            "passed": 5,
+            "total": 6,
+            "detail": "generated tests: 5/6 tests"
+          },
+          "pass": true
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 8463,
+          "dismissed": false,
+          "output": "```js\nfunction solve(n) {\n    let result = '';\n    while (n > 0) {\n        n--;\n        const remainder = n % 26;\n        result = String.fromCharCode(65 + remainder) + result;\n        n = Math.floor(n / 26);\n    }\n    return result;\n}\n```",
+          "verify": {
+            "pass": false,
+            "passed": 5,
+            "total": 6,
+            "detail": "generated tests: 5/6 tests"
+          },
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "done",
+          "durationMs": 11938,
+          "dismissed": false,
+          "output": "```js\nfunction solve(n) {\n  let result = '';\n  while (n > 0) {\n    n--;\n    const remainder = n % 26;\n    result = String.fromCharCode(65 + remainder) + result;\n    n = Math.floor(n / 26);\n  }\n  return result;\n}\n```",
+          "verify": {
+            "pass": false,
+            "passed": 5,
+            "total": 6,
+            "detail": "generated tests: 5/6 tests"
+          },
+          "pass": true
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 3589,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "passed": 7,
+      "total": 7,
+      "detail": "7/7 tests"
+    },
+    {
+      "taskId": "hard-arredondar",
+      "kind": "code",
+      "mode": "cascade",
+      "status": "failed",
+      "error": "no agent answered in time",
+      "durationMs": 150231,
+      "branchesMs": 150230,
+      "output": "",
+      "synthesized": false,
+      "selectedBy": null,
+      "escalated": true,
+      "hedged": true,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "failed",
+          "durationMs": 120220,
+          "dismissed": false,
+          "output": "[agents/tool-policy] tool policy removed 5 tool(s) via tools.profile (coding): agents_list, gateway, message, nodes, tts\n[agents/tool-policy] tool policy removed 8 tool(s) via tools.deny: create_goal, cron, get_goal, sessions_spawn, sessions_yield, skill_workshop, subagents, update_goal; matched create_goal, cron, get_goal, sessions_spawn, sessions_yield, skill_workshop, subagents, update_goal\n[provider-transport-fetch] [model-fetch] start provider=router api=openai-completions model=mangaba-agente-rapido method=POST url=https://mangabarouter.store/v1/chat/completions timeoutMs=900000 proxy=none policy=custom\n[provider-transport-fetch] [model-fetch] response provider=router api=openai-completions model=mangaba-agente-rapido status=200 elapsedMs=106417 contentType=text/event-stream; charset=utf-8\nLLM request failed.",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "claude",
+          "status": "cancelled",
+          "durationMs": 130220,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "codex",
+          "status": "cancelled",
+          "durationMs": 29801,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 0,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": false,
+      "detail": "sem resposta"
+    },
+    {
+      "taskId": "hard-csv-linha",
+      "kind": "code",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 86798,
+      "branchesMs": 68853,
+      "output": "```js\nfunction solve(linha) {\n  const resultado = [];\n  let ativo = '';\n  let i = 0;\n  const n = linha.length;\n  let inQuotes = false;\n\n  while (i < n) {\n    const c = linha[i];\n    if (c === '\"') {\n      if (inQuotes) {\n        if (i + 1 < n && linha[i + 1] === '\"') {\n          ativo += '\"';\n          i += 2;\n          continue;\n        } else {\n          inQuotes = false;\n          i++;\n          resultado.push(ativo);\n          ativo = '';\n        }\n      } else {\n        inQuotes = true;\n        i++;\n      }\n    } else if (c === ',' && !inQuotes) {\n      resultado.push(ativo);\n      ativo = '';\n      i++;\n    } else {\n      ativo += c;\n      i++;\n    }\n  }\n\n  resultado.push(ativo);\n  return resultado;\n}\n```",
+      "synthesized": true,
+      "selectedBy": "synthesis",
+      "escalated": true,
+      "hedged": true,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 52201,
+          "dismissed": false,
+          "output": "```js\nfunction solve(linha) {\n  const resultados = [];\n  let ativo = '';\n  let i = 0;\n  const n = linha.length;\n  let inQuotes = false;\n\n  while (i < n) {\n    const c = linha[i];\n    if (c === '\"') {\n      if (inQuotes) {\n        if (i + 1 < n && linha[i + 1] === '\"') {\n          ativo += '\"';\n          i += 2;\n          continue;\n        } else {\n          inQuotes = false;\n          i++;\n          resultados.push(ativo);\n          ativo = '';\n        }\n      } else {\n        inQuotes = true;\n        i++;\n      }\n    } else if (c === ',' && !inQuotes) {\n      resultados.push(ativo);\n      ativo = '';\n      i++;\n    } else {\n      ativo += c;\n      i++;\n    }\n  }\n\n  resultados.push(ativo);\n  return resultados;\n}\n```",
+          "verify": {
+            "pass": false,
+            "skipped": true,
+            "detail": "no generated tests"
+          },
+          "pass": false
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 19681,
+          "dismissed": false,
+          "output": "```js\nfunction solve(linha) {\n  const result = [];\n  let i = 0;\n  let current = '';\n  let inQuotes = false;\n\n  while (i < linha.length) {\n    const char = linha[i];\n\n    if (char === '\"') {\n      if (inQuotes) {\n        // Check for escaped quote \"\"\n        if (i + 1 < linha.length && linha[i + 1] === '\"') {\n          current += '\"';\n          i += 2;\n        } else {\n          // End of quoted field\n          inQuotes = false;\n          i++;\n        }\n      } else {\n        // Start of quoted field\n        inQuotes = true;\n        i++;\n      }\n    } else if (char === ',') {\n      if (inQuotes) {\n        current += ',';\n      } else {\n        result.push(current);\n        current = '';\n      }\n      i++;\n    } else {\n      current += char;\n      i++;\n    }\n  }\n\n  // Push the last field\n  result.push(current);\n\n  return result;\n}\n```",
+          "verify": {
+            "pass": false,
+            "skipped": true,
+            "detail": "no generated tests"
+          },
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "cancelled",
+          "durationMs": 27531,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 16652,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": false,
+      "passed": 3,
+      "total": 6,
+      "detail": "3/6 tests"
+    },
+    {
+      "taskId": "hard-semver",
+      "kind": "code",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 109845,
+      "branchesMs": 109845,
+      "output": "```javascript\nfunction solve(a, b) {\n  function parseVersion(version) {\n    version = version.replace(/\\+.*$/, '');\n    const parts = version.split('-');\n    const core = parts[0].split('.');\n    const major = parseInt(core[0], 10);\n    const minor = parseInt(core[1], 10);\n    const patch = parseInt(core[2], 10);\n    const preRelease = parts.length > 1 ? parts[1] : null;\n    return { major, minor, patch, preRelease };\n  }\n\n  function comparePreRelease(preA, preB) {\n    const idsA = preA.split('.');\n    const idsB = preB.split('.');\n    const len = Math.max(idsA.length, idsB.length);\n\n    for (let i = 0; i < len; i++) {\n      const a = i < idsA.length ? idsA[i] : null;\n      const b = i < idsB.length ? idsB[i] : null;\n\n      if (a === null && b === null) return 0;\n      if (a === null) return 1;\n      if (b === null) return -1;\n\n      const isANumeric = /^\\d+$/.test(a);\n      const isBNumeric = /^\\d+$/.test(b);\n\n      if (isANumeric && isBNumeric) {\n        const numA = parseInt(a, 10);\n        const numB = parseInt(b, 10);\n        if (numA !== numB) return numA > numB ? 1 : -1;\n      } else if (isANumeric) {\n        return 1;\n      } else if (isBNumeric) {\n        return -1;\n      } else {\n        if (a < b) return -1;\n        if (a > b) return 1;\n      }\n    }\n\n    return 0;\n  }\n\n  const a1 = parseVersion(a);\n  const b1 = parseVersion(b);\n\n  if (a1.major !== b1.major) return a1.major > b1.major ? 1 : -1;\n  if (a1.minor !== b1.minor) return a1.minor > b1.minor ? 1 : -1;\n  if (a1.patch !== b1.patch) return a1.patch > b1.patch ? 1 : -1;\n\n  if (a1.preRelease === null && b1.preRelease === null) return 0;\n  if (a1.preRelease === null) return 1;\n  if (b1.preRelease === null) return -1;\n\n  return comparePreRelease(a1.preRelease, b1.preRelease);\n}\n```",
+      "synthesized": false,
+      "selectedBy": "verify",
+      "escalated": true,
+      "hedged": false,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 12455,
+          "dismissed": false,
+          "output": "```js\nfunction solve(a, b) {\n  const parse = (v) => {\n    const [major, minor, patch, ...preParts] = v.split('.');\n    const pre = preParts.join('.');\n    return {\n      major: parseInt(major, 10),\n      minor: parseInt(minor, 10),\n      patch: parseInt(patch, 10),\n      pre: pre,\n      hasPre: pre.length > 0,\n    };\n  };\n\n  const pa = parse(a);\n  const pb = parse(b);\n\n  if (pa.major !== pb.major) return pa.major - pb.major;\n  if (pa.minor !== pb.minor) return pa.minor - pb.minor;\n  if (pa.patch !== pb.patch) return pa.patch - pb.patch;\n\n  if (pa.hasPre && !pb.hasPre) return -1;\n  if (!pa.hasPre && pb.hasPre) return 1;\n  if (!pa.hasPre && !pb.hasPre) return 0;\n\n  return pa.pre.localeCompare(pb.pre, undefined, { numeric: true, sensitivity: 'base' });\n}\n```",
+          "verify": {
+            "pass": false,
+            "passed": 3,
+            "total": 6,
+            "detail": "generated tests: 3/6 tests"
+          },
+          "pass": false
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 97313,
+          "dismissed": false,
+          "output": "```javascript\nfunction solve(a, b) {\n  function parseVersion(version) {\n    version = version.replace(/\\+.*$/, '');\n    const parts = version.split('-');\n    const core = parts[0].split('.');\n    const major = parseInt(core[0], 10);\n    const minor = parseInt(core[1], 10);\n    const patch = parseInt(core[2], 10);\n    const preRelease = parts.length > 1 ? parts[1] : null;\n    return { major, minor, patch, preRelease };\n  }\n\n  function comparePreRelease(preA, preB) {\n    const idsA = preA.split('.');\n    const idsB = preB.split('.');\n    const len = Math.max(idsA.length, idsB.length);\n\n    for (let i = 0; i < len; i++) {\n      const a = i < idsA.length ? idsA[i] : null;\n      const b = i < idsB.length ? idsB[i] : null;\n\n      if (a === null && b === null) return 0;\n      if (a === null) return 1;\n      if (b === null) return -1;\n\n      const isANumeric = /^\\d+$/.test(a);\n      const isBNumeric = /^\\d+$/.test(b);\n\n      if (isANumeric && isBNumeric) {\n        const numA = parseInt(a, 10);\n        const numB = parseInt(b, 10);\n        if (numA !== numB) return numA > numB ? 1 : -1;\n      } else if (isANumeric) {\n        return 1;\n      } else if (isBNumeric) {\n        return -1;\n      } else {\n        if (a < b) return -1;\n        if (a > b) return 1;\n      }\n    }\n\n    return 0;\n  }\n\n  const a1 = parseVersion(a);\n  const b1 = parseVersion(b);\n\n  if (a1.major !== b1.major) return a1.major > b1.major ? 1 : -1;\n  if (a1.minor !== b1.minor) return a1.minor > b1.minor ? 1 : -1;\n  if (a1.patch !== b1.patch) return a1.patch > b1.patch ? 1 : -1;\n\n  if (a1.preRelease === null && b1.preRelease === null) return 0;\n  if (a1.preRelease === null) return 1;\n  if (b1.preRelease === null) return -1;\n\n  return comparePreRelease(a1.preRelease, b1.preRelease);\n}\n```",
+          "verify": {
+            "pass": true,
+            "passed": 6,
+            "total": 6,
+            "detail": "generated tests: 6/6 tests"
+          },
+          "pass": false
+        },
+        {
+          "agent": "codex",
+          "status": "cancelled",
+          "durationMs": 97363,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 0,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": false,
+      "passed": 6,
+      "total": 8,
+      "detail": "6/8 tests"
+    },
+    {
+      "taskId": "hard-expressao",
+      "kind": "code",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 83241,
+      "branchesMs": 83241,
+      "output": "```javascript\nfunction solve(expr) {\n  const tokens = [];\n  let i = 0;\n  while (i < expr.length) {\n    if (expr[i] === ' ') { i++; continue; }\n    if (expr[i] === '(' || expr[i] === ')' || expr[i] === '+' || expr[i] === '-' || expr[i] === '*' || expr[i] === '/') {\n      tokens.push(expr[i]); i++; continue;\n    }\n    let num = '';\n    while (i < expr.length && !['(', ')', '+', '-', '*', '/', ' '].includes(expr[i])) {\n      num += expr[i]; i++;\n    }\n    tokens.push(parseInt(num, 10));\n  }\n\n  let pos = 0;\n\n  function parseExpression() {\n    if (pos >= tokens.length) return 0;\n    let result = parseTerm();\n    while (pos < tokens.length && (tokens[pos] === '+' || tokens[pos] === '-')) {\n      const op = tokens[pos];\n      pos++;\n      if (op === '+') result += parseTerm();\n      else result -= parseTerm();\n    }\n    return result;\n  }\n\n  function parseTerm() {\n    if (pos >= tokens.length) return 0;\n    let result = parseFactor();\n    while (pos < tokens.length && (tokens[pos] === '*' || tokens[pos] === '/')) {\n      const op = tokens[pos];\n      pos++;\n      if (op === '*') result *= parseFactor();\n      else result /= parseFactor();\n    }\n    return result;\n  }\n\n  function parseFactor() {\n    if (pos >= tokens.length) return 0;\n    const token = tokens[pos];\n    if (typeof token === 'number') {\n      pos++;\n      return token;\n    }\n    if (token === '(') {\n      pos++;\n      const result = parseExpression();\n      if (pos < tokens.length && tokens[pos] === ')') pos++;\n      return result;\n    }\n    if (token === '-') {\n      pos++;\n      return -parseFactor();\n    }\n    if (token === '+') {\n      pos++;\n      return parseFactor();\n    }\n    return 0;\n  }\n\n  return parseExpression();\n}\n```",
+      "synthesized": false,
+      "selectedBy": "verify",
+      "escalated": true,
+      "hedged": false,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 9804,
+          "dismissed": false,
+          "output": "```js\nfunction solve(expr) {\n  let i = 0;\n\n  function skipSpaces() {\n    while (i < expr.length && expr[i] === ' ') i++;\n  }\n\n  function parseNumber() {\n    skipSpaces();\n    let num = '';\n    while (i < expr.length && /[\\d.]+/.test(expr[i])) {\n      num += expr[i];\n      i++;\n    }\n    return parseFloat(num);\n  }\n\n  function parseExpr() {\n    let left = parseNumber();\n    while (i < expr.length) {\n      skipSpaces();\n      if (i >= expr.length) break;\n      const op = expr[i];\n      if (op !== '+' && op !== '-' && op !== '*' && op !== '/') break;\n      i++;\n      skipSpaces();\n      const right = parseNumber();\n      if (op === '+') left += right;\n      else if (op === '-') left -= right;\n      else if (op === '*') left *= right;\n      else if (op === '/') left /= right;\n    }\n    return left;\n  }\n\n  return parseExpr();\n}\n```",
+          "verify": {
+            "pass": false,
+            "passed": 2,
+            "total": 4,
+            "detail": "generated tests: 2/4 tests"
+          },
+          "pass": false
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 73357,
+          "dismissed": false,
+          "output": "```javascript\nfunction solve(expr) {\n  const tokens = [];\n  let i = 0;\n  while (i < expr.length) {\n    if (expr[i] === ' ') { i++; continue; }\n    if (expr[i] === '(' || expr[i] === ')' || expr[i] === '+' || expr[i] === '-' || expr[i] === '*' || expr[i] === '/') {\n      tokens.push(expr[i]); i++; continue;\n    }\n    let num = '';\n    while (i < expr.length && !['(', ')', '+', '-', '*', '/', ' '].includes(expr[i])) {\n      num += expr[i]; i++;\n    }\n    tokens.push(parseInt(num, 10));\n  }\n\n  let pos = 0;\n\n  function parseExpression() {\n    if (pos >= tokens.length) return 0;\n    let result = parseTerm();\n    while (pos < tokens.length && (tokens[pos] === '+' || tokens[pos] === '-')) {\n      const op = tokens[pos];\n      pos++;\n      if (op === '+') result += parseTerm();\n      else result -= parseTerm();\n    }\n    return result;\n  }\n\n  function parseTerm() {\n    if (pos >= tokens.length) return 0;\n    let result = parseFactor();\n    while (pos < tokens.length && (tokens[pos] === '*' || tokens[pos] === '/')) {\n      const op = tokens[pos];\n      pos++;\n      if (op === '*') result *= parseFactor();\n      else result /= parseFactor();\n    }\n    return result;\n  }\n\n  function parseFactor() {\n    if (pos >= tokens.length) return 0;\n    const token = tokens[pos];\n    if (typeof token === 'number') {\n      pos++;\n      return token;\n    }\n    if (token === '(') {\n      pos++;\n      const result = parseExpression();\n      if (pos < tokens.length && tokens[pos] === ')') pos++;\n      return result;\n    }\n    if (token === '-') {\n      pos++;\n      return -parseFactor();\n    }\n    if (token === '+') {\n      pos++;\n      return parseFactor();\n    }\n    return 0;\n  }\n\n  return parseExpression();\n}\n```",
+          "verify": {
+            "pass": true,
+            "passed": 4,
+            "total": 4,
+            "detail": "generated tests: 4/4 tests"
+          },
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "cancelled",
+          "durationMs": 73409,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 0,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "passed": 8,
+      "total": 8,
+      "detail": "8/8 tests"
+    },
+    {
+      "taskId": "hard-intervalos",
+      "kind": "code",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 78909,
+      "branchesMs": 54528,
+      "output": "```js\nfunction solve(intervalos) {\n  if (!intervalos.length) return [];\n\n  const sorted = [...intervalos].sort((a, b) => a[0] - b[0]);\n\n  const merged = [sorted[0]];\n\n  for (let i = 1; i < sorted.length; i++) {\n    const [inicio, fim] = sorted[i];\n    const last = merged[merged.length - 1];\n\n    if (inicio <= last[1]) {\n      last[1] = Math.max(last[1], fim);\n    } else {\n      merged.push([inicio, fim]);\n    }\n  }\n\n  return merged;\n}\n```",
+      "synthesized": true,
+      "selectedBy": "synthesis",
+      "escalated": true,
+      "hedged": true,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 20842,
+          "dismissed": false,
+          "output": "```js\nfunction solve(intervalos) {\n  if (!intervalos.length) return [];\n\n  intervalos.sort((a, b) => a[0] - b[0]);\n\n  const merged = [intervalos[0]];\n\n  for (let i = 1; i < intervalos.length; i++) {\n    const [inicio, fim] = intervalos[i];\n    const last = merged[merged.length - 1];\n\n    if (inicio <= last[1]) {\n      last[1] = Math.max(last[1], fim);\n    } else {\n      merged.push([inicio, fim]);\n    }\n  }\n\n  return merged;\n}\n```",
+          "verify": {
+            "pass": false,
+            "skipped": true,
+            "detail": "no generated tests"
+          },
+          "pass": true
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 17903,
+          "dismissed": false,
+          "output": "```js\nfunction solve(intervalos) {\n  if (intervalos.length === 0) return [];\n\n  const sorted = [...intervalos].sort((a, b) => a[0] - b[0]);\n\n  const merged = [sorted[0]];\n\n  for (let i = 1; i < sorted.length; i++) {\n    const current = sorted[i];\n    const last = merged[merged.length - 1];\n\n    if (current[0] <= last[1]) {\n      last[1] = Math.max(last[1], current[1]);\n    } else {\n      merged.push(current);\n    }\n  }\n\n  return merged;\n}\n```",
+          "verify": {
+            "pass": false,
+            "skipped": true,
+            "detail": "no generated tests"
+          },
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "cancelled",
+          "durationMs": 28315,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 16615,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "passed": 5,
+      "total": 5,
+      "detail": "5/5 tests"
+    },
+    {
+      "taskId": "hard-atoi",
+      "kind": "code",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 18696,
+      "branchesMs": 18696,
+      "output": "```js\nfunction solve(s) {\n  let i = 0;\n  const n = s.length;\n\n  // Ignore leading spaces\n  while (i < n && s[i] === ' ') i++;\n\n  // Handle empty string\n  if (i >= n) return 0;\n\n  // Handle sign\n  let sign = 1;\n  if (s[i] === '+' || s[i] === '-') {\n    sign = s[i] === '-' ? -1 : 1;\n    i++;\n  }\n\n  // Read digits\n  let result = 0;\n  while (i < n && s[i] >= '0' && s[i] <= '9') {\n    result = result * 10 + (s[i] - '0');\n    i++;\n  }\n\n  result *= sign;\n\n  // Clamp to 32-bit signed range\n  if (result < -2147483648) result = -2147483648;\n  if (result > 2147483647) result = 2147483647;\n\n  return result;\n}\n```",
+      "synthesized": false,
+      "selectedBy": "verify",
+      "escalated": true,
+      "hedged": false,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 8068,
+          "dismissed": false,
+          "output": "```js\nfunction solve(s) {\n  let i = 0;\n  const n = s.length;\n\n  // Ignora espaços iniciais\n  while (i < n && s[i] === ' ') i++;\n\n  if (i >= n) return 0;\n\n  // Sinal opcional\n  let sign = 1;\n  if (s[i] === '+' || s[i] === '-') {\n    sign = s[i] === '-' ? -1 : 1;\n    i++;\n  }\n\n  // Lê dígitos\n  let result = 0;\n  while (i < n && s[i] >= '0' && s[i] <= '9') {\n    const d = parseInt(s[i], 10);\n    // Verificação de overflow antes de multiplicar\n    if (result > (Math.PI32_MAX - d) / 10) return sign === 1 ? 2147483647 : -2147483648;\n    result = result * 10 + d;\n    i++;\n  }\n\n  return sign * result;\n}\n```\n\nNote: I used `Math.PI32_MAX` as a placeholder for the 32-bit max value — in a real implementation you'd use `2147483647` directly. The overflow check prevents signed integer overflow during the multiplication step.",
+          "verify": {
+            "pass": false,
+            "passed": 6,
+            "total": 7,
+            "detail": "generated tests: 6/7 tests"
+          },
+          "pass": false
+        },
+        {
+          "agent": "claude",
+          "status": "cancelled",
+          "durationMs": 10603,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "codex",
+          "status": "done",
+          "durationMs": 10162,
+          "dismissed": false,
+          "output": "```js\nfunction solve(s) {\n  let i = 0;\n  const n = s.length;\n\n  // Ignore leading spaces\n  while (i < n && s[i] === ' ') i++;\n\n  // Handle empty string\n  if (i >= n) return 0;\n\n  // Handle sign\n  let sign = 1;\n  if (s[i] === '+' || s[i] === '-') {\n    sign = s[i] === '-' ? -1 : 1;\n    i++;\n  }\n\n  // Read digits\n  let result = 0;\n  while (i < n && s[i] >= '0' && s[i] <= '9') {\n    result = result * 10 + (s[i] - '0');\n    i++;\n  }\n\n  result *= sign;\n\n  // Clamp to 32-bit signed range\n  if (result < -2147483648) result = -2147483648;\n  if (result > 2147483647) result = 2147483647;\n\n  return result;\n}\n```",
+          "verify": {
+            "pass": true,
+            "passed": 7,
+            "total": 7,
+            "detail": "generated tests: 7/7 tests"
+          },
+          "pass": true
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 0,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "passed": 8,
+      "total": 8,
+      "detail": "8/8 tests"
+    },
+    {
+      "taskId": "hard-popcount",
+      "kind": "code",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 8173,
+      "branchesMs": 8173,
+      "output": "```js\nfunction solve(n) {\n  let count = 0;\n  let x = n >>> 0; // unsigned 32-bit representation\n  while (x) {\n    count += x & 1;\n    x >>>= 1;\n  }\n  return count;\n}\n```",
+      "synthesized": false,
+      "selectedBy": "fast",
+      "escalated": false,
+      "hedged": null,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 8146,
+          "dismissed": false,
+          "output": "```js\nfunction solve(n) {\n  let count = 0;\n  let x = n >>> 0; // unsigned 32-bit representation\n  while (x) {\n    count += x & 1;\n    x >>>= 1;\n  }\n  return count;\n}\n```",
+          "verify": {
+            "pass": true,
+            "passed": 5,
+            "total": 5,
+            "detail": "generated tests: 5/5 tests"
+          },
+          "pass": true
+        }
+      ],
+      "pass": true,
+      "passed": 6,
+      "total": 6,
+      "detail": "6/6 tests"
+    },
+    {
+      "taskId": "hard-ordem-natural",
+      "kind": "code",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 91948,
+      "branchesMs": 70437,
+      "output": "```js\nfunction solve(lista) {\n  return lista.slice().sort((a, b) => {\n    const getSegments = (s) => {\n      const segments = [];\n      let current = '';\n      for (const c of s) {\n        if (/[0-9]/.test(c)) {\n          current += c;\n        } else {\n          if (current) {\n            segments.push(current);\n            current = '';\n          }\n          segments.push(c);\n        }\n      }\n      if (current) segments.push(current);\n      return segments;\n    };\n\n    const aSegs = getSegments(a);\n    const bSegs = getSegments(b);\n    const len = Math.min(aSegs.length, bSegs.length);\n    for (let i = 0; i < len; i++) {\n      const aSeg = aSegs[i];\n      const bSeg = bSegs[i];\n      const aIsDigit = /^[0-9]+$/.test(aSeg);\n      const bIsDigit = /^[0-9]+$/.test(bSeg);\n      if (aIsDigit && bIsDigit) {\n        const cmp = parseInt(aSeg, 10) - parseInt(bSeg, 10);\n        if (cmp !== 0) return cmp;\n      } else if (aIsDigit) {\n        return -1;\n      } else if (bIsDigit) {\n        return 1;\n      } else {\n        const cmp = aSeg.localeCompare(bSeg);\n        if (cmp !== 0) return cmp;\n      }\n    }\n    return aSegs.length - bSegs.length;\n  });\n}\n```",
+      "synthesized": true,
+      "selectedBy": "synthesis",
+      "escalated": true,
+      "hedged": true,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 39298,
+          "dismissed": false,
+          "output": "```js\nfunction solve(lista) {\n  return lista.slice().sort((a, b) => {\n    const aParts = a.match(/(\\d+)|(\\D+)/g) || [];\n    const bParts = b.match(/(\\d+)|(\\D+)/g) || [];\n    for (let i = 0; i < Math.min(aParts.length, bParts.length); i++) {\n      const aPart = aParts[i];\n      const bPart = bParts[i];\n      const aIsNum = /^\\d+$/.test(aPart);\n      const bIsNum = /^\\d+$/.test(bPart);\n      if (aIsNum && bIsNum) {\n        const aNum = parseInt(aPart, 10);\n        const bNum = parseInt(bPart, 10);\n        if (aNum !== bNum) return aNum - bNum;\n      } else if (aIsNum) {\n        return -1;\n      } else if (bIsNum) {\n        return 1;\n      } else {\n        return aPart.localeCompare(bPart);\n      }\n    }\n    return aParts.length - bParts.length;\n  });\n}\n```",
+          "verify": {
+            "pass": false,
+            "skipped": true,
+            "detail": "no generated tests"
+          },
+          "pass": false
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 49982,
+          "dismissed": false,
+          "output": "```js\nfunction solve(lista) {\n  return lista.slice().sort((a, b) => {\n    const getSegments = (s) => {\n      const segments = [];\n      let current = '';\n      for (const c of s) {\n        if (/[0-9]/.test(c)) {\n          current += c;\n        } else {\n          if (current) {\n            segments.push(current);\n            current = '';\n          }\n          segments.push(c);\n        }\n      }\n      if (current) segments.push(current);\n      return segments;\n    };\n\n    const aSegs = getSegments(a);\n    const bSegs = getSegments(b);\n    const len = Math.min(aSegs.length, bSegs.length);\n    for (let i = 0; i < len; i++) {\n      const aSeg = aSegs[i];\n      const bSeg = bSegs[i];\n      const aIsDigit = /^[0-9]+$/.test(aSeg);\n      const bIsDigit = /^[0-9]+$/.test(bSeg);\n      if (aIsDigit && bIsDigit) {\n        const cmp = parseInt(aSeg, 10) - parseInt(bSeg, 10);\n        if (cmp !== 0) return cmp;\n      } else if (aIsDigit) {\n        return -1;\n      } else if (bIsDigit) {\n        return 1;\n      } else {\n        const cmp = aSeg.localeCompare(bSeg);\n        if (cmp !== 0) return cmp;\n      }\n    }\n    return aSegs.length - bSegs.length;\n  });\n}\n```",
+          "verify": {
+            "pass": false,
+            "skipped": true,
+            "detail": "no generated tests"
+          },
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "done",
+          "durationMs": 26239,
+          "dismissed": false,
+          "output": "I'll just provide the code directly in the response, since writing to `/tmp` fails.\n\n```js\nfunction solve(lista) {\n  return lista.sort((a, b) => {\n    const aParts = a.match(/(\\d+)|(.)/g);\n    const bParts = b.match(/(\\d+)|(.)/g);\n    for (let i = 0; i < Math.min(aParts.length, bParts.length); i++) {\n      const aPart = aParts[i];\n      const bPart = bParts[i];\n      const aIsDigit = /^\\d+$/.test(aPart);\n      const bIsDigit = /^\\d+$/.test(bPart);\n      if (aIsDigit && bIsDigit) {\n        const aNum = parseInt(aPart, 10);\n        const bNum = parseInt(bPart, 10);\n        if (aNum !== bNum) return aNum - bNum;\n      } else if (aIsDigit) {\n        return -1;\n      } else if (bIsDigit) {\n        return 1;\n      } else {\n        if (aPart !== bPart) return aPart < bPart ? -1 : 1;\n      }\n    }\n    return aParts.length - bParts.length;\n  });\n}\n```",
+          "verify": {
+            "pass": false,
+            "skipped": true,
+            "detail": "no generated tests"
+          },
+          "pass": true
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 16642,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "passed": 4,
+      "total": 4,
+      "detail": "4/4 tests"
+    },
+    {
+      "taskId": "hard-dia-semana",
+      "kind": "code",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 130025,
+      "branchesMs": 130025,
+      "output": "```javascript\nfunction solve(data) {\n  const [year, month, day] = data.split('-').map(Number);\n  const date = new Date(year, month - 1, day);\n  return date.toLocaleDateString('en-US', { weekday: 'long' });\n}\n```",
+      "synthesized": false,
+      "selectedBy": "budget",
+      "escalated": true,
+      "hedged": true,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 86453,
+          "dismissed": false,
+          "output": "```javascript\nfunction solve(data) {\n  const [year, month, day] = data.split('-').map(Number);\n  const date = new Date(year, month - 1, day);\n  return date.toLocaleDateString('en-US', { weekday: 'long' });\n}\n```",
+          "verify": {
+            "pass": false,
+            "skipped": true,
+            "detail": "no generated tests"
+          },
+          "pass": true
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 93362,
+          "dismissed": false,
+          "output": "```javascript\nfunction solve(data) {\n    const [year, month, day] = data.split('-').map(Number);\n    return new Date(year, month - 1, day).toLocaleDateString('en-US', { weekday: 'long' });\n}\n```",
+          "verify": {
+            "pass": false,
+            "skipped": true,
+            "detail": "no generated tests"
+          },
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "cancelled",
+          "durationMs": 41940,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 16653,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "passed": 4,
+      "total": 4,
+      "detail": "4/4 tests"
+    },
+    {
+      "taskId": "hard-levenshtein",
+      "kind": "code",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 7483,
+      "branchesMs": 7483,
+      "output": "```js\nfunction solve(a, b) {\n  const m = a.length;\n  const n = b.length;\n  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));\n\n  for (let i = 0; i <= m; i++) dp[i][0] = i;\n  for (let j = 0; j <= n; j++) dp[0][j] = j;\n\n  for (let i = 1; i <= m; i++) {\n    for (let j = 1; j <= n; j++) {\n      const cost = a[i - 1] === b[j - 1] ? 0 : 1;\n      dp[i][j] = Math.min(\n        dp[i - 1][j] + 1,\n        dp[i][j - 1] + 1,\n        dp[i - 1][j - 1] + cost\n      );\n    }\n  }\n\n  return dp[m][n];\n}\n```",
+      "synthesized": false,
+      "selectedBy": "fast",
+      "escalated": false,
+      "hedged": null,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 7459,
+          "dismissed": false,
+          "output": "```js\nfunction solve(a, b) {\n  const m = a.length;\n  const n = b.length;\n  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));\n\n  for (let i = 0; i <= m; i++) dp[i][0] = i;\n  for (let j = 0; j <= n; j++) dp[0][j] = j;\n\n  for (let i = 1; i <= m; i++) {\n    for (let j = 1; j <= n; j++) {\n      const cost = a[i - 1] === b[j - 1] ? 0 : 1;\n      dp[i][j] = Math.min(\n        dp[i - 1][j] + 1,\n        dp[i][j - 1] + 1,\n        dp[i - 1][j - 1] + cost\n      );\n    }\n  }\n\n  return dp[m][n];\n}\n```",
+          "verify": {
+            "pass": true,
+            "passed": 5,
+            "total": 5,
+            "detail": "generated tests: 5/5 tests"
+          },
+          "pass": true
+        }
+      ],
+      "pass": true,
+      "passed": 5,
+      "total": 5,
+      "detail": "5/5 tests"
+    },
+    {
+      "taskId": "hard-topo-lexico",
+      "kind": "code",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 72348,
+      "branchesMs": 49876,
+      "output": "```js\nfunction solve(n, arestas) {\n  const adj = Array.from({length: n}, () => []);\n  const indeg = new Array(n).fill(0);\n\n  for (const [a, b] of arestas) {\n    adj[a].push(b);\n    indeg[b]++;\n  }\n\n  const available = [];\n  for (let i = 0; i < n; i++) {\n    if (indeg[i] === 0) available.push(i);\n  }\n  available.sort((x, y) => x - y);\n\n  const result = [];\n\n  while (available.length > 0) {\n    const u = available.shift();\n    result.push(u);\n\n    for (const v of adj[u]) {\n      indeg[v]--;\n      if (indeg[v] === 0) {\n        available.push(v);\n        available.sort((x, y) => x - y);\n      }\n    }\n  }\n\n  return result.length === n ? result : null;\n}\n```",
+      "synthesized": true,
+      "selectedBy": "synthesis",
+      "escalated": true,
+      "hedged": true,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 13013,
+          "dismissed": false,
+          "output": "```js\nfunction solve(n, arestas) {\n  const adj = Array.from({length: n}, () => []);\n  const inDegree = new Array(n).fill(0);\n\n  for (const [a, b] of arestas) {\n    adj[a].push(b);\n    inDegree[b]++;\n  }\n\n  const available = [];\n  for (let i = 0; i < n; i++) {\n    if (inDegree[i] === 0) available.push(i);\n  }\n  available.sort((x, y) => x - y);\n\n  const result = [];\n\n  while (available.length > 0) {\n    const u = available.shift();\n    result.push(u);\n\n    for (const v of adj[u]) {\n      inDegree[v]--;\n      if (inDegree[v] === 0) {\n        available.push(v);\n        available.sort((x, y) => x - y);\n      }\n    }\n  }\n\n  return result.length === n ? result : null;\n}\n```",
+          "verify": {
+            "pass": false,
+            "skipped": true,
+            "detail": "no generated tests"
+          },
+          "pass": true
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 19307,
+          "dismissed": false,
+          "output": "```js\nfunction solve(n, arestas) {\n    const adj = Array.from({ length: n }, () => []);\n    const indeg = new Array(n).fill(0);\n\n    for (const [a, b] of arestas) {\n        adj[a].push(b);\n        indeg[b]++;\n    }\n\n    const available = [];\n    for (let i = 0; i < n; i++) {\n        if (indeg[i] === 0) {\n            available.push(i);\n        }\n    }\n    available.sort((a, b) => a - b);\n\n    const result = [];\n    while (available.length > 0) {\n        const u = available.shift();\n        result.push(u);\n        for (const v of adj[u]) {\n            indeg[v]--;\n            if (indeg[v] === 0) {\n                available.push(v);\n                available.sort((a, b) => a - b);\n            }\n        }\n    }\n\n    return result.length === n ? result : null;\n}\n```",
+          "verify": {
+            "pass": false,
+            "skipped": true,
+            "detail": "no generated tests"
+          },
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "done",
+          "durationMs": 18077,
+          "dismissed": false,
+          "output": "```js\nfunction solve(n, arestas) {\n  const adj = Array.from({length: n}, () => []);\n  const indeg = new Array(n).fill(0);\n\n  for (const [a, b] of arestas) {\n    adj[a].push(b);\n    indeg[b]++;\n  }\n\n  const pq = [];\n  for (let i = 0; i < n; i++) {\n    if (indeg[i] === 0) pq.push(i);\n  }\n  pq.sort((x, y) => x - y);\n\n  const result = [];\n  while (pq.length > 0) {\n    const u = pq.shift();\n    result.push(u);\n    for (const v of adj[u]) {\n      indeg[v]--;\n      if (indeg[v] === 0) pq.push(v);\n      pq.sort((x, y) => x - y);\n    }\n  }\n\n  return result.length === n ? result : null;\n}\n```",
+          "verify": {
+            "pass": false,
+            "skipped": true,
+            "detail": "no generated tests"
+          },
+          "pass": true
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 16645,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "passed": 5,
+      "total": 5,
+      "detail": "5/5 tests"
+    },
+    {
+      "taskId": "hard-lucro-2",
+      "kind": "code",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 107284,
+      "branchesMs": 85368,
+      "output": "```js\nfunction solve(precos) {\n  if (precos.length < 2) return 0;\n\n  let buy1 = Infinity, sell1 = 0;\n  let buy2 = Infinity, sell2 = 0;\n\n  for (const p of precos) {\n    buy1 = Math.min(buy1, p);\n    sell1 = Math.max(sell1, p - buy1);\n    buy2 = Math.min(buy2, p - sell1);\n    sell2 = Math.max(sell2, p - buy2);\n  }\n\n  return sell2;\n}\n```",
+      "synthesized": true,
+      "selectedBy": "synthesis",
+      "escalated": true,
+      "hedged": true,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 62298,
+          "dismissed": false,
+          "output": "```js\nfunction solve(precos) {\n  if (precos.length < 2) return 0;\n\n  let buy1 = Infinity;\n  let sell1 = 0;\n  let buy2 = Infinity;\n  let sell2 = 0;\n\n  for (const p of precos) {\n    buy1 = Math.min(buy1, p);\n    sell1 = Math.max(sell1, p - buy1);\n    buy2 = Math.min(buy2, p - sell1);\n    sell2 = Math.max(sell2, p - buy2);\n  }\n\n  return sell2;\n}\n```",
+          "verify": {
+            "pass": false,
+            "skipped": true,
+            "detail": "no generated tests"
+          },
+          "pass": true
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 48712,
+          "dismissed": false,
+          "output": "```javascript\nfunction solve(precos) {\n    if (!precos || precos.length <= 1) return 0;\n\n    const n = precos.length;\n    const forward = new Array(n).fill(0);\n    const backward = new Array(n).fill(0);\n\n    let minPrice = precos[0];\n    for (let i = 1; i < n; i++) {\n        forward[i] = Math.max(forward[i - 1], precos[i] - minPrice);\n        minPrice = Math.min(minPrice, precos[i]);\n    }\n\n    let maxPrice = precos[n - 1];\n    for (let i = n - 2; i >= 0; i--) {\n        backward[i] = Math.max(backward[i + 1], maxPrice - precos[i]);\n        maxPrice = Math.max(maxPrice, precos[i]);\n    }\n\n    let maxProfit = 0;\n    for (let i = 0; i < n; i++) {\n        maxProfit = Math.max(maxProfit, forward[i] + backward[i]);\n    }\n\n    return maxProfit;\n}\n```",
+          "verify": {
+            "pass": false,
+            "skipped": true,
+            "detail": "no generated tests"
+          },
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "cancelled",
+          "durationMs": 21442,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 16645,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "passed": 5,
+      "total": 5,
+      "detail": "5/5 tests"
+    },
+    {
+      "taskId": "hard-inverter-grafemas",
+      "kind": "code",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 36407,
+      "branchesMs": 36407,
+      "output": "```js\nfunction solve(s) {\n  const segmenter = new Intl.Segmenter();\n  const graphemes = [...segmenter.segment(s)].map(g => g.segment);\n  return [...graphemes].reverse().join('');\n}\n```",
+      "synthesized": false,
+      "selectedBy": "verify",
+      "escalated": true,
+      "hedged": false,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 13038,
+          "dismissed": false,
+          "output": "```js\nfunction solve(s) {\n  const segmenter = new Intl.Segmenter(s, { granularity: 'grapheme' });\n  return [...segmenter.segments].reverse().join('');\n}\n```",
+          "verify": {
+            "pass": false,
+            "passed": 0,
+            "total": 4,
+            "detail": "generated tests: 0/4 tests"
+          },
+          "pass": false
+        },
+        {
+          "agent": "claude",
+          "status": "cancelled",
+          "durationMs": 23338,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "codex",
+          "status": "done",
+          "durationMs": 22945,
+          "dismissed": false,
+          "output": "```js\nfunction solve(s) {\n  const segmenter = new Intl.Segmenter();\n  const graphemes = [...segmenter.segment(s)].map(g => g.segment);\n  return [...graphemes].reverse().join('');\n}\n```",
+          "verify": {
+            "pass": true,
+            "passed": 4,
+            "total": 4,
+            "detail": "generated tests: 4/4 tests"
+          },
+          "pass": true
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 0,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "passed": 5,
+      "total": 5,
+      "detail": "5/5 tests"
+    },
+    {
+      "taskId": "hard-qa-strawberry",
+      "kind": "qa",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 24120,
+      "branchesMs": 24120,
+      "output": "2",
+      "synthesized": false,
+      "selectedBy": "vote",
+      "escalated": true,
+      "hedged": true,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 16324,
+          "dismissed": false,
+          "output": "2",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 22203,
+          "dismissed": false,
+          "output": "3",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "done",
+          "durationMs": 7673,
+          "dismissed": false,
+          "output": "2",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 1916,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": false,
+      "detail": "faltou: \\b3\\b|\\btr[eê]s\\b"
+    },
+    {
+      "taskId": "hard-qa-decimal",
+      "kind": "qa",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 6121,
+      "branchesMs": 6121,
+      "output": "9.9",
+      "synthesized": false,
+      "selectedBy": "vote",
+      "escalated": true,
+      "hedged": true,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 6116,
+          "dismissed": false,
+          "output": "9.9",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 3797,
+          "dismissed": false,
+          "output": "9.9",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "cancelled",
+          "durationMs": 2319,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 0,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-sort-js",
+      "kind": "qa",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 109764,
+      "branchesMs": 91194,
+      "output": "[1, 10, 3]",
+      "synthesized": true,
+      "selectedBy": "synthesis",
+      "escalated": true,
+      "hedged": true,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 61025,
+          "dismissed": false,
+          "output": "`[1, 10, 3]`\n\nO JavaScript `sort()` sem comparator converte os elementos para strings e ordena lexicalmente:\n\n- \"10\" < \"1\" < \"3\" → [\"1\", \"10\", \"3\"]\n\nResultado: `[1, 10, 3]`.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 82181,
+          "dismissed": false,
+          "output": "[1, 10, 3]",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "done",
+          "durationMs": 13519,
+          "dismissed": false,
+          "output": "O `[10, 1, 3].sort()` retorna `[10, 1, 3]`.\n\nO `.sort()` do JavaScript ordena como strings por padrão, então \"10\" vem antes de \"1\" e \"3\" (pois compara caractere por caractere: '1' < '3').",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 16649,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-bola",
+      "kind": "qa",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 90898,
+      "branchesMs": 90898,
+      "output": "5",
+      "synthesized": false,
+      "selectedBy": "vote",
+      "escalated": true,
+      "hedged": true,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "cancelled",
+          "durationMs": 90898,
+          "dismissed": true,
+          "output": "[agents/tool-policy] tool policy removed 5 tool(s) via tools.profile (coding): agents_list, gateway, message, nodes, tts\n[agents/tool-policy] tool policy removed 8 tool(s) via tools.deny: create_goal, cron, get_goal, sessions_spawn, sessions_yield, skill_workshop, subagents, update_goal; matched create_goal, cron, get_goal, sessions_spawn, sessions_yield, skill_workshop, subagents, update_goal\n[provider-transport-fetch] [model-fetch] start provider=router api=openai-completions model=mangaba-agente-rapido method=POST url=https://mangabarouter.store/v1/chat/completions timeoutMs=900000 proxy=none policy=custom",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 80074,
+          "dismissed": false,
+          "output": "5",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "done",
+          "durationMs": 9702,
+          "dismissed": false,
+          "output": "5",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 0,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-maquinas",
+      "kind": "qa",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 27479,
+      "branchesMs": 27479,
+      "output": "5 minutos.",
+      "synthesized": false,
+      "selectedBy": "vote",
+      "escalated": true,
+      "hedged": true,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 17973,
+          "dismissed": false,
+          "output": "5 minutos.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 21900,
+          "dismissed": false,
+          "output": "5",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "done",
+          "durationMs": 7865,
+          "dismissed": false,
+          "output": "5 minutos",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 5578,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-coercao",
+      "kind": "qa",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 15961,
+      "branchesMs": 15961,
+      "output": "`'24'`",
+      "synthesized": false,
+      "selectedBy": "vote",
+      "escalated": true,
+      "hedged": true,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 13367,
+          "dismissed": false,
+          "output": "`'24'`",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 15951,
+          "dismissed": false,
+          "output": "'24'",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "cancelled",
+          "durationMs": 2593,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 0,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-round-py",
+      "kind": "qa",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 7096,
+      "branchesMs": 7096,
+      "output": "2",
+      "synthesized": false,
+      "selectedBy": "vote",
+      "escalated": true,
+      "hedged": true,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 7092,
+          "dismissed": false,
+          "output": "2",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 4593,
+          "dismissed": false,
+          "output": "2",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "cancelled",
+          "durationMs": 2501,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 0,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-floordiv",
+      "kind": "qa",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 5409,
+      "branchesMs": 5409,
+      "output": "-4",
+      "synthesized": false,
+      "selectedBy": "vote",
+      "escalated": true,
+      "hedged": true,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 5404,
+          "dismissed": false,
+          "output": "-4",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 4095,
+          "dismissed": false,
+          "output": "-4",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "cancelled",
+          "durationMs": 1310,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 0,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-qa-parseint",
+      "kind": "qa",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 7671,
+      "branchesMs": 7671,
+      "output": "0",
+      "synthesized": false,
+      "selectedBy": "vote",
+      "escalated": true,
+      "hedged": true,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 7168,
+          "dismissed": false,
+          "output": "0",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 7661,
+          "dismissed": false,
+          "output": "0",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "codex",
+          "status": "cancelled",
+          "durationMs": 502,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 0,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": false,
+      "detail": "faltou: ^\\W*5\\b"
+    },
+    {
+      "taskId": "hard-qa-sextas-13",
+      "kind": "qa",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 94086,
+      "branchesMs": 94086,
+      "output": "2",
+      "synthesized": false,
+      "selectedBy": "single",
+      "escalated": true,
+      "hedged": true,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "cancelled",
+          "durationMs": 94085,
+          "dismissed": false,
+          "output": "[agents/tool-policy] tool policy removed 5 tool(s) via tools.profile (coding): agents_list, gateway, message, nodes, tts\n[agents/tool-policy] tool policy removed 8 tool(s) via tools.deny: create_goal, cron, get_goal, sessions_spawn, sessions_yield, skill_workshop, subagents, update_goal; matched create_goal, cron, get_goal, sessions_spawn, sessions_yield, skill_workshop, subagents, update_goal\n[provider-transport-fetch] [model-fetch] start provider=router api=openai-completions model=mangaba-agente-rapido method=POST url=https://mangabarouter.store/v1/chat/completions timeoutMs=900000 proxy=none policy=custom\n[provider-transport-fetch] [model-fetch] response provider=router api=openai-completions model=mangaba-agente-rapido status=200 elapsedMs=62779 contentType=text/event-stream; charset=utf-8\nLLM request failed.",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 63886,
+          "dismissed": false,
+          "output": "2",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "codex",
+          "status": "cancelled",
+          "durationMs": 30020,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 0,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": false,
+      "detail": "faltou: ^\\W*3\\b|\\btr[eê]s\\b"
+    },
+    {
+      "taskId": "hard-qa-fev-1900",
+      "kind": "qa",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 9338,
+      "branchesMs": 9338,
+      "output": "28",
+      "synthesized": false,
+      "selectedBy": "vote",
+      "escalated": true,
+      "hedged": true,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 7163,
+          "dismissed": false,
+          "output": "28",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 9326,
+          "dismissed": false,
+          "output": "28",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "cancelled",
+          "durationMs": 2174,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 0,
+          "dismissed": true,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "taskId": "hard-review-sort-numeros",
+      "kind": "review",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 38713,
+      "branchesMs": 32932,
+      "output": "O bug é que `Array.sort()` ordena por **string** por padrão, não numérica, causando inversão de ordem (ex.: \"100\" vira antes de \"25\"). A correção é usar um comparador numérico: `notas.sort((a, b) => a - b)`. Entre as versões, a da **openclaw** está mais precisa ao identificar a ordem invertida e a string-based comparison, sendo a mais clara na explicação.",
+      "synthesized": true,
+      "selectedBy": "synthesis",
+      "escalated": true,
+      "hedged": true,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 16290,
+          "dismissed": false,
+          "output": "O bug é que `Array.sort()` ordena por **string** por padrão, não numérica. Logo, `[100, 25, 9, 87, 3].sort()` gera `[\"100\", \"25\", \"3\", \"87\", \"9\"]` e `slice(-3)` retorna `[\"87\", \"9\", \"100\"]` — ordem invertida e como strings.\n\n**Correção:** adicione comparador numérico: `notas.sort((a, b) => a - b)`.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 11674,
+          "dismissed": false,
+          "output": "O `sort()` ordena de forma lexicográfica (texto) em vez de numérica, alterando a ordem dos inteiros. Isso retorna `[25, 3, 87]` ao invés das três maiores notas `[100, 87, 25]`.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "done",
+          "durationMs": 10307,
+          "dismissed": false,
+          "output": "O bug é que `Array.sort()` ordena **como strings**, não como números. Por exemplo:\n\n```\n[100, 25, 9, 87, 3].sort()\n// Resultado: [25, 3, 87, 100, 9]\n// slice(-3): [87, 100, 9]  → errado!\n```\n\nSem comparador, a ordenação é alfabética (ex: `\"100\" < \"25\"`). Para corrigir, use um comparador numérico:\n\n```js\nconst maiores = notas.sort((a, b) => a - b).slice(-3);\n```",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 16642,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "detail": "pointed out: \\(a,\\s*b\\)\\s*=>\\s*(a\\s*-\\s*b|b\\s*-\\s*a)"
+    },
+    {
+      "taskId": "hard-review-var-closure",
+      "kind": "review",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 40512,
+      "branchesMs": 30791,
+      "output": "O bug é que `var` tem escopo de função, então quando os callbacks `setTimeout` executam, `i` já vale `3` para todas as chamadas, imprimindo `3 3 3`. A solução correta é trocar `var` por `let`, pois o `let` tem escopo de bloco e cada callback captura o valor correto de `i` (0, 1 e 2).",
+      "synthesized": true,
+      "selectedBy": "synthesis",
+      "escalated": true,
+      "hedged": true,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 13032,
+          "dismissed": false,
+          "output": "O bug é que `var` tem escopo de função, não de bloco. Quando os `setTimeout` executam, o loop já terminou e `i` vale `3` em todas as chamadas, então tudo imprime `3`.\n\nSolução: troque `var` por `let` (escopo de bloco), assim cada callback captura o valor correto de `i`: 0, 1 e 2.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 14154,
+          "dismissed": false,
+          "output": "O bug é o uso de `var`, que tem escopo de função. Como o `setTimeout` é assíncrono, quando os callbacks executam, `i` já vale 3, imprimindo 3, 3 e 3.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "done",
+          "durationMs": 10388,
+          "dismissed": false,
+          "output": "O bug é que `var` tem escopo de função (hoisting), logo o valor de `i` já é 3 quando os callbacks `setTimeout` executam, imprimindo `3` três vezes. Para corrigir, use `let` em vez de `var`.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 16635,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "detail": "pointed out: \\blet\\b"
+    },
+    {
+      "taskId": "hard-review-map-parseint",
+      "kind": "review",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 33706,
+      "branchesMs": 27445,
+      "output": "O bug é que `Array.prototype.map()` passa o índice como segundo argumento para a callback. Como `parseInt` usa o segundo parâmetro como radix, ele é chamado como `parseInt('10', 0)`, `parseInt('10', 1)` e `parseInt('10', 2)`, resultando em `10`, `NaN` e `2`. Para corrigir, passe o radix explícito: `['10', '10', '10'].map(s => parseInt(s, 10))`.",
+      "synthesized": true,
+      "selectedBy": "synthesis",
+      "escalated": true,
+      "hedged": true,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 9897,
+          "dismissed": false,
+          "output": "O bug é que o `.map()` passa o índice como segundo argumento para a callback. Assim, o `parseInt` é chamado assim:\n\n- `'10'` com radix `0` → **10**\n- `'10'` com radix `1` → **NaN** (radix inválido)\n- `'10'` com radix `2` → **2**\n\nO resultado correto seria `[10, NaN, 2]`, não `[10, 10, 10]`. O fix é usar `.map((s) => parseInt(s, 10))` ou `.map(Number)`.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 10803,
+          "dismissed": false,
+          "output": "O bug ocorre porque `Array.prototype.map` passa o índice como segundo argumento para o callback. Como `parseInt` aceita `(valor, radix)`, ele é chamado como `parseInt('10', 0)`, `parseInt('10', 1)`, `parseInt('10', 2)`, resultando em `10`, `NaN` e `2` em vez de três vezes `10`.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "done",
+          "durationMs": 11812,
+          "dismissed": false,
+          "output": "O bug é que o `.map()` passa três argumentos (valor, índice, array) para a função callback, mas `parseInt` usa apenas o primeiro (a string) e o segundo (o radix). Com radix 0, 1 e 2 como segundos argumentos, `parseInt('10', 1)` e `parseInt('10', 2)` retornam `NaN` e `2`, respectivamente.\n\n**Resultado:** `[10, NaN, 2]` em vez de `[10, 10, 10]`.\n\nPara corrigir, passe uma função que ignore o segundo argumento:\n```js\n['10', '10', '10'].map(s => parseInt(s, 10));\n```",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 16639,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "detail": "pointed out: radix"
+    },
+    {
+      "taskId": "hard-review-remove-iterando",
+      "kind": "review",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 32461,
+      "branchesMs": 24444,
+      "output": "O bug é que você modifica a lista (`nums.remove(n)`) durante a iteração, o que faz com que a iteração pule elementos e não remova todos os números pares. A correção é iterar sobre uma cópia da lista (`for n in nums[:]`).",
+      "synthesized": true,
+      "selectedBy": "synthesis",
+      "escalated": true,
+      "hedged": true,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 7793,
+          "dismissed": false,
+          "output": "O bug é que você está modificando a lista (`nums.remove(n)`) enquanto itera por ela. Isso causa **pula de elementos** (os índices mudam durante a iteração, então você perde iterações).\n\nCorreção: itere sobre uma cópia da lista (`for n in nums[:]`).",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 7318,
+          "dismissed": false,
+          "output": "O bug é que você remove elementos da lista `nums` enquanto a itera sobre ela, o que faz com que a iteração pule índices e não remova todos os números pares.",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "codex",
+          "status": "done",
+          "durationMs": 7923,
+          "dismissed": false,
+          "output": "O bug é que você modifica a lista (`nums.remove(n)`) enquanto itera sobre ela, o que faz com que a iteração pule índices. O próximo elemento após um removido passa a ser o seguinte, não o que estava na posição seguinte.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "hermes",
+          "status": "cancelled",
+          "durationMs": 16651,
+          "dismissed": false,
+          "output": "",
+          "verify": null,
+          "pass": false
+        }
+      ],
+      "pass": true,
+      "detail": "pointed out: durante a itera"
+    },
+    {
+      "taskId": "hard-review-async-foreach",
+      "kind": "review",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 32261,
+      "branchesMs": 23178,
+      "output": "O bug é que `forEach` não espera as promessas async terminarem, então `console.log('todos salvos')` roda imediatamente antes de qualquer item ser salvo — **race condition**. A correção mais limpa é trocar por um loop com `await`:\n\n```js\nasync function salvarTodos(itens) {\n  for (const item of itens) { await salvar(item); }\n  console.log('todos salvos');\n}\n```\n\nEntre as opções apresentadas, o `for...of` com `await` é preferível ao `Promise.all` porque mantém a ordem de execução (o `Promise.all` não garante ordem).",
+      "synthesized": true,
+      "selectedBy": "synthesis",
+      "escalated": true,
+      "hedged": true,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 8371,
+          "dismissed": false,
+          "output": "O bug é que `forEach` não espera as promessas async terminarem. `console.log('todos salvos')` roda antes de qualquer `salvar(item)` concluir — **race condition**.\n\n**Correção:** troque `forEach` por um loop com `await`:\n\n```js\nasync function salvarTodos(itens) {\n  for (const item of itens) { await salvar(item); }\n  console.log('todos salvos');\n}\n```",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 7790,
+          "dismissed": false,
+          "output": "O `forEach` não espera a execução das callbacks async, então `todos salvos` é impresso antes de qualquer item ser salvo. O correto seria usar `await Promise.all(itens.map(item => salvar(item)))`.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "done",
+          "durationMs": 9849,
+          "dismissed": false,
+          "output": "O bug é que `forEach` não aguarda as promessas das funções internas. O `console.log` roda imediatamente, antes que todos os itens sejam salvos.\n\nCorreção: use `await` no `forEach` ou troque para `for...of` com `await`.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "hermes",
+          "status": "done",
+          "durationMs": 14806,
+          "dismissed": false,
+          "output": "O bug é que `forEach` não espera a execução assíncrona — ele chama `salvar(item)` sem `await`, então o `console.log` roda antes de todos os itens serem salvos. A solução correta é usar `await` no `forEach` ou `Promise.all`:\n\n```js\nasync function salvarTodos(itens) {\n  await itens.forEach(async (item) => { await salvar(item); });\n  console.log('todos salvos');\n}\n```",
+          "verify": null,
+          "pass": true
+        }
+      ],
+      "pass": true,
+      "detail": "pointed out: for\\s*\\(?\\s*const\\s+\\w+\\s+of"
+    },
+    {
+      "taskId": "hard-review-mes-date",
+      "kind": "review",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 31338,
+      "branchesMs": 21907,
+      "output": "O bug é que o JavaScript indexa os meses a partir de 0 (0 = janeiro), então `12` está fora do intervalo válido (0–11) e é interpretado como janeiro de 2027. Para criar 25 de dezembro de 2026, o código correto é `new Date(2026, 11, 25)`.",
+      "synthesized": true,
+      "selectedBy": "synthesis",
+      "escalated": true,
+      "hedged": true,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 8017,
+          "dismissed": false,
+          "output": "O bug é que o JS usa mês **0-based** (0=Janeiro, 11=Dezembro). Ao passar `12`, você criou **25 de janeiro de 2027**, não 25 de dezembro de 2026.\n\nCorrigir: `new Date(2026, 11, 25)`.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 8195,
+          "dismissed": false,
+          "output": "O mês `12` está fora do intervalo válido (0–11). Em JavaScript, meses são indexados a partir de 0, então `12` equivale ao **próximo ano** (janeiro de 2027), não a dezembro de 2026. Use `11` em vez de `12`.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "done",
+          "durationMs": 11441,
+          "dismissed": false,
+          "output": "O bug é que o month (mês) no constructor `Date` é **0-indexado**: 0 = Janeiro, 11 = dezembro. O valor `12` está fora do intervalo válido (0–11) e será tratado como mês 0 (Janeiro), não dezembro.\n\nPara criar **25 de dezembro de 2026**, o código correto seria:\n\n```js\nconst natal = new Date(2026, 11, 25);\n```",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "hermes",
+          "status": "done",
+          "durationMs": 13707,
+          "dismissed": false,
+          "output": "O bug é que `new Date(2026, 12, 25)` cria **25 de janeiro de 2027**, pois os meses no JavaScript são 0-based (0 = janeiro). O correto seria `new Date(2026, 11, 25)` para 25 de dezembro de 2026.",
+          "verify": null,
+          "pass": true
+        }
+      ],
+      "pass": true,
+      "detail": "pointed out: \\b11\\b"
+    },
+    {
+      "taskId": "hard-review-sql-null",
+      "kind": "review",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 22136,
+      "branchesMs": 16205,
+      "output": "O bug é que usar `=` para comparar com `NULL` retorna `UNKNOWN` (falso), pois `NULL` não é igual a nada em SQL. O correto é usar `IS NULL` para verificar se o campo está nulo.",
+      "synthesized": true,
+      "selectedBy": "synthesis",
+      "escalated": true,
+      "hedged": true,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 6590,
+          "dismissed": false,
+          "output": "Bug: usar `=` para comparar com `NULL` retorna `UNKNOWN`, não `TRUE`. A condição correta é `IS NULL`.\n\nCorrigido:\n```sql\nSELECT * FROM clientes WHERE email IS NULL;\n```",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 6441,
+          "dismissed": false,
+          "output": "Na SQL, `NULL` não é igual a nada — `email = NULL` retorna `NULL` (falso), não `true`. Para verificar campos nulos, use `IS NULL`.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "done",
+          "durationMs": 8949,
+          "dismissed": false,
+          "output": "O bug é que `= NULL` nunca retorna verdadeiro em SQL. Null representa ausência de valor, e a comparação com `=` não funciona para `NULL`. Use `IS NULL` para verificar valores nulos.\n\n```sql\nSELECT * FROM clientes WHERE email IS NULL;\n```",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "hermes",
+          "status": "done",
+          "durationMs": 9614,
+          "dismissed": false,
+          "output": "O bug é que `= NULL` nunca retorna verdadeiro em SQL — NULL não é igual a nada. O correto é usar `IS NULL`.",
+          "verify": null,
+          "pass": true
+        }
+      ],
+      "pass": true,
+      "detail": "pointed out: IS NULL"
+    },
+    {
+      "taskId": "hard-review-regex-global",
+      "kind": "review",
+      "mode": "cascade",
+      "status": "done",
+      "error": "",
+      "durationMs": 33187,
+      "branchesMs": 24055,
+      "output": "O bug é o flag `g` no regex. O `.test()` avança `lastIndex` após cada chamada bem-sucedida, fazendo a segunda invocação retornar `false` mesmo com o mesmo texto. Remova o `g` do regex.",
+      "synthesized": true,
+      "selectedBy": "synthesis",
+      "escalated": true,
+      "hedged": true,
+      "branches": [
+        {
+          "agent": "openclaw",
+          "status": "done",
+          "durationMs": 9042,
+          "dismissed": false,
+          "output": "O bug é o flag `g` global no regex. O `.test()` avança `lastIndex` depois do primeiro sucesso, então a segunda chamada tenta matar no índice 4 (fora do string), retornando `false`. Remova o `g`.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "claude",
+          "status": "done",
+          "durationMs": 8156,
+          "dismissed": false,
+          "output": "The regex has the global flag `g`, which updates `lastIndex` after each `.test()` call. On the second invocation, `lastIndex` is already past the string, so it returns `false`. Remove the `g` flag to fix it.",
+          "verify": null,
+          "pass": true
+        },
+        {
+          "agent": "codex",
+          "status": "cancelled",
+          "durationMs": 15892,
+          "dismissed": false,
+          "output": "O bug é que a regex `/^\\d+$/g` tem o **flag global `g`**. Quando `.test()` encontra uma correspondência, ela avança `lastIndex` para a posição após o match. No segundo `valido('123')`, `lastIndex` já está no fim da string (3), então a busca não encontra nada e retorna `false`.\n\nPara resolver, remova o `g` do regex, ou use `g` apenas para `match()` (não para `test()`):\n\n```js\nconst soDigitos = /^\\d+$/;\n```",
+          "verify": null,
+          "pass": false
+        },
+        {
+          "agent": "hermes",
+          "status": "done",
+          "durationMs": 14804,
+          "dismissed": false,
+          "output": "O bug é que o regex tem a flag global (`g`). O `.test()` só retorna `true` na primeira chamada e depois avança `lastIndex`, fazendo a segunda chamada retornar `false` mesmo com o mesmo texto.\n\n**Solução:** Remova o `g` do regex: `/^\\d+$/`",
+          "verify": null,
+          "pass": true
+        }
+      ],
+      "pass": true,
+      "detail": "pointed out: lastIndex"
+    }
+  ]
+}
