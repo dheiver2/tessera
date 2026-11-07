@@ -110,19 +110,22 @@ Troca "um modelo escolhe" por "o resultado se prova".
 - Veredito: cascata com testes gerados vira o padrão (`mode: cascade`, `autoVerify: true` em `framework.json`; testes gerados só com gateway). `--no-cascade` e `--no-auto-verify` desligam.
 - Resultado bruto: `evals/resultados/2026-11-06T19-09-06-973Z.json` e `2026-11-06T21-16-26-503Z.json`.
 
-**Latência da cascata** (06–07/nov, 2 rodadas com solos na mesma rodada):
+**Latência da cascata** (06–07/nov, 4 rodadas com solos na mesma rodada):
 - Hedge de 20 s: se o rápido não responde nesse tempo, os demais começam e ele segue como ramo, ocupando uma vaga. Sozinho, o OpenClaw respondeu 83% das tarefas em até 20 s.
 - Sem como verificar (perguntas, revisões, código sem teste confiável; 19 das 33 tarefas são perguntas ou revisões), os demais começam junto com o rápido.
 - Orçamento de 150 s por tarefa: os ramos são cortados quando ele acaba, e a síntese só usa o que sobra. Com menos de 20 s, volta a melhor resposta pronta (mais votos; no empate, mais testes gerados aprovados).
 - Microagente com 3 amostras (temperaturas 0, 0,8 e 0,8), só com os casos em que 2 concordam: código certo passa 79% (era 68%), errado é rejeitado 91% (era 87%), pronto em 3,6 s. Descartados: pedir casos de borda (32% do código certo passava) e raciocínio ligado (p50 de 50 s, metade sem teste).
-- Rodada 3: cascata 25/33 contra 23/33 do OpenClaw e do Claude; p95 1,41×. Rodada 4: 29/33 contra 27/33 do Claude; p95 1,25×.
-- Veredito: os dois critérios atingidos nas duas rodadas. Hedge, orçamento e 3 amostras viram padrão (`hedgeSeconds: 20`, `budgetSeconds: 150` em `framework.json`; `--hedge`, `--budget`).
-- O que sobrou: em 2 tarefas de código, depois de duas respostas erradas, a tolerância de 15 s cortou os agentes que acertariam (`hard-popcount`, `hard-ordem-natural`).
-- Resultado bruto: `evals/resultados/2026-11-06T23-44-22-578Z.json` e `2026-11-07T01-52-45-762Z.json`.
+- Rodada 3: cascata 25/33 contra 23/33 do OpenClaw e do Claude; p95 1,41×. Rodada 4: 29/33 contra 27/33 do Claude; p95 1,25×. Rodada 5: 27/33 contra 25/33 do OpenClaw e do Claude; p95 2,27× contra o OpenClaw (p95 de 66 s), 1,25× contra o Claude. Rodada 6: 26/33 contra 28/33 do Claude; p95 1,25×.
+- Veredito: na média, à frente de todos (26,75 contra 25,75 do Claude, o melhor agente em todas as rodadas), mas ainda não é vitória clara: por tarefa, 12 vitórias e 8 derrotas contra o Claude (teste do sinal, p = 0,5); contra o OpenClaw 19 e 8 (p = 0,05); contra Codex e Hermes, p < 0,001. O p95 é o orçamento de 150 s, dentro de 1,5× em 3 das 4 rodadas. Hedge, orçamento e 3 amostras seguem como padrão (`hedgeSeconds: 20`, `budgetSeconds: 150` em `framework.json`; `--hedge`, `--budget`).
+- O que sobrou (15 tarefas que algum agente acertou sozinho): 5 por orçamento (em 2, o rápido travado segurou 1 das 2 vagas por 120 s); 5 perguntas (em 3, dois agentes no mesmo modelo deram a mesma resposta errada; em 2, a síntese escolheu errado); 2 de código em que a tolerância de 15 s cortou quem acertaria; 2 de código em que a síntese falhou e a reserva pegou o primeiro agente da ordem, com a resposta certa pronta; 1 que só o OpenClaw acerta sozinho e errou dentro da cascata. Acertou 3 que nenhum agente acertou sozinho.
+- Método: um agente sozinho varia até 7 tarefas entre rodadas (Hermes, 17 a 24). Comparar médias de várias rodadas, parear por tarefa e testar mudanças de lógica primeiro por replay (as mesmas respostas gravadas para as duas versões).
+- Resultado bruto: `evals/resultados/2026-11-06T23-44-22-578Z.json`, `2026-11-07T01-52-45-762Z.json`, `2026-11-07T03-41-24-886Z.json` e `2026-11-07T05-39-23-068Z.json`.
 
 **Falta:**
-- Código: comparar as respostas pelo comportamento nos testes gerados, em vez do texto (em medição).
-- Diversidade de modelo por agente (`models.<agente>` em `~/.tessera/provider.json`).
+- Vaga do agente rápido travado: liberar a vaga dele em vez de segurá-la até o prazo de 120 s.
+- Reserva por evidência (testes gerados, acordo) em vez da ordem dos agentes.
+- Código: comparar as respostas pelo comportamento nos testes gerados, em vez do texto (próximo; validar primeiro por replay).
+- Diversidade de modelo por agente (`models.<agente>` em `~/.tessera/provider.json`): no mesmo modelo, os agentes erram juntos nas perguntas.
 - Maioria mais exigente (3 votos, ou 2 sem divergência).
 - git worktrees para agentes que editam arquivos.
 

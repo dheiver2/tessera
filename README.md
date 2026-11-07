@@ -50,7 +50,7 @@ Tessera **does not replace** your agents: it calls the CLIs you already have ins
 ## 🚦 Current status
 
 > [!IMPORTANT]
-> **On the hard set (33 tasks), the cascade beat the best single agent in both of the latest rounds and stayed within the latency target: 25 vs. 23 and 29 vs. 27, with p95 at 1.41× and 1.25× that agent's (target: up to 1.5×).** Two rounds only, so a one-task difference is still noise; the lead was 2 tasks in both.
+> **On the hard set (33 tasks), over the latest 4 rounds the cascade averaged 26.75 correct vs. 25.75 for Claude, the best single agent: ahead in 3 rounds, behind in 1 (26 vs. 28).** Task by task it beat Claude 12 times and lost 8, which is not yet a statistically clear win (sign test p = 0.5); it is clearly ahead of Codex and Hermes. Its p95 is the 150 s time budget, within 1.5× the best agent's in 3 of the 4 rounds.
 
 | Part | Status | Evidence |
 |:---|:---:|:---|
@@ -61,8 +61,8 @@ Tessera **does not replace** your agents: it calls the CLIs you already have ins
 | Gateway-agnostic | ✅ | No gateway by default; any gateway via `~/.tessera/provider.json` or env vars |
 | Claude Code · Codex · OpenClaw | ✅ | Answers in 6 to 36 s in the measured setup |
 | Hermes | ⚠️ | The least stable: 11 to 27 correct per round |
-| **Tessera better than each agent** | ✅ | Cascade 25 and 29 vs. 23 and 27 for each round's best agent, Nov 6–7, 2026. See [results](#-measured-results) |
-| p95 latency ≤ 1.5× the best agent | ✅ | 1.41× and 1.25× (150 s, the time budget, vs. 107 s and 120 s) |
+| **Tessera better than each agent** | ⚠️ | Ahead on average (26.75 vs. 25.75 of 33) and in 3 of 4 rounds, Nov 6–7, 2026; against Claude, task by task, 12 wins and 8 losses: not yet a clear win. See [results](#-measured-results) |
+| p95 latency ≤ 1.5× the best agent | ⚠️ | 3 of 4 rounds: 1.41×, 1.25×, 2.27× and 1.25× (150 s, the time budget; the 2.27× is against OpenClaw, tied for best in that round with a 66 s p95) |
 
 ---
 
@@ -333,22 +333,24 @@ tessera eval --limit 5 --kind code --modes openclaw,tessera
 
 ## 📈 Measured results
 
-> Measured with all four agents on the same model (`mangaba-agente-rapido`) through one gateway (the author's Mangaba Router), so differences come only from each agent's harness. Synthesis by Claude. A one-task difference is within noise.
+> Measured with all four agents on the same model (`mangaba-agente-rapido`) through one gateway (the author's Mangaba Router), so differences come only from each agent's harness. Synthesis by Claude. A single agent varies by up to 7 tasks between rounds (Hermes, 17 to 24), so compare means over several rounds and pair results by task.
 
-### ⏱️ Hard set · cascade with hedge and time budget vs. single agents, same round · Nov 6–7, 2026 · 2 rounds
+### ⏱️ Hard set · cascade with hedge and time budget vs. single agents, same round · Nov 6–7, 2026 · 4 rounds
 
 What changed since the two rounds below: the fast agent gets 20 s alone (hedge), the others start at once when there is nothing to check, each task has a 150 s budget with the best ready answer as the fallback, and the micro-agent combines three samples (see [Cascade and micro-agents](#-fanout-everyone-at-once)).
 
-| Mode | Round 3 | Round 4 | Mean (of 33) | Answered | p95 |
-|:---|:---:|:---:|:---:|:---:|---:|
-| 🪶 **cascade** | **25** | **29** | **27.0** | 61/66 | 150 s |
-| claude | 23 | 27 | 25.0 | 59/66 | 120 s |
-| openclaw | 23 | 25 | 24.0 | 61/66 | 66–107 s |
-| codex | 21 | 24 | 22.5 | 53/66 | 120 s |
-| hermes | 19 | 17 | 18.0 | 44/66 | 122 s |
+| Mode | Round 3 | Round 4 | Round 5 | Round 6 | Mean (of 33) | Answered | p95 |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|---:|
+| 🪶 **cascade** | **25** | **29** | **27** | 26 | **26.75** | **125/132** | 150 s |
+| claude | 23 | 27 | 25 | **28** | 25.75 | 118/132 | 120 s |
+| openclaw | 23 | 25 | 25 | 23 | 24.00 | 121/132 | 66–120 s |
+| codex | 21 | 24 | 20 | 19 | 21.00 | 109/132 | 120 s |
+| hermes | 19 | 17 | 24 | 18 | 19.50 | 93/132 | 122 s |
 
 > [!IMPORTANT]
-> **Verdict: both criteria met in both rounds.** The cascade is 2 tasks ahead of each round's best agent, and its p95 is 1.41× and 1.25× that agent's, down from 2.1–2.2× in the two rounds below, with about the same accuracy (27.0 vs. 27.5 of 33). Over both rounds, majority decided 17 tasks (16 right, p50 under 10 s), the fast agent 6 (all right, about 10 s) and synthesis 30 (27 right). It missed 6 tasks that some agent alone got right and got 1 that none did (`hard-semver`). Two of the misses are code tasks where, after two wrong answers, the 15 s grace cut the agents that would have been right (`hard-popcount`, `hard-ordem-natural`); one is a task where the router stalled and no branch answered in 150 s (`hard-csv-linha`). Raw: `evals/resultados/2026-11-06T23-44-22-578Z.json` and `2026-11-07T01-52-45-762Z.json`.
+> **Verdict: ahead on average, not yet a clear win over Claude.** The cascade's mean is 1.0 task above Claude's, the best single agent in every round (tied with OpenClaw in rounds 3 and 5), and 2.75 above OpenClaw's. It was 2 tasks ahead of each round's best agent in rounds 3 to 5 and 2 behind in round 6. Task by task over the 132 task-rounds, against Claude it won 12 and lost 8 (sign test p = 0.5); against OpenClaw, 19 and 8 (p = 0.05); against Codex, 30 and 7, and Hermes, 34 and 5 (both p < 0.001). p95 is the 150 s budget in every round: 1.41×, 1.25×, 2.27× and 1.25× the best agent's, down from 2.1–2.2× in the two rounds below; the 2.27× is against OpenClaw, tied for best in round 5 with a 66 s p95 (1.25× against Claude, the other tied agent). Over the four rounds, majority decided 36 tasks (33 right, p50 9 s), the fast agent 13 (all right, 11 s) and synthesis 57 (53 right, 44 s).
+>
+> It missed 15 tasks that some agent alone got right and got 3 that none did. Of the 15: 5 ran out of the budget before that agent answered (in 2, a stalled fast agent held one of the two slots for 120 s); 5 are questions (in 3, two agents on the same model agreed on the same wrong answer; in 2, synthesis picked the wrong one); 2 are code tasks where, after two wrong answers, the 15 s grace cut the agents that would have been right; 2 are code tasks where synthesis failed and the fallback took the first agent in order instead of the right answer that was ready; 1 is a task only OpenClaw solves alone, which it got wrong inside the cascade. Raw: `evals/resultados/2026-11-06T23-44-22-578Z.json`, `2026-11-07T01-52-45-762Z.json`, `2026-11-07T03-41-24-886Z.json` and `2026-11-07T05-39-23-068Z.json`.
 
 ### 🪶 Hard set · cascade + generated tests vs. single agents, same round · Nov 6, 2026 · 2 rounds
 
@@ -688,8 +690,8 @@ tessera tasks
 | ✅ | Hard set, 4 rounds with the deadline fix | Done: tie, 26.0 vs. 26.3 |
 | ✅ | Fanout queue (at most 2 branches at once) and per-branch deadline | Done: no answer 10% → 6% |
 | ✅ | Cascade with generated tests as the default | Done: 27.5 of 33, above every agent's mean |
-| ✅ | Latency: hedge, time budget, three-sample tests | Done: ahead of the best agent in 2 of 2 rounds, p95 1.25–1.41× |
-| ⏭️ | Compare code answers by behavior on the generated tests | Next: being measured |
+| ✅ | Latency: hedge, time budget, three-sample tests | Done: p95 is the 150 s budget, within 1.5× of the best agent in 3 of 4 rounds |
+| ⏭️ | A clear win over the best agent (today +1.0 per round, p = 0.5 against Claude): free the slot of a stalled fast agent, pick the fallback by evidence instead of order, compare code answers by behavior on the generated tests | Next |
 | ⏭️ | Stricter majority (no 2 × 2 ties) and a check on single answers | Later |
 | ⏭️ | **Phase 2**: free-text agreement without synthesis | Planned |
 | ⏭️ | **Phase 3**: routing learned from eval data | Planned |
