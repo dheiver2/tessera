@@ -36,5 +36,9 @@
     "graceSeconds": 15,
     "maxCharsPerBranch": 6000,
     "maxWaitAfterFirstSeconds": 30
+  },
+  "harness": {
+    "claudeTools": "Bash,Read,Write,Edit",
+    "codexSandbox": "workspace-write"
   }
 }

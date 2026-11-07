@@ -5,7 +5,7 @@ import { writeFileSync, readFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { delegateAsync, fanout, cascade } from './bridge.mjs';
 import { extractCode, runCodeTests } from './sandbox.mjs';
-import { autoVerifier } from './microagents.mjs';
+import { autoCheck } from './microagents.mjs';
 
 export { extractCode, runCodeTests };
 
@@ -80,6 +80,8 @@ export async function runEval({
   root, tasks, agents, provider = null, modes = ['solo', 'tessera'],
   soloTimeoutMs = 120_000, fanoutOpts = {}, onResult = () => {}, parallel = false,
   autoVerify = false, microAgent = null,
+  // harness: pasta própria e ferramentas de cada agente, iguais nos agentes sozinhos e no Tessera.
+  harness = {},
 }) {
   const results = [];
   for (const task of tasks) {
@@ -88,10 +90,11 @@ export async function runEval({
 
     if (modes.includes('solo')) {
       for (const agent of agents) {
-        jobs.push(() => delegateAsync({ root, agent, prompt, provider, timeoutMs: soloTimeoutMs, name: `eval:${task.id}:${agent}` })
+        jobs.push(() => delegateAsync({ root, agent, prompt, provider, timeoutMs: soloTimeoutMs, name: `eval:${task.id}:${agent}`, harness })
           .then((t) => ({
             taskId: task.id, kind: task.kind, mode: agent, status: t.status, error: t.error,
-            durationMs: t.durationMs, output: t.output, ...grade(task, t.status === 'done' ? t.output : ''),
+            durationMs: t.durationMs, output: t.output, ...(t.harvested ? { harvested: true } : {}),
+            ...grade(task, t.status === 'done' ? t.output : ''),
           })));
       }
     }
@@ -103,13 +106,15 @@ export async function runEval({
       jobs.push(() => {
         let verify = verifierFor(task);
         let softVerify = false;
-        if (autoVerify && task.kind === 'code') {
-          verify = autoVerifier({ root, prompt, agent: microAgent ?? agents[0], provider });
+        // Mesmo verificador da CLI: testes gerados para código e, para perguntas sobre o valor de
+        // uma expressão JavaScript, checagem por execução.
+        if (autoVerify) {
+          verify = autoCheck({ root, prompt, agent: microAgent ?? agents[0], provider, kind: task.kind });
           softVerify = true;
         }
         const run = mode === 'cascade' ? cascade : fanout;
         const t0 = Date.now();
-        return run({ root, prompt, agents, provider, ...fanoutOpts, ...(verify ? { verify, softVerify } : {}) })
+        return run({ root, prompt, agents, provider, harness, ...fanoutOpts, ...(verify ? { verify, softVerify } : {}) })
           .then((r) => {
             const text = r.final?.status === 'done' ? r.final.output : '';
             return {
@@ -122,7 +127,7 @@ export async function runEval({
               hedged: r.hedged ?? null,
               branches: r.branches.map((b) => ({
                 agent: b.agent, status: b.status, durationMs: b.durationMs, dismissed: Boolean(b.dismissed),
-                output: b.output ?? '', verify: b.verify ?? null,
+                output: b.output ?? '', verify: b.verify ?? null, ...(b.harvested ? { harvested: true } : {}),
                 pass: b.status === 'done' ? grade(task, b.output).pass : false,
               })),
               ...grade(task, text),
@@ -258,7 +263,7 @@ export function renderMarkdown(summary, meta = {}) {
     lines.push(`- ${name} wrong, ${c.bestSolo} right: ${c.losses.length ? c.losses.join(', ') : 'none'}.`);
     lines.push('', `**Success criterion:** more correct than the best agent: ${c.beatsBestSolo ? 'yes' : 'no'}. Latency within target: ${c.latencyWithinTarget == null ? '—' : c.latencyWithinTarget ? 'yes' : 'no'}.`, '');
   }
-  const label = { verify: 'verification', vote: 'majority', single: 'single answer', synthesis: 'synthesis', repair: 'repair by synthesis', fallback: 'finished branch (synthesis failed)', fast: 'fast agent passed verification', budget: 'time budget reached (best ready answer)', none: 'no answer' };
+  const label = { verify: 'verification', vote: 'majority', behavior: 'same behavior (generated tests)', ranked: 'best by generated tests and agreement', single: 'single answer', synthesis: 'synthesis', repair: 'repair by synthesis', fallback: 'finished branch (synthesis failed)', fast: 'fast agent passed verification', budget: 'time budget reached (best ready answer)', none: 'no answer' };
   for (const [name, dec] of [['Tessera', summary.decisions], ['Cascade', summary.cascadeDecisions]]) {
     if (!dec) continue;
     lines.push(`## How ${name} decided`, '', '| Path | Tasks | Correct | p50 |', '|---|---|---|---|');

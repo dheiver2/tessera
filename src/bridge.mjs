@@ -2,7 +2,7 @@
 // Cada tarefa vira um JSON em <root>/.tessera/bus/tasks/. Pipelines encadeiam
 // agentes; o fanout dispara todos ao mesmo tempo e sintetiza.
 import { spawnSync, spawn } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync, readdirSync, appendFileSync, existsSync, accessSync, constants } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, statSync, readFileSync, writeFileSync, readdirSync, appendFileSync, existsSync, accessSync, constants } from 'node:fs';
 import { join, delimiter, isAbsolute } from 'node:path';
 import { homedir } from 'node:os';
 import { randomBytes } from 'node:crypto';
@@ -45,7 +45,14 @@ export function loadProvider(cfg) {
 // ---------------------------------------------------------------------------
 // Comando headless de cada agente: { bin, args, env, input }.
 // Com provedor, cada agente é apontado para ele sem alterar a configuração global.
-export function buildCommand(agent, prompt, { provider = null, agentId, timeoutMs = 120_000, taskId = newId() } = {}) {
+// harness: o que cada agente pode usar do próprio harness.
+//   claudeTools: ferramentas do Claude Code ("Bash,Read,Write,Edit"); "" = nenhuma (padrão antigo).
+//   codexSandbox: sandbox do Codex para os comandos que ele roda ("workspace-write" = escreve só na pasta).
+// Motivo (07/nov/2026): o Claude Code rodava sem ferramenta nenhuma e o Codex só lendo a pasta:
+// nenhum dos dois podia rodar o próprio código antes de responder, que é o forte de cada harness.
+export const CLAUDE_SANDBOX = JSON.stringify({ sandbox: { enabled: true, autoAllowBashIfSandboxed: true } });
+
+export function buildCommand(agent, prompt, { provider = null, agentId, timeoutMs = 120_000, taskId = newId(), harness = {} } = {}) {
   const model = provider?.models?.[agent] ?? provider?.model;
   const env = {};
   if (provider) env[provider.keyEnv] = provider.key;
@@ -58,7 +65,11 @@ export function buildCommand(agent, prompt, { provider = null, agentId, timeoutM
       // Sem isso, contexto injetado por plugins (ex.: SessionStart) contamina a resposta.
       // --bare só autentica por ANTHROPIC_API_KEY, por isso a chave vai nela.
       const args = provider && provider.claudeBare !== false ? ['--bare', '-p'] : ['-p'];
-      if (provider?.claudeNoTools !== false) args.push('--tools', '');
+      // Com ferramentas, o Bash roda na sandbox do Claude Code (escrita só na pasta da execução)
+      // sem pedir permissão, e as edições na pasta são aceitas: em -p não há quem aprove.
+      const tools = harness.claudeTools ?? (provider?.claudeNoTools === false ? null : '');
+      if (tools != null) args.push('--tools', tools);
+      if (tools) args.push('--permission-mode', 'acceptEdits', '--settings', CLAUDE_SANDBOX);
       if (provider) {
         const root = provider.anthropicBaseUrl ?? provider.baseUrl.replace(/\/v1$/, '');
         Object.assign(env, {
@@ -76,6 +87,7 @@ export function buildCommand(agent, prompt, { provider = null, agentId, timeoutM
     }
     case 'codex': {
       const args = ['exec', '--skip-git-repo-check'];
+      if (harness.codexSandbox) args.push('--sandbox', harness.codexSandbox);
       if (provider) {
         args.push(
           '-c', 'model_provider=tessera',
@@ -292,16 +304,63 @@ function runAsync(cmd, cwd, timeoutMs, signal) {
   });
 }
 
-export async function delegateAsync({ root, agent, prompt, agentId, provider = null, timeoutMs = 10 * 60_000, name = '', signal }) {
+// harness.isolate: cada execução roda numa pasta nova (root/work/<agente>-*), apagada no fim.
+// Motivo (07/nov/2026): todos os agentes rodavam na mesma pasta, e arquivos de uma tarefa
+// (solve.js, test.js) ficavam para a seguinte; o Codex chegou a tentar consertar a função
+// errada de outra tarefa. Pasta limpa também evita dois agentes escrevendo no mesmo arquivo.
+export async function delegateAsync({ root, agent, prompt, agentId, provider = null, timeoutMs = 10 * 60_000, name = '', signal, harness = {} }) {
   const task = newTask(agent, prompt, name);
   saveTask(root, task);
-  const cmd = commandFor(agent, prompt, { provider, agentId, timeoutMs, taskId: task.id });
+  const cmd = commandFor(agent, prompt, { provider, agentId, timeoutMs, taskId: task.id, harness });
+  let cwd = root;
+  if (harness.isolate) {
+    mkdirSync(join(root, 'work'), { recursive: true });
+    cwd = mkdtempSync(join(root, 'work', `${agent}-`));
+  }
   const started = Date.now();
-  const res = await runAsync(cmd, root, timeoutMs, signal);
+  const res = await runAsync(cmd, cwd, timeoutMs, signal);
   task.durationMs = Date.now() - started;
   finish(task, res, cmd.bin, timeoutMs);
+  if (harness.isolate) {
+    harvest(task, cwd, prompt);
+    rmSync(cwd, { recursive: true, force: true });
+  }
   saveTask(root, task);
   return task;
+}
+
+// Código que o agente escreveu em arquivo em vez de pôr na resposta (o jeito do Codex e do
+// Hermes trabalharem). Só quando o pedido quer um bloco de código e a resposta não tem nenhum;
+// arquivos de teste ficam de fora. Também aproveita quem estourou o prazo com o arquivo pronto.
+const CODE_FILE = /\.(m?js|cjs|ts|py)$/;
+export function harvestFiles(dir, { maxBytes = 20_000, maxFiles = 3 } = {}) {
+  const found = [];
+  const walk = (d, depth) => {
+    let entries = [];
+    try { entries = readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      if (e.name.startsWith('.') || e.name === 'node_modules') continue;
+      const f = join(d, e.name);
+      if (e.isDirectory()) { if (depth < 2) walk(f, depth + 1); continue; }
+      if (!CODE_FILE.test(e.name) || /test|spec/i.test(e.name)) continue;
+      try { if (statSync(f).size <= maxBytes) found.push(f); } catch {}
+    }
+  };
+  walk(dir, 0);
+  return found.sort().slice(0, maxFiles).map((f) => {
+    const lang = f.endsWith('.py') ? 'python' : f.endsWith('.ts') ? 'ts' : 'js';
+    return '```' + lang + '\n' + readFileSync(f, 'utf8').trim() + '\n```';
+  }).join('\n\n');
+}
+
+function harvest(task, dir, prompt) {
+  if (task.status === 'cancelled' || !/```/.test(prompt ?? '') || /```/.test(task.output ?? '')) return;
+  const code = harvestFiles(dir);
+  if (!code) return;
+  task.output = task.status === 'done' && task.output ? `${task.output}\n\n${code}` : code;
+  task.status = 'done';
+  task.error = '';
+  task.harvested = true;
 }
 
 // Papéis opcionais (--roles): o mesmo pedido, com foco no ponto forte de cada agente.
@@ -398,8 +457,8 @@ export async function fanout({
   seed = [],
   // running: ramos que já estão rodando (o agente rápido da cascata, depois do hedge).
   // Cada item é { agent, promise, abort }. Entra na verificação e no voto como qualquer ramo
-  // e ocupa uma vaga da fila até terminar, para o roteador não receber mais agentes do que
-  // maxConcurrent. Não dispara o prazo de espera depois da primeira resposta: os demais
+  // e ocupa uma vaga da fila até terminar, para o roteador não receber mais
+  // agentes do que maxConcurrent. Não dispara o prazo de espera depois da primeira resposta: os demais
   // começaram depois dele.
   running = [],
   // budgetMs: prazo total da tarefa, contado de `startedAt`. Os ramos são cortados quando ele
@@ -407,6 +466,12 @@ export async function fanout({
   // Motivo (06/nov/2026): prazos de ramo e de síntese se somavam e o p95 passava de 2× o do
   // melhor agente, quase sempre em tarefas que terminavam erradas mesmo assim.
   budgetMs = 0, startedAt = Date.now(), minSynthMs = 20_000,
+  // rankAfter: em código com comportamento comparável (testes gerados), quantas respostas
+  // sem acordo bastam para escolher pela nota, sem esperar as demais. Só vale quando a melhor
+  // delas passa em pelo menos metade dos testes; senão os agentes que faltam ainda podem acertar.
+  rankAfter = 3,
+  // harness: pasta própria e ferramentas de cada agente (ver buildCommand e delegateAsync).
+  harness = {},
 }) {
   const started = Date.now();
   const controller = new AbortController();
@@ -421,25 +486,66 @@ export async function fanout({
   let firstTimer = null;
   let decided = null;
   const votes = new Map();
+  // Respostas de código com assinatura de comportamento (sig, do verificador de testes gerados).
+  let behaviorCount = 0;
+  const order = [...seed.map((s) => s.agent), ...running.map((r) => r.agent), ...agents];
+  const rankOf = (t) => { const i = order.indexOf(t.agent); return i < 0 ? order.length : i; };
+  // Respostas prontas (com texto), na ordem em que chegaram.
+  const ready = [];
 
+  // Chave de voto: em código com testes gerados, o comportamento (mesmas saídas nas mesmas
+  // entradas); código que não roda não vota. Sem comparação de comportamento, o texto normalizado.
+  const keyOf = (t) => (t.verify && 'sig' in t.verify ? (t.verify.sig ? `sig:${t.verify.sig}` : null) : vote(t.output));
   const castVote = (t) => {
     if (!vote) return;
-    const key = vote(t.output);
+    const key = keyOf(t);
     if (!key) return;
     const list = votes.get(key) ?? [];
     list.push(t);
     votes.set(key, list);
-    if (list.length >= Math.min(voteQuorum, total) && total > 1 && !decided) {
-      decided = { by: 'vote', branch: list[0], votes: list.map((b) => b.agent) };
+    // Mesmo comportamento e reprovado em mais da metade dos testes gerados: as duas podem ter o
+    // mesmo erro. Não decide; o grupo ainda conta na escolha final.
+    // Motivo (07/nov/2026, bancada): pares assim estavam errados em 6 de 6; esperando os demais
+    // e escolhendo pela nota, 5 de 6 certos. Com nota de 50% a 99%, o par acertou 15 de 17.
+    // Texto com valor calculado (checagem por execução): resposta que discorda dele também
+    // não decide pelo voto enquanto faltam agentes; outro pode bater com o valor.
+    const sig = Boolean(t.verify?.sig);
+    const weak = sig ? t.verify.total > 0 && t.verify.passed / t.verify.total < 0.5
+      : Boolean(t.verify && 'computed' in t.verify && !t.verify.pass);
+    if (list.length >= Math.min(voteQuorum, total) && total > 1 && !decided && !weak) {
+      // Comportamento igual não quer dizer texto igual: volta a do primeiro agente da lista.
+      // Desempatar pelo agente mais preciso sozinho (Claude) empatou no replay de 07/nov/2026:
+      // 15 casos a mais e 15 a menos.
+      const branch = sig ? [...list].sort((x, y) => rankOf(x) - rankOf(y))[0] : list[0];
+      decided = { by: sig ? 'behavior' : 'vote', branch, votes: list.map((b) => b.agent) };
       controller.abort();
     }
   };
   for (const s of seed) {
     if (s.status !== 'done' || !s.output) continue;
     okCount += 1;
+    ready.push(s);
+    if (s.verify?.sig) behaviorCount += 1;
     if (s.verify?.pass && !decided) decided = { by: 'verify', branch: s };
     else if (!verify || softVerify) castVote(s);
   }
+
+  // Melhor resposta pronta: tamanho do grupo (mesmo voto) vezes a nota nos testes, como no
+  // CodeT; no empate, a maior fração de testes; depois, a primeira da lista. Sem testes, é o
+  // maior grupo. Duas respostas iguais que passam em 3 testes valem mais que uma que passa em 4.
+  // Com comportamento comparável, código que não roda nas entradas fica por último.
+  const groupSize = (t) => { const k = vote ? keyOf(t) : null; return k ? (votes.get(k)?.length ?? 1) : 1; };
+  const testScore = (t) => (t.verify?.total ? t.verify.passed / t.verify.total : t.verify?.pass ? 1 : 0);
+  const rankScore = (t) => (behaviorCount > 0 && !t.verify?.sig ? 0
+    : groupSize(t) * (t.verify?.total ? t.verify.passed + 0.5 : 1));
+  const bestOf = (list) => list.map((t, i) => ({ t, i }))
+    .sort((x, y) => rankScore(y.t) - rankScore(x.t) || testScore(y.t) - testScore(x.t) || x.i - y.i)[0]?.t;
+  // Parar de esperar e escolher pela nota só faz sentido se a escolha tem base: sem teste
+  // confiável (aí segue para a síntese) ou com a melhor resposta passando em pelo menos metade
+  // dos testes. Com todas reprovando, os agentes que faltam ainda podem acertar.
+  // Motivo (07/nov/2026, A/B): três agentes com o mesmo comportamento, reprovados em 7 de 7
+  // testes, decidiram aos 23 s e cancelaram o Hermes, que acertava a tarefa sozinho.
+  const rankable = () => !ready.some((t) => t.verify?.total > 0) || testScore(bestOf(ready)) >= 0.5;
 
   const slots = createSlots(maxConcurrent > 0 ? maxConcurrent : agents.length + running.length);
 
@@ -468,7 +574,7 @@ export async function fanout({
     }
     const t = await delegateAsync({
       root, agent, agentId, provider, timeoutMs: Math.max(1000, Math.min(deadlineMs, left())), name: `fanout:${agent}`,
-      prompt: withRole(prompt, roles?.[agent]), signal: controller.signal,
+      prompt: withRole(prompt, roles?.[agent]), signal: controller.signal, harness,
     });
     return settle(t);
   }
@@ -477,6 +583,7 @@ export async function fanout({
   async function settle(t, { startsTimers = true } = {}) {
     const agent = t.agent;
     if (t.status === 'done' && t.output) {
+      ready.push(t);
       if (verify) {
         t.verify ??= await Promise.resolve(verify(t.output, agent)).catch((e) => ({ pass: false, detail: e.message }));
         if (t.verify.pass && !decided) { decided = { by: 'verify', branch: t }; controller.abort(); }
@@ -487,14 +594,28 @@ export async function fanout({
     }
     if (t.status === 'done') {
       okCount += 1;
+      if (t.verify?.sig) behaviorCount += 1;
       if (startsTimers) liveOk += 1;
-      // Primeira resposta boa: os demais têm no máximo maxWaitAfterFirstMs,
-      // mesmo que o quórum nunca seja atingido (agente travado não segura o resultado).
-      if (startsTimers && liveOk === 1 && maxWaitAfterFirstMs > 0 && agents.length > 1) {
-        firstTimer = setTimeout(() => controller.abort(), maxWaitAfterFirstMs);
-      }
-      if (okCount >= need && need < total && !graceTimer) {
-        graceTimer = setTimeout(() => controller.abort(), graceMs);
+      if (behaviorCount > 0) {
+        // Código com comportamento comparável: os prazos curtos não cortam os demais. Com duas
+        // respostas que discordam, a terceira desempata; com `rankAfter` sem acordo, para de
+        // esperar e escolhe pela nota, se a melhor passa em metade dos testes (sem teste
+        // confiável, síntese). O orçamento continua limitando o tempo.
+        // Motivo (06/nov/2026): o prazo de 15 s depois de duas respostas cortava justamente os
+        // agentes que acertavam. Na bancada (252 casos), com duas respostas que discordam a
+        // escolha acertava 41%; esperando a terceira, 64%.
+        clearTimeout(graceTimer);
+        clearTimeout(firstTimer);
+        if (behaviorCount >= rankAfter && !decided && rankable()) { decided = { by: 'ranked', branch: null }; controller.abort(); }
+      } else {
+        // Primeira resposta boa: os demais têm no máximo maxWaitAfterFirstMs,
+        // mesmo que o quórum nunca seja atingido (agente travado não segura o resultado).
+        if (startsTimers && liveOk === 1 && maxWaitAfterFirstMs > 0 && agents.length > 1) {
+          firstTimer = setTimeout(() => controller.abort(), maxWaitAfterFirstMs);
+        }
+        if (okCount >= need && need < total && !graceTimer) {
+          graceTimer = setTimeout(() => controller.abort(), graceMs);
+        }
       }
     }
     return t;
@@ -505,10 +626,32 @@ export async function fanout({
 
   const ok = branches.filter((t) => t.status === 'done' && t.output);
   const branchesMs = Date.now() - started;
+  // Ninguém bateu com o valor calculado: a maioria que ficou esperando decide, como decidiria
+  // sem a checagem (só respostas fracas chegam aqui com um grupo do tamanho do quórum).
+  if (!decided && behaviorCount === 0 && total > 1) {
+    const group = [...votes.values()].filter((l) => l.length >= Math.min(voteQuorum, total)).sort((a, b) => b.length - a.length)[0];
+    if (group) decided = { by: 'vote', branch: group[0], votes: group.map((b) => b.agent) };
+  }
   const pick = (t, selectedBy, extra = {}) => ({ ...t, name: 'selecao', synthesized: false, selectedBy, ...extra });
 
+  const bestReady = () => bestOf(ok);
+
+  // A escolha pela nota precisa de teste confiável. Sem nenhum e sem acordo de comportamento,
+  // ela vira a ordem da lista (6 de 16 certos na bancada): aí segue para a síntese, como antes.
+  const tested = ok.some((t) => t.verify?.total > 0);
+  if (decided?.by === 'ranked') {
+    if (tested) return { branches, final: pick(bestReady(), 'ranked'), branchesMs, totalMs: branchesMs };
+    decided = null;
+  }
   if (decided) {
     return { branches, final: pick(decided.branch, decided.by, decided.votes ? { votes: decided.votes } : {}), branchesMs, totalMs: branchesMs };
+  }
+  // Código com testes confiáveis e sem decisão (ramos acabaram ou o orçamento venceu): escolhe
+  // pela nota, sem síntese. Síntese de código levava p50 de 116 s e, quando estourava o prazo,
+  // a resposta de reserva acertava 1 em 17 (rodadas de 05–06/nov/2026).
+  if (behaviorCount > 0 && ok.length > 0 && tested) {
+    const by = ok.length === 1 ? 'single' : left() <= 0 ? 'budget' : 'ranked';
+    return { branches, final: pick(bestReady(), by), branchesMs, totalMs: branchesMs };
   }
   if (!synthesizer) return { branches, final: null, branchesMs };
   if (ok.length === 0) return { branches, final: null, branchesMs, error: 'no agent answered in time' };
@@ -517,12 +660,6 @@ export async function fanout({
     // Uma resposta só e nada a corrigir: sintetizar seria latência sem ganho.
     return { branches, final: pick(ok[0], 'single'), branchesMs, totalMs: branchesMs };
   }
-  // Melhor resposta pronta, para quando não há tempo ou a síntese falha: a que mais agentes
-  // deram (voto); no empate, a que passou em mais testes; depois, a primeira da lista.
-  const groupSize = (t) => { const k = vote?.(t.output); return k ? (votes.get(k)?.length ?? 1) : 1; };
-  const testScore = (t) => (t.verify?.total ? t.verify.passed / t.verify.total : t.verify?.pass ? 1 : 0);
-  const bestReady = () => ok.map((t, i) => ({ t, i }))
-    .sort((x, y) => groupSize(y.t) - groupSize(x.t) || testScore(y.t) - testScore(x.t) || x.i - y.i)[0].t;
   if (left() < minSynthMs) {
     return { branches, final: pick(bestReady(), 'budget'), branchesMs, totalMs: Date.now() - started };
   }
@@ -542,6 +679,8 @@ export async function fanout({
       '- If the answers disagree on something relevant, say in one line which one you chose and why. If they agree, do not comment.';
   const final = await delegateAsync({
     root, agent: synthesizer, agentId, provider, timeoutMs: Math.min(synthTimeoutMs, left()), name: 'sintese',
+    // A síntese junta respostas prontas: sem ferramentas, para não gastar o que resta do orçamento.
+    harness: { ...harness, claudeTools: '' },
     prompt: `Pergunta original:\n${prompt}\n\nRespostas de diferentes agentes (cada um com um foco):\n\n${merged}\n\n${instructions}`,
   });
   final.selectedBy = hard ? 'repair' : 'synthesis';
@@ -570,13 +709,13 @@ export async function cascade({
   verify = null, softVerify = false,
   // hedgeMs: quanto o agente rápido tem sozinho. Se não responder nesse tempo, os demais
   // começam e ele segue como mais um ramo. 0 = esperar ele terminar (comportamento antigo).
-  hedgeMs = 0, budgetMs = 0,
+  hedgeMs = 0, budgetMs = 0, harness = {},
   ...fanoutOpts
 }) {
   const started = Date.now();
   const fastCtl = new AbortController();
   const firstP = delegateAsync({
-    root, agent: fast, agentId, provider, name: `cascade:${fast}`, prompt, signal: fastCtl.signal,
+    root, agent: fast, agentId, provider, name: `cascade:${fast}`, prompt, signal: fastCtl.signal, harness,
     timeoutMs: budgetMs > 0 ? Math.min(fastDeadlineMs, budgetMs) : fastDeadlineMs,
   }).then(async (t) => {
     if (t.status === 'done' && t.output && verify) {
@@ -604,7 +743,7 @@ export async function cascade({
   const escalatedAt = Date.now();
   const res = await fanout({
     root, prompt, agents: rest, agentId, provider, verify, softVerify, ...fanoutOpts,
-    budgetMs, startedAt: started,
+    budgetMs, startedAt: started, harness,
     // Já terminou (falhou na verificação ou sem verificador): entra como voto pronto.
     // Ainda rodando (hedge): entra como ramo vivo.
     ...(first ? { seed: [first] } : { running: [{ agent: fast, promise: firstP, abort: () => fastCtl.abort() }] }),

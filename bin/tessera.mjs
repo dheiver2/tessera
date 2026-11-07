@@ -10,7 +10,7 @@ import {
   commandVerifier, voteKey, DEFAULT_ROLES, availableAgents, agentAvailable,
 } from '../src/bridge.mjs';
 import { readFrameworkConfig, SOURCE_DEFAULT as SRC } from '../src/sync.mjs';
-import { autoVerifier } from '../src/microagents.mjs';
+import { autoCheck } from '../src/microagents.mjs';
 
 const ALL_AGENTS = ['claude', 'codex', 'openclaw', 'hermes'];
 const args = process.argv.slice(2);
@@ -48,7 +48,7 @@ function help() {
 
 Usage:
   tessera doctor                                  which agents are installed, which gateway is active
-  tessera fanout "prompt" [--agents a,b] [--verify "cmd"] [--synth claude] [--deadline 180] [--max-concurrent 2]
+  tessera fanout "prompt" [--agents a,b] [--verify "cmd"] [--synth claude] [--deadline 180] [--max-concurrent 2] [--isolate]
                  [--synth-timeout 180] [--quorum 2] [--grace 15] [--max-wait 30] [--no-vote] [--roles] [--no-provider]
                  [--cascade [--fast openclaw]] [--auto-verify]
                                                   all agents at once; the verified answer or the majority wins; synthesis only on deadlock
@@ -159,7 +159,7 @@ try {
     // pelo CLI de um agente ele tende a resolver a tarefa em vez de escrever testes.
     const wantAuto = !flag('--no-auto-verify') && (flag('--auto-verify') || (cfg.autoVerify && PROVIDER?.baseUrl && PROVIDER?.key));
     if (!verify && wantAuto) {
-      verify = autoVerifier({ root: root(), prompt, agent: agents.includes(cfg.microAgent) ? cfg.microAgent : fast, provider: PROVIDER, agentId: value('--agent-id') });
+      verify = autoCheck({ root: root(), prompt, agent: agents.includes(cfg.microAgent) ? cfg.microAgent : fast, provider: PROVIDER, agentId: value('--agent-id') });
       softVerify = true;
     }
     const run = useCascade ? cascade : fanout;
@@ -185,9 +185,13 @@ try {
       verify,
       softVerify,
       vote: flag('--no-vote') ? null : voteKey,
+      // Ferramentas de cada harness (framework.json > harness); --isolate: cada agente numa pasta nova.
+      harness: { ...(CFG.harness ?? {}), isolate: flag('--isolate') || Boolean(CFG.harness?.isolate) },
     });
     for (const t of res.branches) {
-      const v = !t.verify ? '' : t.verify.skipped ? '  verification: no tests' : `  verification: ${t.verify.pass ? 'passed' : 'failed'}`;
+      const v = !t.verify ? '' : t.verify.skipped ? '  verification: no tests'
+        : 'computed' in t.verify ? `  expression value ${t.verify.computed}: ${t.verify.pass ? 'matches' : 'differs'}`
+        : softVerify ? `  generated tests: ${t.verify.passed ?? 0}/${t.verify.total ?? 0}` : `  verification: ${t.verify.pass ? 'passed' : 'failed'}`;
       const why = t.dismissed ? '  — dismissed (an answer was already chosen)' : t.status !== 'done' ? `  — ${t.error.split('\n')[0]}` : '';
       console.log(`[${t.status}] ${t.agent} ${t.durationMs ?? '?'}ms (${t.id})${v}${why}`);
     }
@@ -197,6 +201,8 @@ try {
         fast: `cascade: ${res.final.agent} answered first and passed verification`,
         verify: `${res.final.agent} passed verification, no synthesis`,
         vote: `majority (${res.final.votes?.join(', ')}), no synthesis`,
+        behavior: `same behavior on the generated tests (${res.final.votes?.join(', ')}), no synthesis`,
+        ranked: `best by generated tests and agreement, from ${res.final.agent}`,
         single: `only ${res.final.agent} answered, no synthesis`,
         repair: `repair by ${synth}${res.final.verify ? `; verification ${res.final.verify.pass ? 'passed' : 'failed'}` : ''}`,
         synthesis: `synthesis by ${synth}`,
@@ -204,7 +210,8 @@ try {
         budget: `time budget reached; best ready answer, from ${res.final.agent}`,
       }[res.final.selectedBy] ?? `synthesis by ${synth}`;
       console.log(`\n=== final answer (${who}, ${res.totalMs}ms total) ===\n` + res.final.output);
-      if (res.final.verify && !res.final.verify.pass) process.exitCode = 2;
+      // Testes gerados podem estar errados: só a verificação do usuário (--verify) muda o código de saída.
+      if (res.final.verify && !res.final.verify.pass && !softVerify) process.exitCode = 2;
     }
     else { console.log(`\nerror: ${res.error ?? res.final?.error ?? 'no synthesis'}`); process.exitCode = 1; }
   } else if (cmd === 'eval') {
@@ -222,6 +229,8 @@ try {
     console.log(`eval: ${tasks.length} tasks × [${modes.includes('solo') ? agents.join(', ') : ''}${modes.filter((m) => m !== 'solo').map((m) => ` + ${m}`).join('')}]${flag('--auto-verify') ? ' (auto-verify)' : ''}  gateway: ${gatewayLabel()}`);
     const results = await runEval({
       root: evalRoot, tasks, agents, provider: PROVIDER, modes, parallel: flag('--parallel'),
+      // No eval cada execução roda numa pasta nova: uma tarefa não vê os arquivos da anterior.
+      harness: { ...(CFG.harness ?? {}), isolate: true },
       autoVerify: flag('--auto-verify'), microAgent: agents.includes(cfg.microAgent) ? cfg.microAgent : null,
       soloTimeoutMs: Number(value('--deadline') ?? cfg.deadlineSeconds ?? 120) * 1000,
       fanoutOpts: {
@@ -251,7 +260,7 @@ try {
       results.unshift(...prev);
     }
     const summary = summarize(results);
-    const meta = { date, provider: PROVIDER?.name ?? null, models: PROVIDER ? JSON.stringify(PROVIDER.models ?? PROVIDER.model) : null, agents, modes, autoVerify: flag('--auto-verify'), parallel: flag('--parallel'), tasks: tasks.map((t) => t.id), baseline: baseline ?? null, taskFile: value('--tasks') ?? 'evals/tasks.json' };
+    const meta = { date, provider: PROVIDER?.name ?? null, models: PROVIDER ? JSON.stringify(PROVIDER.models ?? PROVIDER.model) : null, agents, modes, autoVerify: flag('--auto-verify'), parallel: flag('--parallel'), tasks: tasks.map((t) => t.id), baseline: baseline ?? null, taskFile: value('--tasks') ?? 'evals/tasks.json', harness: { ...(CFG.harness ?? {}), isolate: true } };
     const files = saveResults(join(SRC, 'evals', 'resultados'), { results, summary, meta });
     console.log('\n' + renderMarkdown(summary, meta));
     console.log(`results: ${files.md}`);

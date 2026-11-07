@@ -2,6 +2,23 @@
 
 The latest results and the summary are in the [README](../README.md#-measured-results). This page keeps every earlier round in full, newest first. All modes ran on the same tasks in the same round unless noted, with every agent on the same model through one gateway. Raw files: [`evals/resultados/`](../evals/resultados/).
 
+### ⏱️ Hard set · v1, cascade with hedge and time budget vs. single agents, same round · Nov 6–7, 2026 · 6 rounds
+
+What changed since the two rounds below: the fast agent gets 20 s alone (hedge), the others start at once when there is nothing to check, each task has a 150 s budget with the best ready answer as the fallback, and the micro-agent combines three samples. The agents ran on their old setup: Claude without tools, Codex read-only, all four in one shared folder.
+
+| Mode | Round 3 | Round 4 | Round 5 | Round 6 | Round 7 | Round 8 | Mean (of 33) | Answered | p95 |
+|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---:|
+| 🪶 **cascade** | **25** | **29** | **27** | 26 | **27** | **27** | **26.83** | **188/198** | 130–150 s |
+| claude | 23 | 27 | 25 | **28** | 26 | 25 | 25.67 | 180/198 | 120 s |
+| openclaw | 23 | 25 | 25 | 23 | 24 | 26 | 24.33 | 182/198 | 50–120 s |
+| codex | 21 | 24 | 20 | 19 | 19 | 18 | 20.17 | 164/198 | 120 s |
+| hermes | 19 | 17 | 24 | 18 | 25 | 18 | 20.17 | 148/198 | 122 s |
+
+> [!IMPORTANT]
+> **Verdict: ahead on average, not yet a clear win over Claude.** The cascade's mean is 1.2 tasks above Claude's, the best single agent overall, and 2.5 above OpenClaw's. It beat each round's best agent in 5 of the 6 rounds, by 1 or 2 tasks, and lost round 6 by 2. Task by task over the 198 task-rounds, against Claude it won 20 and lost 13 (sign test p = 0.3); against OpenClaw, 28 and 13 (p = 0.03); against Codex, 51 and 11, and Hermes, 48 and 8 (both p < 0.001). p95 is the 150 s budget in five rounds and 130 s in round 8: 1.41×, 1.25×, 2.27×, 1.25×, 1.25× and 2.62× the best agent's, down from 2.1–2.2× in the two rounds below; the two above 1.5× are rounds 5 and 8, where OpenClaw was the best agent or tied for it with a p95 of 50–66 s (against Claude it is at most 1.25× in every round). Over the six rounds, majority decided 55 tasks (48 right, p50 10 s), the fast agent 18 (all right, 11 s) and synthesis 85 (79 right, 43 s).
+>
+> It missed 22 tasks that some agent alone got right and got 5 that none did. Of the 22: 10 are questions (in 7, two agents on the same model agreed on the same wrong answer, 4 of them `parseInt(0.0000005)`; in 2, synthesis picked the wrong answer; in 1, only one answer arrived in time); 7 are code tasks where the budget ran out before a right answer was ready; 4 are code tasks where synthesis failed and the fallback picked a wrong ready answer; 1 is a code task where synthesis was wrong. Raw: `evals/resultados/2026-11-06T23-44-22-578Z.json`, `2026-11-07T01-52-45-762Z.json`, `2026-11-07T03-41-24-886Z.json`, `2026-11-07T05-39-23-068Z.json`, `2026-11-07T11-05-39-201Z.json` and `2026-11-07T13-09-35-343Z.json`.
+
 ### 🪶 Hard set · cascade + generated tests vs. single agents, same round · Nov 6, 2026 · 2 rounds
 
 | Mode | Round 1 | Round 2 | Mean (of 33) | Answered | p95 |

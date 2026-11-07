@@ -126,11 +126,32 @@ Troca "um modelo escolhe" por "o resultado se prova".
 - Causas: (1) a checagem de expressão disparou nas 14 tarefas de código (todo enunciado cita JavaScript) e o escritor de testes passou a rodar em perguntas e revisões, onde quase nunca gera teste: até 6 chamadas extras ao roteador, que serializa, no começo de cada tarefa. O rápido passou de 55 s em 10 de 28 tarefas de código, contra 6 na v1 e 2 sozinho. (2) A vaga liberada pôs um terceiro agente no roteador justamente quando ele estava lento: nas tarefas a mais sem resposta, Claude rodou 130 s e Codex 105 s sem terminar. (3) A comparação com o valor calculado não reconheceu "O resultado é `'24'`." e descartou a resposta certa (coerção).
 - O que funcionou: a checagem confirmou `parseInt(0.0000005)` na rodada 8 em 9 s; o voto por comportamento decidiu 7 tarefas de código, todas certas; p50 de código 25 s contra 79 s.
 
+**v4 no A/B, publicada** (07/nov, rodada 9; a v1 e a v4 na mesma rodada, ordem alternada; parada pelo usuário depois de 30 das 33 tarefas, então as 3 últimas revisões não rodaram nas cascatas). A v4 é a v3 sem a vaga liberada, com o melhor de cada harness e as correções do A/B da v3:
+- **Harness:** pasta própria por agente e por execução (`isolate`; sempre no `eval`, `--isolate` no `fanout`); Claude com Bash/Read/Write/Edit na sandbox dele (`--permission-mode acceptEdits` + `sandbox.enabled`); Codex com `--sandbox workspace-write`; código escrito em arquivo vai para a resposta.
+- **Correções:** checagem de expressão preguiçosa (só na primeira resposta curta); escritor de testes só em código quando o tipo é conhecido; valor calculado aceito como token isolado, depois de tirar a expressão repetida da resposta.
+- **Critérios combinados antes** (somando 2 rodadas; com a parada, aplicados às 30 tarefas da rodada 9). Passou nos três e foi publicada com a ressalva de uma rodada só.
+  1. Por tipo, a v4 empata ou passa o melhor agente: código 10 × 9 (Codex), perguntas 10 × 10 (Claude), revisão 5 × 5.
+  2. No total, a v4 passa o melhor agente: 25 × 23 (Claude).
+  3. Contra a v1: acerto 25 × 22, sem resposta 0 × 3, p95 151,7 × 150,2 s.
+- **Por tarefa:** contra o Claude, 4 × 2; contra a v1, 6 × 3. Isso não separa do ruído: a v1 variou de 22 a 26 nessas 30 tarefas ao longo de 6 rodadas.
+- **O que funcionou:**
+  - A checagem de expressão decidiu `hard-qa-coercao` em 12 s; a maioria da v1 errou essa tarefa.
+  - O voto por comportamento decidiu 3 tarefas, todas certas.
+  - Nenhuma tarefa ficou sem resposta.
+  - O harness completo ajudou os agentes nas mesmas 30 tarefas. O Codex fez 22, contra uma média de 17,2 (15 a 21) nas rodadas 3–8. O Claude respondeu 30 de 30 (27,0 em média antes), com p50 de 8,8 s e p95 de 54,7 s.
+- **Problemas abertos:**
+  - Latência: o p95 da cascata é o orçamento de 150 s, 2,8× o do Claude com ferramentas.
+  - Hermes: ficou sem responder em 17 de 30 tarefas, contra 4 a 12 por rodada antes nas mesmas tarefas. Até as respostas certas levaram de 76 a 123 s (p50 de 38 s na rodada 8). Na mesma rodada os outros agentes foram rápidos, então a suspeita é a pasta nova a cada execução. Hipótese ainda não testada: o prompt dele cita a pasta e perde o cache de prefixo do roteador.
+  - Derrotas da v4: `hard-atoi` (a resposta passou nos testes gerados e reprovou nos ocultos), `hard-qa-strawberry` (dois agentes concordaram na contagem errada) e `hard-expressao` (nenhuma resposta certa dentro do orçamento).
+- **Resultado bruto:** `evals/resultados/2026-11-07T16-50-21-486Z.json`. A v1 da mesma rodada está em `meta.sameRoundV1`.
+
 **Falta:**
-- Nenhuma chamada extra ao roteador enquanto os agentes rodam: checagem de expressão só quando chega a primeira resposta curta; escritor de testes só em código; valor calculado aceito como token isolado na resposta.
+- Mais rodadas da v4: até agora foi uma.
+- Latência contra o Claude com ferramentas, hoje o agente mais rápido e mais preciso sozinho (p50 de 9 s). Testar o Claude como agente rápido da cascata.
+- Hermes: achar a causa das 17 tarefas sem resposta, comparando pasta fixa com pasta nova a cada execução no mesmo prompt.
+- Pasta do `--isolate` dentro de `.tessera/`, em vez de `work/` na raiz do projeto.
 - Reserva por evidência (testes gerados, acordo) em vez da ordem dos agentes.
-- Código: comparar as respostas pelo comportamento nos testes gerados, em vez do texto (no A/B da v3 decidiu 7 tarefas, todas certas; medir de novo sem a vaga liberada).
-- Diversidade de modelo por agente (`models.<agente>` em `~/.tessera/provider.json`): no mesmo modelo, os agentes erram juntos nas perguntas.
+- Diversidade de modelo por agente (`models.<agente>` em `~/.tessera/provider.json`): no mesmo modelo, os agentes erram juntos nas perguntas, como no `hard-qa-strawberry`.
 - Maioria mais exigente (3 votos, ou 2 sem divergência).
 - git worktrees para agentes que editam arquivos.
 
@@ -146,7 +167,7 @@ Troca "um modelo escolhe" por "o resultado se prova".
 - Com os resultados da Fase 0, decidir por tipo de tarefa:
   - Se um agente domina claramente um tipo, mandar **só para ele** (mais rápido e mais barato).
   - Se nenhum domina, usar o **fanout**.
-- Substituir o roteamento atual do `framework.json`, que hoje é uma hipótese, por regras derivadas do eval.
+- Substituir o roteamento atual do `framework.json` por regras derivadas do eval. Na rodada 9, `code` → Codex (melhor sozinho em código, 9 de 14) e `review` → Claude (5 de 5, o mais rápido) bateram com os dados; `summary` e `automation` ainda são hipótese.
 
 **Pronto quando:** o roteamento automático mantém o acerto do fanout com menos latência média.
 
@@ -180,7 +201,7 @@ Troca "um modelo escolhe" por "o resultado se prova".
 
 ## Bloqueios conhecidos hoje
 
-- **Hermes:** funciona com `mangaba-agente-rapido`, mas leva cerca de 45 s sozinho. No fanout, costuma ser cancelado pela espera máxima de 30 s após a primeira resposta. Com `mangaba-flash` ele travava.
+- **Hermes:** funciona com `mangaba-agente-rapido`, mas leva cerca de 45 s sozinho. No fanout, costuma ser cancelado pela espera máxima de 30 s após a primeira resposta. Com `mangaba-flash` ele travava. Na rodada 9, com uma pasta nova a cada execução, ficou sem responder em 17 de 30 tarefas.
 - **mangaba-titan:** reiniciou várias vezes durante os testes (HTTP 503). Modelos que dependem dele, como o `mangaba-coder`, ficam indisponíveis nesse período.
 - **mangaba-coder no Codex:** devolveu mensagem final vazia. Trocado por `mangaba-agente-rapido`; a causa não foi investigada.
 - **mangaba-flash:** rápido, mas seguiu mal as instruções e escreveu preâmbulos na síntese. Hoje não é usado no fanout.

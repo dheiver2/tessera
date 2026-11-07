@@ -31,7 +31,7 @@ same configuration, the same task in parallel, and the answer that **proves itse
 
 ## 📌 In one sentence
 
-Tessera **does not replace** your agents: it calls the CLIs you already have installed. The fastest agent answers first; if its answer **passes the tests**, that is the result and nobody else runs. Otherwise the others join and Tessera returns the first answer that passes, or the one most of them agree on. It only asks a model to synthesize when there is no other way to decide, and every task fits in a 150 s budget.
+Tessera **does not replace** your agents: it calls the CLIs you already have installed, **each with the best of its own harness** (Claude Code runs commands in its sandbox, Codex writes in its own folder). The fastest agent answers first; if its answer **passes the tests**, that is the result and nobody else runs. Otherwise the others join and Tessera returns the first answer that passes, or the one most of them agree on (for code: the same outputs on the same inputs). It only asks a model to synthesize when there is no other way to decide, and every task fits in a 150 s budget.
 
 <table>
 <tr>
@@ -50,7 +50,7 @@ Tessera **does not replace** your agents: it calls the CLIs you already have ins
 ## 🚦 Current status
 
 > [!IMPORTANT]
-> **On the hard set (33 tasks), over the latest 6 rounds the cascade averaged 26.8 correct vs. 25.7 for Claude, the best single agent, and beat each round's best agent in 5 of the 6 rounds.** Task by task it beat Claude 20 times and lost 13, which is not yet a statistically clear win (sign test p = 0.3); it is ahead of OpenClaw (p = 0.03) and clearly ahead of Codex and Hermes. Its p95 is the 150 s time budget, within 1.5× the best agent's in 4 of the 6 rounds.
+> **v4 (Nov 7, 2026), with every agent running on the best of its own harness: in one round on the hard set the cascade got 25 of 30 tasks right, Claude Code alone 23 and the previous cascade (v1) 22, and it answered every task.** It matched or beat the best single agent in each kind: code 10 vs. 9 (Codex), questions 10 vs. 10 (Claude), reviews 5 vs. 5. Task by task it beat Claude 4 times and lost 2: one round is not a statistically clear win (v1 averaged 26.8 vs. 25.7 for Claude over 6 rounds, also short of one). Latency is now the weak point: with its own tools Claude's p95 fell to 55 s, and the cascade's p95 is the 150 s budget, 2.8× that.
 
 | Part | Status | Evidence |
 |:---|:---:|:---|
@@ -59,10 +59,11 @@ Tessera **does not replace** your agents: it calls the CLIs you already have ins
 | `fanout`: verification, majority, synthesis, fallback | ✅ | Unit tests + real runs with the four agents |
 | Per-branch deadline (kills the process group) | ✅ | Regression test: a grandchild sleeping 30 s no longer holds the fanout |
 | Gateway-agnostic | ✅ | No gateway by default; any gateway via `~/.tessera/provider.json` or env vars |
-| Claude Code · Codex · OpenClaw | ✅ | Answers in 6 to 36 s in the measured setup |
-| Hermes | ⚠️ | The least stable: 11 to 27 correct per round |
-| **Tessera better than each agent** | ⚠️ | Ahead on average (26.8 vs. 25.7 of 33) and in 5 of 6 rounds, Nov 6–7, 2026; against Claude, task by task, 20 wins and 13 losses: not yet a clear win. See [results](#-measured-results) |
-| p95 latency ≤ 1.5× the best agent | ⚠️ | 4 of 6 rounds: 1.41×, 1.25×, 2.27×, 1.25×, 1.25× and 2.62× (130–150 s, the time budget; the two above 1.5× are rounds where OpenClaw, with a 50–66 s p95, was the best agent or tied for it) |
+| Each agent on the best of its harness | ✅ | Claude Code runs commands in its sandbox (writes outside its folder are blocked), Codex runs with `workspace-write`, each agent gets its own folder and code it writes to files reaches its answer. On the same 30 tasks, Codex went from a mean of 17.2 over 6 rounds to 22, and Claude answered all 30 |
+| Claude Code · Codex · OpenClaw | ✅ | p50 of 9 to 12 s in the latest round |
+| Hermes | ⚠️ | The least stable: 12 of 30 in the latest round, with 17 timeouts (4 to 12 per round on the same tasks before); cause still open |
+| **Tessera better than each agent** | ⚠️ | v4: 25 vs. 23 (Claude) in one round, at least the best agent in every kind; v1: 26.8 vs. 25.7 over 6 rounds. Not yet a clear win. See [results](#-measured-results) |
+| p95 latency ≤ 1.5× the best agent | ❌ | v4: 2.8× (the 150 s budget vs. Claude's 55 s with tools). v1 was within 1.5× in 4 of 6 rounds, against agents without tools |
 
 ---
 
@@ -111,32 +112,36 @@ flowchart TD
     F -- "passes the tests" --> R1([Return it<br/>nobody else starts])
     F -- "fails, or 20 s pass" --> O
     T -- "no (questions, reviews)" --> O["👥 The other agents start, 2 at a time<br/>the fast one keeps running"]
-    O --> V{"✅ An answer<br/>passes the tests?"}
+    O --> V{"✅ An answer passes the tests,<br/>or gives the value of the<br/>expression the question quotes?"}
     V -- yes --> R2([Return it<br/>cancel the rest])
-    V -- no --> M{"🗳️ Two identical<br/>answers?"}
+    V -- no --> M{"🗳️ Two answers agree?<br/>code: same outputs<br/>on the test inputs"}
     M -- yes --> R3([Return the majority])
-    M -- no --> S["🧪 Synthesis<br/>if 20 s or more are left"]
+    M -- no --> C{"🧾 Code with<br/>reliable tests?"}
+    C -- yes --> R6([Best test score<br/>no synthesis])
+    C -- no --> S["🧪 Synthesis<br/>if 20 s or more are left"]
     S -- ok --> R4([Synthesized answer])
     S -- "no time, failed or timed out" --> R5([Best ready answer])
 
     classDef ok fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
     classDef warn fill:#fff8e1,stroke:#f9a825,color:#6d4c00
     classDef agent fill:#e3f2fd,stroke:#1565c0,color:#0d47a1
-    class R1,R2,R3,R4 ok
+    class R1,R2,R3,R4,R6 ok
     class S,R5 warn
     class F,O agent
 ```
 
-| Path | When | In the 6 latest rounds |
+| Path | When | In the latest round (v4, 30 tasks) |
 |:---|:---|:---|
-| ⚡ **Fast agent** | Its answer passes the tests (generated by the micro-agent, or your `--verify`) | 18 tasks, all right, p50 11 s |
-| ✅ **Verification** | Another agent's answer passes | 13 tasks, 10 right, p50 36 s |
-| 🗳️ **Majority** | Two normalized answers match | 55 tasks, 48 right, p50 10 s |
-| 🧪 **Synthesis** | Deadlock with 20 s or more left. With `--verify`, a **repair** from the failures | 85 tasks, 79 right, p50 43 s |
-| ⏱️ **Best ready answer** | Budget almost over, or the synthesis failed: most votes, then most tests passed | 10 tasks, 5 right |
-| ⛔ **One late answer, or none** | Only one agent answered within the budget, or none did | 17 tasks, 1 right |
+| ⚡ **Fast agent** | Its answer passes the tests (generated by the micro-agent, or your `--verify`) | 3 tasks, all right, p50 13 s |
+| ✅ **Verification** | Another answer passes the tests, or gives the value of the JavaScript expression the question quotes | 4 tasks, 3 right, p50 29 s |
+| 🧬 **Same behavior** | Code: two answers return the same outputs on the generated test inputs | 3 tasks, all right, p50 63 s |
+| 🗳️ **Majority** | Two normalized text answers match | 9 tasks, 8 right, p50 19 s |
+| 🧪 **Synthesis** | Deadlock with nothing to test and 20 s or more left. With `--verify`, a **repair** from the failures | 7 tasks, all right, p50 36 s |
+| 🏅 **Best test score** | Code with tests and no agreement: three answers that differ, or the budget runs out. The answer that passes the most tests, no synthesis | 4 tasks, 1 right, all at the 150 s budget |
 
 Generated tests can be wrong, so they only speed up the choice: when no answer passes them, Tessera goes on as if there were no tests. Your own `--verify` command is trusted: when nothing passes it, the synthesis becomes a repair.
+
+Questions that quote a JavaScript expression are **checked by running it** (with a gateway): when the first short answer arrives, the micro-agent copies the expression from the question three times; if two copies match and the expression appears verbatim in the question, it runs in the sandbox, and the answer that states its value wins. An answer that contradicts the value cannot win the vote while other agents are still running.
 
 > [!TIP]
 > **Why not always synthesize?** In the first measurement, the synthesis rewrote a correct solution and introduced a syntax error, and it accounted for half the latency. A model that rewrites is a weak selector. A test that passes is a strong one.
@@ -220,6 +225,7 @@ The `--verify` command receives the answer on **stdin** and the agent name in `T
 | `--hedge s` | `20` | how long the fast agent runs alone; after that the others start and it keeps running as one more branch |
 | `--budget s` | `150` (`framework.json`) | total time per task, synthesis included; when it runs out, the best ready answer returns |
 | `--no-auto-verify` | on with a gateway | skip generated tests; by default, with no `--verify`, a micro-agent writes test cases from the task (passing them speeds the choice, failing them forces nothing) |
+| `--isolate` | off (always on in `eval`) | each agent runs in a new empty folder under `work/` in the root; code files it writes there are added to its answer, and the folder is removed afterwards |
 
 <details>
 <summary><b>🪶 Cascade and micro-agents</b></summary>
@@ -230,6 +236,8 @@ The `--verify` command receives the answer on **stdin** and the agent name in `T
 - **Time budget** (`budgetSeconds`, 150 s; `--budget`): counted from the start of the task. Branches are cut when it runs out, and the synthesis only gets the time left. With less than 20 s left, there is no synthesis: the best ready answer returns, the one most agents gave and, on a tie, the one that passed the most generated tests.
 - **Micro-agent** (on by default when a gateway is configured, `"autoVerify": true`; `--no-auto-verify` turns it off): a short, single-purpose call straight to the gateway's `/chat/completions`, with no agent harness. It writes `{fn, cases:[{call, expect}]}` from the task, in parallel with the agents; answers run on those cases in the sandbox. Generated tests can be wrong, so they are *soft*: no answer passing them never forces a repair.
 - **Three samples, kept only where they agree:** the micro-agent asks three times in parallel (temperature 0, 0.8 and 0.8) and keeps only the cases at least two samples wrote with the same expected value. With fewer than 3 such cases there is no reliable test.
+- **Code votes by behavior:** with generated tests, two answers that return the same outputs on the test inputs count as the same vote, even when the code differs; code that does not run on those inputs does not vote. Two answers that fail more than half the tests do not decide on their own. With three answers and no agreement, the best test score wins, as long as it passes at least half the tests; otherwise Tessera keeps waiting for the agents still running.
+- **Expression check** for questions: see [How Tessera decides](#-how-tessera-decides). It costs nothing on code, since it only starts on a short answer. When the task kind is known (as in `eval`), the test writer runs only on code.
 - Model: `models.micro`, else `model`. Extra body fields go in `microParams`, for what your gateway accepts (for example `{"chat_template_kwargs": {"enable_thinking": false}}` turns off reasoning on vLLM/Qwen: about 2 s per call instead of 18 s). With no gateway, the micro-agent falls back to `microAgent` through its CLI, with one sample.
 
 | Micro-agent (14 hard code tasks, real answers from earlier rounds) | Correct code passes | Wrong code rejected | Ready in (p50) |
@@ -293,8 +301,8 @@ tessera delegate --agent codex "explain this error"
 |:---|:---:|:---:|:---:|:---:|
 | Agent | Codex | Claude | Hermes | OpenClaw |
 
-> [!WARNING]
-> This routing is still a **hypothesis**, not a measurement. Eval data will replace it (Phase 3 of the [plan](docs/PLANO.md)).
+> [!NOTE]
+> `code` and `review` match the latest round, where each agent ran on the best of its harness: Codex was the best single agent on code (9 of 14), and Claude, Codex and OpenClaw got every review right, Claude the fastest (p50 7 s). `summary` and `automation` are not measured yet.
 
 ### 📊 `eval`: measure instead of assume
 
@@ -336,22 +344,27 @@ tessera eval --limit 5 --kind code --modes openclaw,tessera
 
 > Measured with all four agents on the same model (`mangaba-agente-rapido`) through one gateway (the author's Mangaba Router), so differences come only from each agent's harness. Synthesis by Claude. A single agent varies by up to 8 tasks between rounds (Hermes, 17 to 25), so compare means over several rounds and pair results by task.
 
-### ⏱️ Hard set · cascade with hedge and time budget vs. single agents, same round · Nov 6–7, 2026 · 6 rounds
+### 🧩 Hard set · v4, every agent on the best of its harness, same round · Nov 7, 2026 · 1 round
 
-What changed since the two rounds below: the fast agent gets 20 s alone (hedge), the others start at once when there is nothing to check, each task has a 150 s budget with the best ready answer as the fallback, and the micro-agent combines three samples (see [Cascade and micro-agents](#-fanout-everyone-at-once)).
+What changed: each agent runs on the best of its own harness (its own empty folder; Claude Code with Bash, Read, Write and Edit inside its sandbox; Codex with `--sandbox workspace-write`; code written to files reaches the answer), code answers vote by behavior on the generated tests, and questions that quote a JavaScript expression are checked by running it (see [How Tessera decides](#-how-tessera-decides)). v1, the cascade measured in the six rounds below, ran in the same round for comparison.
 
-| Mode | Round 3 | Round 4 | Round 5 | Round 6 | Round 7 | Round 8 | Mean (of 33) | Answered | p95 |
-|:---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---:|
-| 🪶 **cascade** | **25** | **29** | **27** | 26 | **27** | **27** | **26.83** | **188/198** | 130–150 s |
-| claude | 23 | 27 | 25 | **28** | 26 | 25 | 25.67 | 180/198 | 120 s |
-| openclaw | 23 | 25 | 25 | 23 | 24 | 26 | 24.33 | 182/198 | 50–120 s |
-| codex | 21 | 24 | 20 | 19 | 19 | 18 | 20.17 | 164/198 | 120 s |
-| hermes | 19 | 17 | 24 | 18 | 25 | 18 | 20.17 | 148/198 | 122 s |
+| Mode | Code (14) | Questions (11) | Reviews (5) | Total (30) | Answered | p50 | p95 |
+|:---|:---:|:---:|:---:|:---:|:---:|---:|---:|
+| 🧩 **cascade v4** | **10** | **10** | **5** | **25** | **30** | 32 s | 152 s |
+| cascade v1 | 9 | 8 | **5** | 22 | 27 | 32 s | 150 s |
+| claude | 8 | **10** | **5** | 23 | **30** | 9 s | 55 s |
+| codex | 9 | 8 | **5** | 22 | 29 | 12 s | 108 s |
+| openclaw | 8 | 8 | **5** | 21 | 24 | 12 s | 96 s |
+| hermes | 8 | 2 | 2 | 12 | 13 | 122 s | 123 s |
 
 > [!IMPORTANT]
-> **Verdict: ahead on average, not yet a clear win over Claude.** The cascade's mean is 1.2 tasks above Claude's, the best single agent overall, and 2.5 above OpenClaw's. It beat each round's best agent in 5 of the 6 rounds, by 1 or 2 tasks, and lost round 6 by 2. Task by task over the 198 task-rounds, against Claude it won 20 and lost 13 (sign test p = 0.3); against OpenClaw, 28 and 13 (p = 0.03); against Codex, 51 and 11, and Hermes, 48 and 8 (both p < 0.001). p95 is the 150 s budget in five rounds and 130 s in round 8: 1.41×, 1.25×, 2.27×, 1.25×, 1.25× and 2.62× the best agent's, down from 2.1–2.2× in the two rounds below; the two above 1.5× are rounds 5 and 8, where OpenClaw was the best agent or tied for it with a p95 of 50–66 s (against Claude it is at most 1.25× in every round). Over the six rounds, majority decided 55 tasks (48 right, p50 10 s), the fast agent 18 (all right, 11 s) and synthesis 85 (79 right, 43 s).
+> **Verdict: ahead in the one round measured, not yet a clear win.** v4 got 25 of 30, Claude 23 and v1 22, in the same round; it was at least as good as the best single agent in every kind and answered every task (v1 left 3 unanswered). Task by task, against Claude it won 4 and lost 2; against v1, 6 and 3. One round cannot separate differences this small: on these same 30 tasks, v1 ranged from 22 to 26 over its six rounds. The new checks did their part: running the quoted expression settled `hard-qa-coercao` in 12 s, where v1's majority was wrong, and comparing code by behavior decided 3 tasks, all right. v4 lost `hard-atoi` (an answer passed the generated tests and failed the hidden ones), `hard-qa-strawberry` (two agents agreed on the same wrong count) and `hard-expressao` (no right answer within the budget).
 >
-> It missed 22 tasks that some agent alone got right and got 5 that none did. Of the 22: 10 are questions (in 7, two agents on the same model agreed on the same wrong answer, 4 of them `parseInt(0.0000005)`; in 2, synthesis picked the wrong answer; in 1, only one answer arrived in time); 7 are code tasks where the budget ran out before a right answer was ready; 4 are code tasks where synthesis failed and the fallback picked a wrong ready answer; 1 is a code task where synthesis was wrong. Raw: `evals/resultados/2026-11-06T23-44-22-578Z.json`, `2026-11-07T01-52-45-762Z.json`, `2026-11-07T03-41-24-886Z.json`, `2026-11-07T05-39-23-068Z.json`, `2026-11-07T11-05-39-201Z.json` and `2026-11-07T13-09-35-343Z.json`.
+> Each harness at its best helped the agents too: on these 30 tasks Codex got 22, against a mean of 17.2 (15 to 21) over the six earlier rounds, and Claude answered all 30 (27.0 on average before). Hermes went the other way: 17 timeouts, against 4 to 12 per round before; the cause is still open. Latency is the open problem: the cascade's p95 is the 150 s budget, 2.8× Claude's 55 s. The round was stopped after 30 of the 33 tasks, so the last three reviews did not run. Raw: `evals/resultados/2026-11-07T16-50-21-486Z.json` (v1's results from the same round are in `meta.sameRoundV1`).
+
+### ⏱️ Hard set · v1, cascade with hedge and time budget · Nov 6–7, 2026 · 6 rounds
+
+With the agents on their old setup (Claude without tools, Codex read-only, one shared folder), mean of 33 correct: **cascade 26.83**, Claude 25.67, OpenClaw 24.33, Codex 20.17, Hermes 20.17. The cascade beat each round's best agent in 5 of 6 rounds; task by task against Claude, 20 wins and 13 losses (sign test p = 0.3). The full table and the analysis of every miss are in [`docs/RESULTS.md`](docs/RESULTS.md).
 
 ### 📜 How we got here
 
@@ -365,6 +378,7 @@ Every step was kept only if it held up against the single agents in the same rou
 | Nov 6 | Queue: at most 2 agents at once | No answer 10% → 6%; accuracy still tied; p95 3.0× the best agent |
 | Nov 6 | Cascade + generated tests becomes the default (2 rounds) | 27.5 vs. 26.0 mean; 65/66 answered; p95 2.1–2.2× |
 | Nov 6–7 | Hedge, 150 s budget, three-sample tests (6 rounds) | 26.8 vs. 25.7 for Claude; ahead of the round's best agent in 5 of 6; p95 within 1.5× in 4 of 6 rounds |
+| Nov 7 | v4: every agent on the best of its harness, code votes by behavior, quoted expressions are run (1 round, 30 tasks) | 25 vs. 23 for Claude with tools and 22 for v1 in the same round; every task answered; p95 2.8× Claude's |
 
 Every round in detail, with decision paths and the tasks won and lost: [`docs/RESULTS.md`](docs/RESULTS.md). Raw files: [`evals/resultados/`](evals/resultados/); aggregation script: [`evals/agregar.mjs`](evals/agregar.mjs).
 
@@ -384,6 +398,11 @@ Every round in detail, with decision paths and the tasks won and lost: [`docs/RE
 | OpenClaw said "couldn't generate a response" with exit code 0 | Treated as a failure |
 | Codex with `mangaba-coder` returned an empty message | Model switched to `mangaba-agente-rapido` |
 | Hermes hung with `mangaba-flash` | Model switched; reasoning hidden in `config.yaml` |
+| Claude ran without tools, Codex read-only, all agents in one shared folder | Each agent on the best of its harness: Claude with Bash/Read/Write/Edit in its sandbox, Codex with `workspace-write`, a new folder per agent (`--isolate`, always on in `eval`) |
+| Code an agent wrote to a file never reached its answer | Code files in the agent's folder are added to the answer |
+| Two agents on the same model agreed on the same wrong value (`parseInt(0.0000005)`) | Questions that quote a JavaScript expression are checked by running it |
+| The same code, written differently, split the vote | Code votes by behavior: same outputs on the generated inputs |
+| A right value inside a sentence was not recognized (`` `'24'` ``) | The computed value is matched as a separate token, with the quoted expression removed first |
 </details>
 
 ---
@@ -425,7 +444,7 @@ How each agent is pointed at the gateway, without changing its global configurat
 
 | Agent | Mechanism |
 |:---|:---|
-| **Claude Code** | `--bare`; `ANTHROPIC_BASE_URL` and `ANTHROPIC_API_KEY` only in the child process; prompt via stdin; `--tools ""` |
+| **Claude Code** | `--bare`; `ANTHROPIC_BASE_URL` and `ANTHROPIC_API_KEY` only in the child process; prompt via stdin |
 | **Codex** | `-c model_provider=tessera` and `-c model_providers.tessera.*` on the command line |
 | **OpenClaw** | `--model <provider>/<model>` and a new `--session-id` per call |
 | **Hermes** | `--provider <hermesProvider>` and `-m <model>` |
@@ -435,6 +454,22 @@ How each agent is pointed at the gateway, without changing its global configurat
 
 > [!CAUTION]
 > Keys **never** go into the repository. `~/.tessera/` lives outside it; keep key files at mode 600.
+
+### 🧰 Each agent on the best of its harness
+
+`framework.json > harness` sets what each agent can use in `fanout` and `eval`:
+
+```json
+"harness": { "claudeTools": "Bash,Read,Write,Edit", "codexSandbox": "workspace-write" }
+```
+
+| Field | Default | Effect |
+|:---|:---|:---|
+| `claudeTools` | `Bash,Read,Write,Edit` | Claude Code gets these tools with its sandbox on and edits accepted (in `-p` there is no one to approve them): commands run, writes outside the working folder are blocked. `""` turns the tools off. The synthesis always runs without tools |
+| `codexSandbox` | `workspace-write` | `codex exec --sandbox workspace-write`: Codex can write and run commands in its folder |
+| `isolate` | `false` (`--isolate`; always on in `eval`) | a new empty folder per agent and run, under `work/` in the root; code files the agent writes there are added to its answer, and the folder is removed |
+
+OpenClaw and Hermes keep the tools set in their own configuration (`openclaw.json`, Hermes' `config.yaml`). `do`, `delegate` and `pipeline` do not read `harness`: Claude runs there with `--tools ""` and Codex with its default sandbox.
 
 ### 🔧 Change an agent's command
 
@@ -451,14 +486,16 @@ export TESSERA_CLAUDE_CMD='["claude", "-p", "--tools", ""]'
 <details>
 <summary><b>Default command for each agent</b></summary>
 
+In `fanout` and `eval`, with the default `harness`:
+
 | Agent | Without gateway | With gateway |
 |:---|:---|:---|
-| claude | `claude -p --tools ""` (stdin) | `claude --bare -p --tools ""` (stdin) |
-| codex | `codex exec --skip-git-repo-check <prompt>` | same + `-c model_provider=tessera ...` and `-m <model>` |
+| claude | `claude -p --tools Bash,Read,Write,Edit --permission-mode acceptEdits --settings <sandbox on>` (stdin) | same, with `--bare` |
+| codex | `codex exec --skip-git-repo-check --sandbox workspace-write <prompt>` | same + `-c model_provider=tessera ...` and `-m <model>` |
 | openclaw | `openclaw agent --local --agent main --session-id <new> --thinking off --message <prompt>` | same + `--model <model>` |
 | hermes | `hermes chat -Q -q <prompt>` | same + `--provider <hermesProvider> -m <model>` |
 
-- **Claude without tools:** with the default tools, the initial prompt is large and dominates the time. For tasks that need tools, change the command.
+- **Without `harness`** (`do`, `delegate`, `pipeline`, the synthesis): Claude gets `--tools ""`, which keeps its initial prompt small, and Codex runs without `--sandbox`.
 - **OpenClaw needs an agent:** pass `--agent-id main` (or your id) to any command.
 </details>
 
@@ -495,7 +532,9 @@ tessera tasks
 | ✅ | Fanout queue (at most 2 branches at once) and per-branch deadline | Done: no answer 10% → 6% |
 | ✅ | Cascade with generated tests as the default | Done: 27.5 of 33, above every agent's mean |
 | ✅ | Latency: hedge, time budget, three-sample tests | Done: p95 is the 150 s budget, within 1.5× of the best agent in 4 of 6 rounds |
-| ⏭️ | A clear win over the best agent (today +1.2 per round, p = 0.3 against Claude): check questions about a JavaScript expression by running it (7 of the 22 misses are questions where two agents agreed on the same wrong answer); compare code answers by behavior on the generated tests | Next |
+| ✅ | v4: each agent on the best of its harness, code votes by behavior, quoted expressions are run | Done: 25 vs. 23 for Claude in one round, at least the best agent in every kind |
+| ⏭️ | Confirm v4 over more rounds (one so far) and bring p95 back within 1.5×: with its tools, Claude is now the fastest and most accurate single agent (p50 9 s, p95 55 s) | Next |
+| ⏭️ | Hermes: 17 timeouts in the latest round, against 4 to 12 before; find the cause | Next |
 | ⏭️ | Stricter majority (no 2 × 2 ties) and a check on single answers | Later |
 | ⏭️ | **Phase 2**: free-text agreement without synthesis | Planned |
 | ⏭️ | **Phase 3**: routing learned from eval data | Planned |
@@ -512,8 +551,8 @@ The full plan, with done criteria, is in [`docs/PLANO.md`](docs/PLANO.md) (in Po
 tessera/
 ├── bin/tessera.mjs          CLI
 ├── src/
-│   ├── bridge.mjs           agents, fanout, cascade, verification, majority, synthesis
-│   ├── microagents.mjs      micro-agents: generated tests, straight to the gateway
+│   ├── bridge.mjs           agents and their harness, fanout, cascade, verification, majority, synthesis
+│   ├── microagents.mjs      micro-agents: generated tests and the expression check, straight to the gateway
 │   ├── sandbox.mjs          runs answers on test cases with node --permission
 │   ├── eval.mjs             tasks, grading and report
 │   ├── adapters/            how each agent is called
@@ -527,7 +566,7 @@ tessera/
 ├── examples/                gateway configuration example
 ├── docs/                    PLANO.md (phased plan) · RESULTS.md (every round)
 ├── .github/workflows/       tests on Node 22 and 24 on every push
-└── test/                    90 tests (node:test)
+└── test/                    113 tests (node:test)
 ```
 
 ---
