@@ -145,14 +145,50 @@ Troca "um modelo escolhe" por "o resultado se prova".
   - Derrotas da v4: `hard-atoi` (a resposta passou nos testes gerados e reprovou nos ocultos), `hard-qa-strawberry` (dois agentes concordaram na contagem errada) e `hard-expressao` (nenhuma resposta certa dentro do orçamento).
 - **Resultado bruto:** `evals/resultados/2026-11-07T16-50-21-486Z.json`. A v1 da mesma rodada está em `meta.sameRoundV1`.
 
+**v5: latência** (07/nov, depois da v4; não passou no A/B e não foi publicada). O p95 da v4 era o orçamento de 150 s, 2,8× o do Claude com ferramentas.
+- **Onde a v4 gastava o tempo** (rodada 9): 7 das 14 tarefas de código passavam de 82 s (1,5× o p95 do Claude). Dentro da cascata, os agentes levavam de 3 a 10× o tempo que levavam sozinhos. Exemplos: o Claude levou 95–130 s em tarefas que resolvia em 11–14 s, e o Codex não terminou em 126 s uma tarefa que resolvia em 12 s.
+- **O roteador, medido:**
+  - O `mangaba-agente-rapido` atende um pedido por vez: 4 pedidos iguais em paralelo terminam em 2,2 / 4,5 / 6,7 / 8,8 s, a ~120 tokens/s somados. Rodar agentes juntos não ganha nada; um só espera o outro.
+  - Cancelar o pedido libera o backend na hora.
+  - Dois prompts de 11 mil tokens alternados continuam no cache de prefixo (~1 s cada, contra 5 s frio).
+  - Prompts de 18 mil tokens ou mais não responderam em 90 s no teste. Inconclusivo.
+- **O que entrou e por quê.** O replay com o roteador modelado como fila única reproduziu a v4 (p95 150 s). Os números abaixo são de casos do replay na rodada 9 (44 casos: 14 tarefas de código × 2 amostras de testes + 16).
+  - **Claude primeiro, depois Codex, OpenClaw e Hermes:** 35 de 44 com o Codex em segundo, contra 30 com o OpenClaw em segundo.
+  - **Um agente por vez, estritamente (`maxConcurrent` 1, o rápido segurando a vaga):** deixar o rápido seguir ao lado do próximo deu 35 de 44 no replay. Mas no piloto real, Claude e Codex juntos não terminaram `hard-semver` em 110 s, e sozinhos levam 11 e 51 s. Ficou um por vez: 34 de 44.
+  - **Orçamento de 70 s:** 80 s só ganha `hard-expressao`, que o Codex termina perto dos 79 s, e põe o p95 em 1,45× o do Claude da rodada 9. Com 60 s, 5 casos ficaram sem resposta.
+  - **Prorrogação só sem resposta (`overtimeSeconds` 60):** se o orçamento acaba sem nenhuma resposta, quem roda continua e, se falhar, o próximo da fila ainda começa. Sem ela, 1 a 2 casos sem resposta; com ela, nenhum.
+  - **Claude cortado aos 60 s (`fastDeadlineSeconds`):** no piloto, o Claude sozinho levou 86 s e mais de 120 s em `hard-semver` (6,6 s numa terceira vez). Cortado aos 60 s, o próximo agente ganha a fila. No replay, o mesmo acerto e nenhum sem resposta. Cortes de 25 a 50 s deixaram 2 a 4 casos sem resposta.
+  - **Teto de 1.500 tokens no escritor de testes (`microMaxTokens` no provedor):** 1 de 12 amostras disparou até 6.000 tokens (36 s) e segurou a fila antes do primeiro agente.
+- **Critérios fixados antes do A/B** (rodada 10: os 4 agentes, a v4 publicada e a v5 na mesma rodada, ordem alternada):
+  1. p95 da v5 ≤ 1,5× o do melhor agente sozinho (o de mais acertos);
+  2. total acima do melhor agente, e por tipo pelo menos igual;
+  3. contra a v4: acerto ≥ v4 − 1, sem resposta ≤ v4 + 1.
+- **Resultado do A/B (rodada 10, 33 tarefas): não passou.** Passou na latência e ficou abaixo no acerto. A v4 continua publicada.
+  - Claude sozinho: 28 certas, p95 99,9 s. v4: 27, p95 150,3 s. v5: 25, p95 130,0 s (1,30× o do Claude).
+  - Por tipo, a v5 ficou abaixo do melhor agente em código (10 × 12 do Hermes) e em perguntas (7 × 11 do Claude). Nas revisões, empatou (8 × 8).
+  - **O corte de 60 s pegou o roteador travado.** O Claude foi cortado em 6 tarefas. Em 5 delas a v5 rodava logo depois dos agentes sozinhos, e o Claude sozinho resolvia essas tarefas em 5 a 10 s; a exceção foi `hard-expressao`, com 100 s. O corte jogou fora o trabalho dele, e a v5 perdeu `hard-csv-linha`, `hard-expressao` e `hard-qa-maquinas`. Os resultados não registram por que o roteador travou.
+  - **Nas perguntas, chegaram menos opiniões.**
+    - `hard-qa-sort-js` e `hard-qa-parseint`: Codex e OpenClaw erraram juntos e venceram no voto o Claude, que acertou. A v4 também perdeu a segunda.
+    - `hard-qa-sextas-13`: valeu só a resposta errada do Claude, porque o Codex não terminou antes dos 70 s.
+  - **A verificação por testes funcionou.** A v5 ganhou do Claude em `hard-semver`, `hard-ordem-natural` e `hard-inverter-grafemas`, todas em menos de 40 s.
+  - **A v4 não repetiu a vantagem.** Nas 30 tarefas da rodada 9, a v4 fez 24 e o Claude 25; na rodada 9 tinham sido 25 e 23. Somadas, 49 × 48.
+  - **O ruído muda a régua de latência.** O p95 do próprio Claude foi de 55 s, na rodada 9, para 100 s nesta. Com teto de 130 s, a v5 só passa no critério 1 quando o p95 do Claude passa de 87 s.
+  - Resultado bruto fora do repositório: `~/.tessera/ab5-rodada1/` (com o patch da v5).
+
 **Falta:**
-- Mais rodadas da v4: até agora foi uma.
-- Latência contra o Claude com ferramentas, hoje o agente mais rápido e mais preciso sozinho (p50 de 9 s). Testar o Claude como agente rápido da cascata.
-- Hermes: achar a causa das 17 tarefas sem resposta, comparando pasta fixa com pasta nova a cada execução no mesmo prompt.
+- Mais rodadas da v4. Nas 30 tarefas comuns às duas rodadas: 49 × 48 do Claude, ainda sem vitória clara.
+- Latência:
+  - A v5 (Claude primeiro, um agente por vez) baixou o p95 de 150 para 130 s, mas perdeu acerto.
+  - Ideia para uma v5.1:
+    - deixar o Claude correr até o orçamento, sem o corte de 60 s;
+    - nas perguntas em que a maioria discorda do Claude, sintetizar em vez de votar.
+  - Mesmo assim, o código dificilmente chega aos 12 de 14 do Hermes, que leva 84 a 120 s por tarefa.
+  - Com um pedido por vez no roteador, cada opinião a mais custa o tempo inteiro dela.
+- Hermes: na rodada 9 ficou sem resposta em 17 tarefas; na rodada 10, em 3 (todas no limite de 120 s). Falta saber o que mudou.
 - Pasta do `--isolate` dentro de `.tessera/`, em vez de `work/` na raiz do projeto.
 - Reserva por evidência (testes gerados, acordo) em vez da ordem dos agentes.
 - Diversidade de modelo por agente (`models.<agente>` em `~/.tessera/provider.json`): no mesmo modelo, os agentes erram juntos nas perguntas, como no `hard-qa-strawberry`.
-- Maioria mais exigente (3 votos, ou 2 sem divergência).
+- Maioria mais exigente (3 votos, ou 2 sem divergência). Na rodada 10, a maioria de 2 contra o Claude errou em `hard-qa-sort-js` e `hard-qa-parseint`.
 - git worktrees para agentes que editam arquivos.
 
 ## Fase 2: crítica cruzada só quando há divergência
