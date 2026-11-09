@@ -1,6 +1,7 @@
 // Microagentes: chamadas curtas, com uma função só, que ajudam o fanout a decidir.
 // Não respondem a tarefa; produzem algo que torna a escolha mais barata ou mais segura.
 import { createHash } from 'node:crypto';
+import { Script } from 'node:vm';
 import { delegateAsync } from './bridge.mjs';
 import { extractCode, runCodeTests, runCodeCalls, runProgram, canonJson } from './sandbox.mjs';
 
@@ -281,16 +282,114 @@ export function withoutExpression(text, expr) {
 
 const CODE_ANSWER = /```|\bfunction\b|=>|\bdef\s|\breturn\b/;
 
-// Verificador por execução. Precisa de gateway (chamadas diretas ao modelo); sem ele, nunca
-// fica pronto. Só confere respostas curtas (até `maxAnswerChars`): explicação longa não é
-// "o valor da expressão". Use com softVerify: quem bate com o valor decide; ninguém bater
-// não muda nada.
-// lazy: as amostras só saem quando chega a primeira resposta curta; código (resposta longa)
-// nunca as dispara. Motivo (07/nov/2026, A/B): disparadas no início de toda tarefa que cita
-// JavaScript, eram 3 chamadas a mais no roteador, que atende uma por vez, e o agente rápido
-// passou a estourar o prazo em mais tarefas de código. Preguiçosa, `ready` é falso: a cascata
-// trata a pergunta como sem verificação e põe todos para rodar, como antes.
-export function expressionVerifier({ prompt, provider = null, timeoutMs = 60_000, maxWaitMs = 15_000, samples = 3, temperature = 0.8, maxAnswerChars = 200, lazy = true }) {
+// Trecho que pede cálculo: chamada, operador, acesso a membro ou palavra-chave de expressão.
+// Um literal sozinho (0.0000005, 'abc') não é "o que tal expressão devolve".
+const CALC = /[\w$\])'"]\s*\(|[-+*/%<>=!&|^~?]|[\w$\])'"]\s*\.\s*[A-Za-z_$]|\b(?:typeof|instanceof|new|void|delete)\b/;
+
+// Parênteses, colchetes e chaves fechados dentro do próprio trecho (fora de aspas). Sem isso,
+// "a) + (b" compilaria dentro do invólucro "( … )" usado para testar a sintaxe.
+function balanced(s) {
+  const close = { ')': '(', ']': '[', '}': '{' };
+  const stack = [];
+  let quote = null;
+  for (let i = 0; i < s.length; i += 1) {
+    const c = s[i];
+    if (quote) { if (c === '\\') i += 1; else if (c === quote) quote = null; continue; }
+    if (c === '"' || c === "'") quote = c;
+    else if ('([{'.includes(c)) stack.push(c);
+    else if (c in close && stack.pop() !== close[c]) return false;
+  }
+  return !quote && stack.length === 0;
+}
+
+function isExpression(s) {
+  if (!balanced(s)) return false;
+  try { new Script(`(${s}\n)`); return true; } catch { return false; }
+}
+
+const STRINGS = /'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"/g;
+const KEYWORD_BEFORE_PAREN = new Set(['typeof', 'void', 'new', 'delete', 'in', 'instanceof']);
+
+// Texto em português que também compila como JavaScript, mas não é a expressão perguntada.
+function looksLikeProse(s) {
+  const t = s.replace(STRINGS, '""');
+  let depth = 0;
+  for (const c of t) {
+    if ('([{'.includes(c)) depth += 1;
+    else if (')]}'.includes(c)) depth -= 1;
+    else if (c === ',' && depth === 0) return true; // vírgula da frase: "parseInt(x), com"
+  }
+  // palavra + espaço + ( ou [: "número (sem aspas)", "que [10, 1, 3].sort()"
+  for (const m of t.matchAll(/([\p{L}\p{N}_$]+)\s+[[(]/gu)) if (!KEYWORD_BEFORE_PAREN.has(m[1])) return true;
+  return /\.\s+[\p{L}_$]/u.test(t) // ponto final de frase: "campos. O"
+    || /[\p{L}\p{N}_$]\s+[-+!~](?=[\p{L}\p{N}_$'"([])/u.test(t) // palavra + operador colado: "é -7"
+    || /(?<![=!<>])=(?![=>])/.test(t); // atribuição dá contexto, não é o que se pergunta
+}
+
+// Expressões JavaScript citadas no texto da pergunta, achadas sem o modelo: os trechos mais
+// longos (de palavra em palavra) que compilam como expressão e pedem cálculo. Crases de
+// markdown viram espaço; pontuação da frase no fim do trecho sai. Só em pergunta curta de
+// JavaScript, sem bloco de código.
+export function findExpressions(question, { maxChars = 400, maxWords = 16 } = {}) {
+  const raw = String(question ?? '');
+  if (!JS_LANG.test(raw) || raw.length > maxChars || raw.includes('```')) return [];
+  const q = raw.replace(/`/g, ' ');
+  const words = [...q.matchAll(/\S+/g)].map((m) => [m.index, m.index + m[0].length]);
+  const found = [];
+  for (let i = 0; i < words.length; i += 1) {
+    for (let j = i; j < Math.min(words.length, i + maxWords); j += 1) {
+      const expr = q.slice(words[i][0], words[j][1]).replace(/[?!,;:]+$/, '').replace(/(?<!\.)\.$/, '').trim();
+      if (expr.length < 3 || !CALC.test(expr.replace(STRINGS, '""')) || looksLikeProse(expr) || !isExpression(expr)) continue;
+      found.push({ a: words[i][0], b: words[i][0] + expr.length, expr });
+    }
+  }
+  const maximal = found.filter((x) => !found.some((y) => y !== x && y.a <= x.a && y.b >= x.b && y.b - y.a > x.b - x.a));
+  return [...new Set(maximal.map((x) => x.expr))];
+}
+
+// A expressão da pergunta e o valor dela, sem chamar o modelo: só vale se exatamente um dos
+// trechos achados roda na sandbox (palavra comum com hífen, como "sexta-feira", compila mas
+// não roda). Mais de um valor possível: null, e quem decide é o copiador pelo modelo.
+// Motivo (09/nov/2026): o copiador pelo modelo respondia em vez de copiar ("EXPR: 0" em
+// parseInt(0.0000005), "EXPR: [1, 3, 10]" em [10, 1, 3].sort()); a checagem quase nunca rodou
+// nas perguntas para as quais foi feita, e a de parseInt errou em 6 de 8 rodadas.
+export function localExpression(question, { timeoutMs = 3000 } = {}) {
+  const ok = findExpressions(question)
+    .map((expr) => ({ expr, value: runProgram(`console.log((${expr}));`, { timeoutMs }).value }))
+    .filter((x) => x.value != null);
+  return ok.length === 1 ? ok[0] : null;
+}
+
+// Confere uma resposta curta contra o valor calculado da expressão.
+function compareToValue(text, got, maxAnswerChars) {
+  const t = String(text ?? '').trim();
+  if (t.length > maxAnswerChars || CODE_ANSWER.test(t)) return { pass: false, skipped: true, detail: 'code or long answer; expression not compared' };
+  const pass = answerMatches(withoutExpression(t, got.expr), got.value);
+  return { pass, computed: got.value, detail: `expression value ${got.value}: ${pass ? 'matches' : 'differs'}` };
+}
+
+// Verificador por execução. Só confere respostas curtas (até `maxAnswerChars`): explicação
+// longa não é "o valor da expressão". Use com softVerify: quem bate com o valor decide;
+// ninguém bater não muda nada.
+// Primeiro, a expressão achada no próprio texto (localExpression): o valor sai na hora, sem
+// gateway, e `ready` é verdadeiro; a cascata trata a pergunta como verificável, como código
+// com testes. Só em pergunta: tipo 'qa' ou, sem tipo conhecido, texto com "?".
+// Senão, o copiador pelo modelo, que precisa de gateway (sem ele, nunca fica pronto).
+// lazy: as amostras do copiador só saem quando chega a primeira resposta curta; código
+// (resposta longa) nunca as dispara. Motivo (07/nov/2026, A/B): disparadas no início de toda
+// tarefa que cita JavaScript, eram 3 chamadas a mais no roteador, que atende uma por vez, e o
+// agente rápido passou a estourar o prazo em mais tarefas de código. Preguiçosa, `ready` é
+// falso: a cascata trata a pergunta como sem verificação e põe todos para rodar, como antes.
+export function expressionVerifier({ prompt, provider = null, kind = null, timeoutMs = 60_000, maxWaitMs = 15_000, samples = 3, temperature = 0.8, maxAnswerChars = 200, lazy = true }) {
+  const question = kind ? kind === 'qa' : String(prompt ?? '').includes('?');
+  const local = question ? localExpression(prompt) : null;
+  if (local) {
+    const verify = async (text) => compareToValue(text, local, maxAnswerChars);
+    Object.defineProperty(verify, 'computed', { get: () => Promise.resolve(local.value) });
+    verify.ready = Promise.resolve(true);
+    verify.expression = local.expr;
+    return verify;
+  }
   const direct = Boolean(provider?.baseUrl && provider?.key) && JS_LANG.test(prompt ?? '');
   let computed = null;
   const start = () => (computed ??= !direct ? Promise.resolve(null)
@@ -309,8 +408,7 @@ export function expressionVerifier({ prompt, provider = null, timeoutMs = 60_000
     clearTimeout(timer);
     if (got === 'late') return { pass: false, skipped: true, detail: 'expression value not ready in time' };
     if (got == null) return { pass: false, skipped: true, detail: 'no expression to run' };
-    const pass = answerMatches(withoutExpression(t, got.expr), got.value);
-    return { pass, computed: got.value, detail: `expression value ${got.value}: ${pass ? 'matches' : 'differs'}` };
+    return compareToValue(t, got, maxAnswerChars);
   };
   // computed: o valor calculado (dispara as amostras se ainda não saíram).
   Object.defineProperty(verify, 'computed', { get: () => start().then((g) => g?.value ?? null) });

@@ -141,7 +141,7 @@ flowchart TD
 
 Generated tests can be wrong, so they only speed up the choice: when no answer passes them, Tessera goes on as if there were no tests. Your own `--verify` command is trusted: when nothing passes it, the synthesis becomes a repair.
 
-Questions that quote a JavaScript expression are **checked by running it** (with a gateway): when the first short answer arrives, the micro-agent copies the expression from the question three times; if two copies match and the expression appears verbatim in the question, it runs in the sandbox, and the answer that states its value wins. An answer that contradicts the value cannot win the vote while other agents are still running.
+Questions that quote a JavaScript expression are **checked by running it**. Tessera finds the expression in the question itself, with no model call: the longest stretch of the question that compiles as an expression and runs in the sandbox. The answer that states its value wins, and the question counts as checkable: when the fast agent's answer matches the value, it comes back alone. If more than one stretch runs, a micro-agent copies the one being asked (with a gateway), and the copy counts only if it appears verbatim in the question. An answer that contradicts the value cannot win the vote while other agents are still running.
 
 > [!TIP]
 > **Why not always synthesize?** In the first measurement, the synthesis rewrote a correct solution and introduced a syntax error, and it accounted for half the latency. A model that rewrites is a weak selector. A test that passes is a strong one.
@@ -402,6 +402,7 @@ Every step was kept only if it held up against the single agents in the same rou
 | Nov 6–7 | Hedge, 150 s budget, three-sample tests (6 rounds) | 26.8 vs. 25.7 for Claude; ahead of the round's best agent in 5 of 6; p95 within 1.5× in 4 of 6 rounds |
 | Nov 7 | v4: every agent on the best of its harness, code votes by behavior, quoted expressions are run (1 round, 30 tasks) | 25 vs. 23 for Claude with tools and 22 for v1 in the same round; every task answered; p95 2.8× Claude's |
 | Nov 7 | v4 measured again (all 33 tasks) | 24 vs. 25 for Claude on the first round's 30 tasks: 49 vs. 48 over both, a tie; p95 1.5× Claude's |
+| Nov 9 | Quoted JavaScript expressions are found in the question text, with no model call | On the four JavaScript questions, 4 runs each against v4: 15 of 16 right for both, p50 22 s → 12 s. On the answers recorded over 8 rounds, the three hard ones go from 16 to 23 of 24 |
 
 Every round in detail, with decision paths and the tasks won and lost: [`docs/RESULTS.md`](docs/RESULTS.md). Raw files: [`evals/resultados/`](evals/resultados/); aggregation script: [`evals/agregar.mjs`](evals/agregar.mjs).
 
@@ -426,6 +427,7 @@ Every round in detail, with decision paths and the tasks won and lost: [`docs/RE
 | Two agents on the same model agreed on the same wrong value (`parseInt(0.0000005)`) | Questions that quote a JavaScript expression are checked by running it |
 | The same code, written differently, split the vote | Code votes by behavior: same outputs on the generated inputs |
 | A right value inside a sentence was not recognized (`` `'24'` ``) | The computed value is matched as a separate token, with the quoted expression removed first |
+| The micro-agent asked to copy the expression answered the question instead, so the check rarely ran (`parseInt(0.0000005)`, `[10, 1, 3].sort()`) | The expression is found in the question text itself, with no model call |
 </details>
 
 ---
@@ -589,7 +591,7 @@ tessera/
 ├── examples/                gateway configuration example
 ├── docs/                    PLANO.md (phased plan) · RESULTS.md (every round)
 ├── .github/workflows/       tests on Node 22 and 24 on every push
-└── test/                    113 tests (node:test)
+└── test/                    117 tests (node:test)
 ```
 
 ---

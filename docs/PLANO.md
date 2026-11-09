@@ -171,11 +171,31 @@ Troca "um modelo escolhe" por "o resultado se prova".
     - `hard-qa-sort-js` e `hard-qa-parseint`: Codex e OpenClaw erraram juntos e venceram no voto o Claude, que acertou. A v4 também perdeu a segunda.
     - `hard-qa-sextas-13`: valeu só a resposta errada do Claude, porque o Codex não terminou antes dos 70 s.
   - **A verificação por testes funcionou.** A v5 ganhou do Claude em `hard-semver`, `hard-ordem-natural` e `hard-inverter-grafemas`, todas em menos de 40 s.
-  - **A v4 não repetiu a vantagem.** Nas 30 tarefas da rodada 9, a v4 fez 24 e o Claude 25; na rodada 9 tinham sido 25 e 23. Somadas, 49 × 48.
+  - **A v4 não repetiu a vantagem.** Nas mesmas 30 tarefas da rodada 9, a v4 fez 24 e o Claude 25; na rodada 9 tinham sido 25 e 23. Somadas, 49 × 48.
   - **O ruído muda a régua de latência.** O p95 do próprio Claude foi de 55 s, na rodada 9, para 100 s nesta. Com teto de 130 s, a v5 só passa no critério 1 quando o p95 do Claude passa de 87 s.
   - Resultado bruto fora do repositório: `~/.tessera/ab5-rodada1/` (com o patch da v5).
 
+**Checagem por expressão sem o modelo** (09/nov).
+- **O defeito:** o copiador pelo modelo respondia a pergunta em vez de copiar a expressão.
+  - Em `hard-qa-parseint`, 1 de 3 amostras copiou; as outras duas responderam "0".
+  - Em `hard-qa-sort-js`, as três responderam "[1, 3, 10]".
+  - A cópia só vale se aparecer igual na pergunta, então a checagem não rodava, sem erro. Nas 8 rodadas gravadas, a cascata errou `parseInt` em 6 e o `sort` em 2.
+- **A correção:** a expressão sai do próprio texto da pergunta, sem chamar o modelo. Vale o trecho mais longo que compila como expressão de JavaScript e roda na sandbox.
+  - Ficam de fora vírgula da frase, palavra antes de parêntese, ponto final de frase e atribuição.
+  - Com mais de um trecho que roda, decide o copiador pelo modelo, como antes.
+  - Com a expressão achada, a pergunta conta como verificável: o agente rápido responde sozinho e, se bater com o valor, a resposta volta na hora.
+- **Cobertura:** nas 67 tarefas dos dois conjuntos, só as 4 perguntas de JavaScript disparam. Código e revisão ficam de fora pelo tipo.
+- **Nas respostas gravadas** (8 rodadas, as 3 perguntas difíceis de JavaScript): a cascata acertou 16 de 24; seriam 23 de 24 se vencesse a resposta que bate com o valor.
+- **Medição dirigida** (critérios fixados antes; 4 perguntas × 4 repetições, ordem alternada): **passou.**
+  - v4: 15 de 16, p50 22,4 s. Corrigida: 15 de 16, p50 11,7 s, nenhuma acima de 47 s.
+  - A corrigida resolveu 8 das 16 só com o agente rápido, em 7 a 13 s.
+  - No `sort`, Codex e OpenClaw erraram juntos e o valor calculado escolheu o Claude, que acertou. Na v4, esse caso perdeu no voto.
+- **O que ainda falha:** quando todos erram igual. Em `hard-qa-coercao`, os três responderam "6", a checagem marcou as três como divergentes do valor 24, e no fim a maioria decidiu "6". A checagem escolhe entre as respostas; não responde sozinha.
+- **Já tentado e descartado (07/nov):** pedir ao modelo um programa que calcule a resposta. Ele escrevia no programa o mesmo engano e errou 5 de 8 perguntas.
+- Dados: `~/.tessera/ab6-expressao/`.
+
 **Falta:**
+- Pergunta com expressão em que todas as respostas divergem do valor calculado: devolver o valor (ou sintetizar com ele) em vez da maioria. Medir antes.
 - Mais rodadas da v4. Nas 30 tarefas comuns às duas rodadas: 49 × 48 do Claude, ainda sem vitória clara.
 - Latência:
   - A v5 (Claude primeiro, um agente por vez) baixou o p95 de 150 para 130 s, mas perdeu acerto.

@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { cascade, fanout, buildCommand, delegateAsync } from '../src/bridge.mjs';
-import { parseTestCases, autoVerifier, probeCalls, behaviorSig, expressionVerifier, answerMatches, evalExpressions, parseExpression, autoCheck, withoutExpression } from '../src/microagents.mjs';
+import { parseTestCases, autoVerifier, probeCalls, behaviorSig, expressionVerifier, answerMatches, evalExpressions, parseExpression, autoCheck, withoutExpression, findExpressions, localExpression } from '../src/microagents.mjs';
 import { runCodeTests, runCodeCalls, runProgram } from '../src/sandbox.mjs';
 import { summarize, renderMarkdown } from '../src/eval.mjs';
 
@@ -626,11 +626,11 @@ async function fakeGateway(reply) {
 }
 const isExprPrompt = (p) => p.includes('Does the question below ask what a specific JavaScript expression');
 
-test('expressionVerifier: roda a expressão copiada da pergunta; resposta curta que bate passa', async () => {
+test('expressionVerifier: com duas expressões no texto, o copiador pelo modelo escolhe; resposta curta que bate passa', async () => {
   let calls = 0;
   const { srv, provider } = await fakeGateway(() => { calls += 1; return 'EXPR: parseInt(0.0000005)'; });
   try {
-    const verify = expressionVerifier({ prompt: 'Em JavaScript, quanto retorna parseInt(0.0000005)?', provider });
+    const verify = expressionVerifier({ prompt: 'Em JavaScript, se [1, 2].length é 2, quanto retorna parseInt(0.0000005)?', provider });
     assert.equal(await verify.ready, false, 'preguiçosa: a cascata trata a pergunta como sem verificação');
     assert.equal((await verify(`0. ${'explicação longa '.repeat(20)}`)).skipped, true);
     assert.equal((await verify('function f(x) { return parseInt(x); }')).skipped, true);
@@ -657,10 +657,10 @@ test('autoCheck: pergunta sobre expressão JavaScript usa a execução; tarefa d
   });
   try {
     const q = autoCheck({ prompt: "Em JavaScript, qual é o resultado de '2' + 2 * '2'?", provider, kind: 'qa' });
-    assert.equal(await q.ready, false);
+    assert.equal(await q.ready, true, 'expressão achada no texto: verificável desde o início');
     assert.equal((await q("O resultado é `'24'`.")).pass, true);
     assert.equal((await q('6')).pass, false);
-    assert.ok(!seen.includes('testes'), 'pergunta (tipo conhecido) não chama o escritor de testes');
+    assert.deepEqual(seen, [], 'expressão achada no texto: nenhuma chamada ao gateway');
     seen.length = 0;
     const c = autoCheck({ prompt: 'Escreva dobro(n) em JavaScript.', provider, kind: 'code' });
     assert.equal(await c.ready, true);
@@ -669,6 +669,65 @@ test('autoCheck: pergunta sobre expressão JavaScript usa a execução; tarefa d
     assert.ok(!('computed' in r));
     assert.ok(!seen.includes('expr'), 'código não dispara o extrator de expressão');
   } finally { srv.close(); }
+});
+
+test('localExpression: acha no texto a expressão perguntada e o valor dela, sem o modelo', () => {
+  const val = (q) => localExpression(q)?.value ?? null;
+  assert.deepEqual(localExpression('Em JavaScript, o que [10, 1, 3].sort() retorna? Responda só o array.'), { expr: '[10, 1, 3].sort()', value: '[1,10,3]' });
+  assert.equal(val('Em JavaScript, quanto retorna parseInt(0.0000005), com o argumento sendo um número (sem aspas)? Responda só o valor.'), '5');
+  assert.equal(val("Em JavaScript, qual é o resultado de '2' + 2 * '2'? Responda só o valor."), '24');
+  assert.equal(val('Em JavaScript, `0.1 + 0.2 === 0.3` retorna true ou false?'), 'false', 'crase de markdown não vira template');
+  assert.equal(val('Em JavaScript, numa sexta-feira, quanto retorna [3, 20, 100].sort()?'), '[100,20,3]', 'palavra com hífen compila, mas não roda');
+  assert.equal(val('Em JavaScript, quanto é -7 % 2?'), '-1');
+  assert.equal(val('Em JavaScript, o que typeof (null) devolve?'), 'object');
+});
+
+test('localExpression: duas expressões, contexto com atribuição, outra linguagem ou bloco de código dão null', () => {
+  assert.deepEqual(findExpressions('Em JavaScript, quanto é 1 + 1 e quanto é 2 * 2?'), ['1 + 1', '2 * 2']);
+  assert.equal(localExpression('Em JavaScript, quanto é 1 + 1 e quanto é 2 * 2?'), null, 'ambígua: decide o copiador pelo modelo');
+  assert.equal(localExpression('Em JavaScript, se x = [1, 2], quanto é x.length + 1?'), null, 'atribuição é contexto; x.length não roda sozinho');
+  assert.equal(localExpression('Em Python 3, quanto é round(2.5)?'), null);
+  assert.equal(localExpression('Quantas letras r tem strawberry?'), null);
+  assert.equal(localExpression('Em JavaScript, o que este código imprime?\n```js\nconsole.log(1 + 1)\n```'), null);
+  assert.deepEqual(findExpressions('Em JS, o que (a) + (b) dá?'), ['(a) + (b)'], 'palavra antes do parêntese não entra');
+  assert.equal(localExpression('Em JS, o que (a) + (b) dá?'), null);
+});
+
+test('expressionVerifier: expressão achada no texto fica pronta na hora, sem gateway; só em pergunta', async () => {
+  const prompt = 'Em JavaScript, quanto retorna parseInt(0.0000005)?';
+  const verify = expressionVerifier({ prompt });
+  assert.equal(await verify.ready, true);
+  assert.equal(verify.expression, 'parseInt(0.0000005)');
+  assert.equal(await verify.computed, '5');
+  assert.deepEqual(await verify('5'), { pass: true, computed: '5', detail: 'expression value 5: matches' });
+  assert.equal((await verify('`0`')).pass, false);
+  assert.equal((await verify(`5. ${'explicação longa '.repeat(20)}`)).skipped, true);
+  for (const kind of ['code', 'review']) assert.equal(await expressionVerifier({ prompt, kind }).ready, false, `tipo ${kind}`);
+  assert.equal(await expressionVerifier({ prompt: 'Em JavaScript, implemente f para que parseInt(0.0000005) dê 0.' }).ready, false, 'sem tipo e sem "?": não é pergunta');
+});
+
+test('cascata com expressão no texto: o rápido que bate volta sozinho; o que erra cede, e o par errado não decide', async () => {
+  const prompt = 'Em JavaScript, quanto retorna parseInt(0.0000005)?';
+  let root = fresh();
+  process.env.TESSERA_OPENCLAW_CMD = agent(root, 'openclaw', '5');
+  process.env.TESSERA_CODEX_CMD = agent(root, 'codex', '5');
+  process.env.TESSERA_CLAUDE_CMD = agent(root, 'claude', 'SINTESE');
+  try {
+    const res = await cascade({ root, prompt, agents: ['openclaw', 'codex'], synthesizer: 'claude', hedgeMs: 5000, verify: expressionVerifier({ prompt, kind: 'qa' }), softVerify: true });
+    assert.equal(res.final.selectedBy, 'fast');
+    assert.deepEqual(calls(root), ['openclaw']);
+  } finally { clear(); }
+  root = fresh();
+  process.env.TESSERA_OPENCLAW_CMD = agent(root, 'openclaw', '0');
+  process.env.TESSERA_CODEX_CMD = agent(root, 'codex', '`0`', 50);
+  process.env.TESSERA_HERMES_CMD = agent(root, 'hermes', '5', 400);
+  process.env.TESSERA_CLAUDE_CMD = agent(root, 'claude', 'SINTESE');
+  try {
+    const res = await cascade({ root, prompt, agents: ['openclaw', 'codex', 'hermes'], synthesizer: 'claude', hedgeMs: 5000, quorum: 2, graceMs: 2000, verify: expressionVerifier({ prompt, kind: 'qa' }), softVerify: true });
+    assert.equal(res.final.selectedBy, 'verify');
+    assert.equal(res.final.agent, 'hermes');
+    assert.ok(!calls(root).includes('claude'), 'sem síntese');
+  } finally { clear(); }
 });
 
 // Verificador falso de execução: o valor calculado é "5".
